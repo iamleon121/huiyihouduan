@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF 文件上传测试</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            margin: auto;
+            border: 1px solid #ccc;
+            padding: 30px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        input[type="file"] {
+            margin-bottom: 15px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        #selectedFiles {
+            margin-top: 20px;
+            list-style: none;
+            padding: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #fff;
+        }
+        #selectedFiles li {
+            background-color: #e9ecef;
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>上传 PDF 文件</h1>
+        <input type="file" id="fileInput" multiple accept=".pdf">
+        <button id="addFilesBtn">添加文件</button>
+        <button id="uploadBtn">上传文件</button>
+        <div id="message"></div>
+        <h2>已选择文件列表:</h2>
+        <ul id="selectedFiles">
+            <!-- Selected files will be listed here -->
+        </ul>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const addFilesBtn = document.getElementById('addFilesBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const messageDiv = document.getElementById('message');
+        const selectedFilesList = document.getElementById('selectedFiles');
+
+        let selectedFiles = [];
+
+        addFilesBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            const newFiles = Array.from(fileInput.files);
+            newFiles.forEach(file => {
+                if (file.name.toLowerCase().endsWith('.pdf') && !selectedFiles.some(f => f.name === file.name)) {
+                    selectedFiles.push(file);
+                    const listItem = document.createElement('li');
+                    listItem.textContent = file.name;
+                    selectedFilesList.appendChild(listItem);
+                }
+            });
+            fileInput.value = ''; // Clear input to allow re-selection of same files
+        });
+
+        uploadBtn.addEventListener('click', async () => {
+            if (selectedFiles.length === 0) {
+                messageDiv.textContent = '请先选择文件。';
+                messageDiv.className = 'error';
+                return;
+            }
+
+            messageDiv.textContent = '开始上传...';
+            messageDiv.className = '';
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const file of selectedFiles) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch('/upload', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                        messageDiv.textContent = `文件 '${file.name}' 上传失败: ${result.error || '未知错误'}`;
+                        messageDiv.className = 'error';
+                        // Optionally stop uploading further files if one fails:
+                        // break;
+                    }
+                } catch (error) {
+                    console.error('上传过程中发生网络错误:', error);
+                    errorCount++;
+                    messageDiv.textContent = `上传文件 '${file.name}' 时发生网络错误。`;
+                    messageDiv.className = 'error';
+                    // Optionally stop uploading further files if one fails:
+                    // break;
+                }
+            }
+
+            // Final status message
+            if (errorCount > 0) {
+                messageDiv.textContent = `上传完成: ${successCount} 个成功, ${errorCount} 个失败。`;
+                messageDiv.className = 'error';
+            } else {
+                messageDiv.textContent = `上传完成: ${selectedFiles.length} 个文件全部成功。`;
+                messageDiv.className = 'success';
+            }
+
+            // Clear selected files list and UI
+            selectedFiles = [];
+            selectedFilesList.innerHTML = '';
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+{
+  "type": "page",
+  "title": "无纸化会议系统",
+  "body": [],
+  "id": "u:c5a7801a7651",
+  "asideResizor": false,
+  "pullRefresh": {
+    "disabled": true
+  },
+  "aside": [
+    {
+      "type": "tpl",
+      "tpl": "阜新市政协",
+      "inline": true,
+      "wrapperComponent": "h2",
+      "id": "u:807ef4272e0a",
+      "themeCss": {
+        "baseControlClassName": {
+          "font:default": {
+            "text-align": "center"
+          }
+        }
+      }
+    },
+    {
+      "type": "divider",
+      "id": "u:6af9fd0c3aa4",
+      "lineStyle": "solid",
+      "direction": "horizontal",
+      "rotate": 0
+    },
+    {
+      "type": "nav",
+      "stacked": true,
+      "popupClassName": "app-popover :AMISCSSWrapper",
+      "links": [
+        {
+          "label": "会议管理",
+          "to": "?id=1",
+          "target": "_self",
+          "id": "0",
+          "children": []
+        },
+        {
+          "label": "文件管理",
+          "to": "?id=2",
+          "target": "_self",
+          "id": "1",
+          "children": []
+        },
+        {
+          "label": "系统管理",
+          "to": "",
+          "icon": "",
+          "target": "_self",
+          "badge": "",
+          "children": [],
+          "id": "2"
+        }
+      ],
+      "id": "u:bce33d62bb12"
+    }
+  ],
+  "subTitle": "",
+  "regions": [
+    "aside",
+    "header",
+    "toolbar",
+    "body"
+  ],
+  "themeCss": {
+    "baseControlClassName": {
+      "background:default": "var(--colors-neutral-fill-11)",
+      "boxShadow:default": "var(--shadows-shadow-none)"
+    }
+  },
+  "toolbar": [
+    {
+      "type": "tpl",
+      "tpl": "管理员",
+      "inline": true,
+      "wrapperComponent": "",
+      "id": "u:279b39c0bb12"
+    }
+  ]
+}

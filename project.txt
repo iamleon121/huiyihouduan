@@ -1,0 +1,112 @@
+# 会议后端项目详情
+
+## 项目概述
+这是一个基于FastAPI开发的简单后端服务，主要功能是提供PDF文件上传服务。前端通过Web界面可以选择并上传PDF文件，后端接收并保存这些文件到指定目录。
+
+## 项目结构
+```
+.
+├── .idea/                      # PyCharm IDE配置目录
+│   ├── huiyihouduan.iml
+│   ├── inspectionProfiles/
+│   │   ├── Project_Default.xml
+│   │   └── profiles_settings.xml
+│   ├── misc.xml
+│   ├── modules.xml
+│   ├── vcs.xml
+│   └── workspace.xml
+├── .venv/                      # Python虚拟环境目录
+├── __pycache__/                # Python编译缓存目录
+│   └── main.cpython-313.pyc
+├── main.py                     # 主程序文件
+├── static/                     # 静态文件目录
+│   ├── huiyi.html              # 新增：会议系统主页面
+│   ├── index.html              # 原文件上传页面
+│   └── pdf2jpg.html            # PDF转JPG页面
+├── uploads/                    # 上传文件存储目录
+│   ├── Proj_Point_Review.pdf   # 已上传的PDF文件
+│   ├── TS_Rules_Deluxe.pdf     # 已上传的PDF文件
+│   └── shaplet.pdf             # 已上传的PDF文件
+├── amis-huiyi.txt              # AMIS 配置文件 (参考用)
+├── project.txt                 # 项目说明文件
+└── requirements.txt            # 项目依赖
+```
+*(注：项目结构已更新以反映新文件)*
+
+## 主要功能模块
+
+### 1. 后端服务 (main.py)
+- 基于FastAPI框架构建
+- 提供静态文件服务，用于前端页面展示
+- 实现PDF文件上传API接口 (`/upload`)
+- 实现PDF转JPG功能及API接口 (`/convert-pdf-to-jpg`)
+- 提供PDF转JPG的前端页面 (`/pdf2jpg`)
+- **新增**: 提供会议系统主页面 (`/huiyi`)
+- 文件验证（仅接受PDF格式）
+- 文件存储到uploads目录
+
+### 2. 前端界面
+- `static/index.html`: 简洁的文件上传界面
+- `static/pdf2jpg.html`: PDF转JPG操作界面
+- **`static/huiyi.html`**: 新增的会议系统主界面，包含左侧导航和顶部栏。
+
+## API接口
+
+### 1. 首页 (文件上传)
+- 路径: `/`
+- 方法: GET
+- 功能: 返回 `static/index.html`
+
+### 2. PDF转JPG页面
+- 路径: `/pdf2jpg`
+- 方法: GET
+- 功能: 返回 `static/pdf2jpg.html`
+
+### 3. 会议系统主页
+- 路径: `/huiyi`
+- 方法: GET
+- 功能: 返回 `static/huiyi.html`
+
+### 4. 文件上传
+- 路径: `/upload`
+- 方法: POST
+- 功能: 接收并保存PDF文件
+- 参数: file (文件对象)
+- 返回: JSON格式的上传结果信息
+
+### 5. PDF转JPG转换
+- 路径: `/convert-pdf-to-jpg`
+- 方法: POST
+- 功能: 接收PDF文件并转换为图片
+- 参数: file (文件对象), dpi (int), format (str), merge (bool)
+- 返回: JSON格式的图片URL列表
+
+## 已上传文件
+目前uploads目录中已有3个PDF文件：
+- Proj_Point_Review.pdf
+- TS_Rules_Deluxe.pdf
+- shaplet.pdf
+
+## 技术栈
+- 后端: Python + FastAPI, PyMuPDF (fitz), Pillow (用于图片合并)
+- 前端: HTML + CSS + JavaScript
+- 文件处理: Python内置库 (shutil, os, uuid, tempfile)
+
+## 近期改动记录 (2025-04-13)
+
+1.  **创建会议系统页面**:
+    *   根据 `amis-huiyi.txt` 的布局要求，创建了新的HTML文件 `huiyi.html`。
+    *   最初使用 AMIS 框架实现，后根据要求移除 AMIS，使用纯 HTML 和 CSS 重构。
+    *   实现了包含左侧导航栏、顶部标题栏和主内容区域的现代网页布局。
+2.  **文件移动与路由添加**:
+    *   将 `huiyi.html` 文件移动到 `static/` 目录下。
+    *   在 `main.py` 中添加了新的 FastAPI 路由 `@app.get("/huiyi")`，用于提供 `static/huiyi.html` 服务。
+3.  **样式调整 (根据反馈)**:
+    *   将 `static/huiyi.html` 的侧边栏背景色修改为天蓝色 (`#87CEEB`)。
+    *   调整了侧边栏标题区域 (`.sidebar-header`) 的高度和边框，使其与顶部栏 (`.top-header`) 的底部分隔线对齐。
+    *   将主标题 "无纸化会议系统" 从主内容区移动到顶部栏左侧。
+    *   移除了 HTML 和 CSS 中的冗余注释和空规则集。
+4.  **美化与交互改进 (huiyi.html)**:
+    *   **整体样式**: 更新配色方案 (深蓝灰侧边栏、浅灰背景、主题蓝高亮)，使用现代字体 ("Inter", "Noto Sans SC")，调整布局间距、圆角和阴影，提升视觉效果。
+    *   **侧边栏菜单**: 放大菜单项字体和间距，实现文本居中。
+    *   **交互优化**: 修改 JavaScript，阻止菜单链接的默认跳转行为，并使用 `history.pushState` 更新 URL，解决点击卡顿问题，实现更流畅的单页体验。

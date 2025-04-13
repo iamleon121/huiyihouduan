@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <title>无纸化会议系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <style>
+        :root {
+            --primary-color: #007bff; /* 更鲜明的蓝色 */
+            --primary-color-dark: #0056b3;
+            --secondary-color: #f4f7f9; /* 更柔和的背景灰 */
+            --text-color: #343a40; /* 深灰色文本 */
+            --text-color-light: #6c757d; /* 浅灰色文本 */
+            --border-color: #e3e6e9;
+            --sidebar-bg: #2c3e50; /* 深蓝灰色侧边栏 */
+            --sidebar-text: #ecf0f1; /* 浅色侧边栏文字 */
+            --sidebar-hover-bg: #34495e; /* 稍亮的悬停背景 */
+            --sidebar-active-bg: var(--primary-color); /* 选中项用主题色 */
+            --sidebar-active-text: #ffffff;
+            --header-bg: #ffffff;
+            --header-border: #e3e6e9;
+            --content-bg: #ffffff;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --font-family: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif; /* 添加 Noto Sans SC 作为中文回退 */
+            --border-radius: 6px; /* 圆角 */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: var(--font-family);
+            font-size: 15px; /* 稍微减小基础字号 */
+            line-height: 1.6; /* 增加行高 */
+            color: var(--text-color);
+            background-color: var(--secondary-color);
+            -webkit-font-smoothing: antialiased; /* 字体抗锯齿 */
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 250px; /* 稍微加宽 */
+            background-color: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: width 0.3s ease; /* 平滑宽度变化 */
+        }
+
+        .sidebar-header {
+            height: 65px; /* 稍微增加高度 */
+            padding: 0 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center; /* 或 flex-start */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* 侧边栏内部分隔线 */
+            flex-shrink: 0;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.3em; /* 调整字号 */
+            font-weight: 600;
+            color: var(--sidebar-text);
+            margin: 0;
+            white-space: nowrap; /* 防止换行 */
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-nav {
+            flex-grow: 1; /* 导航占据剩余空间 */
+            overflow-y: auto; /* 内容多时滚动 */
+            padding-top: 15px; /* 增加顶部间距 */
+        }
+
+        .sidebar-nav ul {
+            list-style: none;
+        }
+
+        .sidebar-nav li a {
+            display: flex;
+            align-items: center;
+            justify-content: center; /* 水平居中文本 */
+            padding: 16px 15px; /* 增加垂直内边距，减少水平内边距以适应居中 */
+            margin: 6px 15px; /* 调整外边距 */
+            color: var(--sidebar-text);
+            text-decoration: none;
+            font-size: 1.05em; /* 放大字体 */
+            font-weight: 500;
+            border-radius: var(--border-radius);
+            transition: background-color 0.2s ease, color 0.2s ease;
+            text-align: center; /* 确保文本居中 */
+        }
+        /* 图标和文字间距调整（如果未来添加图标） */
+        .sidebar-nav li a span {
+            /* margin-left: 10px; */ /* 居中时可能不需要 */
+            flex-grow: 1; /* 让 span 占据空间以实现居中 */
+            text-align: center;
+        }
+
+        .sidebar-nav li a:hover {
+            background-color: var(--sidebar-hover-bg);
+            color: #ffffff; /* 悬停时文字变白 */
+        }
+
+        .sidebar-nav li a.active {
+            background-color: var(--sidebar-active-bg);
+            color: var(--sidebar-active-text);
+            font-weight: 600;
+        }
+
+        .main-content-wrapper {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .top-header {
+            height: 65px; /* 与 sidebar-header 保持一致 */
+            background-color: var(--header-bg);
+            /* 移除 border-bottom，使用阴影代替 */
+            box-shadow: 0 2px 4px var(--shadow-color); /* 添加底部阴影 */
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 35px; /* 增加内边距 */
+            flex-shrink: 0;
+            z-index: 10; /* 确保在内容之上 */
+        }
+
+        .header-title {
+            font-size: 1.4em; /* 调整字号 */
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .user-info {
+            font-weight: 500;
+            color: var(--text-color-light); /* 使用浅色文本 */
+            display: flex;
+            align-items: center;
+        }
+        /* 可以添加用户头像等 */
+        .user-info::before {
+            /* content: '👤';  示例：添加图标 */
+            /* margin-right: 8px; */
+        }
+
+
+        .content-area {
+            flex-grow: 1;
+            padding: 40px; /* 增加内边距 */
+            overflow-y: auto;
+            background-color: var(--secondary-color); /* 内容区背景改为柔和灰 */
+        }
+
+        .content-area h1 {
+            font-size: 1.6em; /* 调整标题字号 */
+            margin-bottom: 25px; /* 增加间距 */
+            color: var(--text-color); /* 标题颜色改为深灰 */
+            font-weight: 600;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 992px) { /* 调整断点 */
+            .sidebar {
+                width: 70px; /* 缩小侧边栏 */
+            }
+            .sidebar-header h2, .sidebar-nav li a span {
+                display: none; /* 隐藏文字，只留图标（如果加了图标） */
+            }
+            .sidebar-nav li a {
+                justify-content: center; /* 图标居中 */
+                margin: 4px 5px;
+                padding: 14px 10px;
+            }
+             .sidebar-nav li a span {
+                 margin-left: 0;
+             }
+            .top-header {
+                padding: 0 20px;
+            }
+            .content-area {
+                padding: 30px;
+            }
+        }
+
+        @media (max-width: 768px) {
+             /* 可以进一步调整或添加汉堡菜单逻辑 */
+             .sidebar {
+                 position: absolute; /* 或 fixed */
+                 left: -250px; /* 隐藏 */
+                 z-index: 100;
+                 height: 100%;
+                 transition: left 0.3s ease;
+                 box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+             }
+             /* 需要 JS 配合切换 .sidebar.open { left: 0; } */
+             .top-header {
+                 /* 可能需要添加汉堡菜单按钮 */
+             }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>阜新市政协</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="?id=1" class="active"><span>会议管理</span></a></li>
+                    <li><a href="?id=2"><span>文件管理</span></a></li>
+                    <li><a href="#"><span>系统管理</span></a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <div class="main-content-wrapper">
+            <header class="top-header">
+                <div class="header-title">无纸化会议系统</div>
+                <div class="user-info">
+                    管理员
+                </div>
+            </header>
+
+            <main class="content-area">
+                <p>请从左侧菜单选择功能。</p>
+                <!-- 主要内容将在这里加载 -->
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // 可以在这里添加 JavaScript 来处理导航点击、内容加载等
+        document.addEventListener('DOMContentLoaded', () => {
+            const navLinks = document.querySelectorAll('.sidebar-nav a');
+            const currentPath = window.location.search;
+
+            navLinks.forEach(link => {
+                // 移除所有 active 类
+                link.classList.remove('active');
+                // 如果链接的 href 与当前 URL 参数匹配，则添加 active 类
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+                // 为没有参数的首页或默认页添加 active
+                if (!currentPath && link.getAttribute('href') === '?id=1') {
+                     link.classList.add('active');
+                }
+
+                link.addEventListener('click', function(event) {
+                    // 阻止默认跳转，使用 JS 加载内容
+                    event.preventDefault();
+
+                    // 移除其他链接的 active 类
+                    navLinks.forEach(el => el.classList.remove('active'));
+                    // 为当前点击的链接添加 active 类
+                    this.classList.add('active');
+
+                    // 在这里可以添加 AJAX 请求来加载不同页面的内容到 .content-area
+                    const contentArea = document.querySelector('.content-area');
+                    const pageTitle = this.querySelector('span').textContent;
+                    contentArea.innerHTML = `<h1>${pageTitle}</h1><p>这里是 ${pageTitle} 的内容。</p>`;
+
+                    // 更新浏览器地址栏而不刷新页面
+                    window.history.pushState({ page: pageTitle }, pageTitle, this.getAttribute('href'));
+                });
+            });
+
+             // 初始加载时根据 URL 设置标题 (保留 H1 以便 JS 正常工作)
+             const activeLink = document.querySelector('.sidebar-nav a.active');
+             const contentArea = document.querySelector('.content-area'); // 获取 contentArea
+             if (activeLink) {
+                 const pageTitle = activeLink.querySelector('span').textContent;
+                 // 更新内容，确保有 H1 供后续点击事件替换
+                 contentArea.innerHTML = `<h1>${pageTitle}</h1><p>这里是 ${pageTitle} 的内容。</p>`;
+             } else {
+                 // 如果没有活动链接（例如直接访问 /huiyi），可以设置一个默认状态
+                 contentArea.innerHTML = `<h1>欢迎</h1><p>请从左侧菜单选择功能。</p>`;
+             }
+        });
+    </script>
+</body>
+</html>
