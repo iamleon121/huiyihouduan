@@ -24,6 +24,12 @@
             --shadow-color: rgba(0, 0, 0, 0.05);
             --font-family: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif; /* 添加 Noto Sans SC 作为中文回退 */
             --border-radius: 6px; /* 圆角 */
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --danger-color: #dc3545;
+            --light-grey: #f8f9fa;
+            --medium-grey: #dee2e6;
         }
 
         * {
@@ -168,10 +174,238 @@
 
         .content-area h1 {
             font-size: 1.6em; /* 调整标题字号 */
-            margin-bottom: 25px; /* 增加间距 */
+            margin-bottom: 20px; /* 调整间距 */
             color: var(--text-color); /* 标题颜色改为深灰 */
             font-weight: 600;
         }
+
+        /* --- 会议列表样式 Start --- */
+        .controls-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap; /* 允许换行 */
+            gap: 15px; /* 元素间距 */
+        }
+
+        .filters {
+            display: flex;
+            gap: 10px; /* 筛选元素间距 */
+            flex-wrap: wrap; /* 允许换行 */
+        }
+
+        .filters input[type="text"] {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 0.95em;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+            text-decoration: none; /* 如果用 a 标签 */
+            display: inline-block; /* 如果用 a 标签 */
+            text-align: center;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-color-dark);
+            box-shadow: 0 2px 5px rgba(0, 123, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: #6c757d; /* 标准次要按钮颜色 */
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            color: var(--text-color-light);
+            border: 1px solid var(--border-color);
+        }
+        .btn-outline:hover {
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+        }
+
+        .table-container {
+            background-color: var(--content-bg);
+            border-radius: var(--border-radius);
+            box-shadow: 0 1px 3px var(--shadow-color);
+            overflow-x: auto; /* 水平滚动 */
+            margin-bottom: 20px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95em;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 14px 18px; /* 增加内边距 */
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle; /* 垂直居中 */
+        }
+
+        .data-table thead th {
+            background-color: var(--light-grey); /* 浅灰表头 */
+            font-weight: 600;
+            color: var(--text-color);
+            white-space: nowrap; /* 防止表头换行 */
+        }
+
+        .data-table tbody tr:hover {
+            background-color: var(--secondary-color); /* 悬停时高亮 */
+        }
+
+        .data-table tbody tr:last-child td {
+            border-bottom: none; /* 移除最后一行底部边框 */
+        }
+
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .status-upcoming {
+            background-color: rgba(23, 162, 184, 0.1); /* Info color */
+            color: var(--info-color);
+        }
+
+        .status-ongoing {
+            background-color: rgba(40, 167, 69, 0.1); /* Success color */
+            color: var(--success-color);
+        }
+
+        .status-finished {
+            background-color: rgba(108, 117, 125, 0.1); /* Secondary color */
+            color: var(--text-color-light);
+        }
+
+        .btn-action {
+            /* Inherit some base button styles */
+            display: inline-block;
+            padding: 5px 10px; /* Adjust padding for smaller buttons */
+            margin-right: 6px; /* Adjust spacing */
+            font-size: 0.85em; /* Slightly smaller font */
+            font-weight: 500;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+            border: 1px solid transparent; /* Base border */
+            text-decoration: none;
+            line-height: 1.4; /* Ensure text fits */
+            vertical-align: middle; /* Align nicely */
+        }
+
+        /* Default action button style (like view/edit) */
+        .btn-action.view,
+        .btn-action.edit {
+             background-color: var(--secondary-color); /* Light grey background */
+             border-color: var(--medium-grey); /* Subtle border */
+             color: var(--text-color); /* Dark text */
+        }
+        .btn-action.view:hover,
+        .btn-action.edit:hover {
+            background-color: #e2e6ea; /* Slightly darker grey on hover */
+            border-color: #adb5bd;
+        }
+
+        /* Delete button style */
+        .btn-action.delete {
+            background-color: rgba(220, 53, 69, 0.1); /* Light danger background */
+            border-color: rgba(220, 53, 69, 0.3);
+            color: var(--danger-color);
+        }
+        .btn-action.delete:hover {
+            background-color: rgba(220, 53, 69, 0.2);
+            border-color: rgba(220, 53, 69, 0.5);
+            color: #a71d2a; /* Darker danger color */
+        }
+
+        /* Start meeting button style */
+        .btn-action.start {
+            background-color: rgba(40, 167, 69, 0.1); /* Light success background */
+            border-color: rgba(40, 167, 69, 0.3);
+            color: var(--success-color);
+        }
+        .btn-action.start:hover {
+            background-color: rgba(40, 167, 69, 0.2);
+            border-color: rgba(40, 167, 69, 0.5);
+            color: #1a682b; /* Darker success color */
+        }
+
+        /* Disabled state */
+        .btn-action.disabled {
+            background-color: var(--secondary-color);
+            border-color: var(--border-color);
+            color: var(--text-color-light);
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+        .btn-action.disabled:hover {
+            /* Keep the disabled look on hover */
+            background-color: var(--secondary-color);
+            border-color: var(--border-color);
+            color: var(--text-color-light);
+        }
+        .data-table td:last-child { /* 操作列 */
+             white-space: nowrap; /* 防止按钮换行 */
+        }
+
+
+        .pagination-container {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 0;
+            font-size: 0.9em;
+            color: var(--text-color-light);
+        }
+        .pagination-container select {
+            padding: 5px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+        }
+        .pagination-container button {
+            background: var(--content-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .pagination-container button:disabled {
+            background: var(--secondary-color);
+            color: var(--text-color-light);
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .pagination-container span {
+            margin: 0 5px;
+        }
+        /* --- 会议列表样式 End --- */
+
 
         /* 响应式设计 */
         @media (max-width: 992px) { /* 调整断点 */
@@ -210,8 +444,163 @@
              /* 需要 JS 配合切换 .sidebar.open { left: 0; } */
              /* .top-header { */
                  /* 可能需要添加汉堡菜单按钮 */
-             /* } */
+         /* } */
         }
+
+        /* --- Modal Styles --- */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto; /* 10% from the top and centered */
+            padding: 30px;
+            border: 1px solid #888;
+            width: 80%; /* Could be more specific */
+            max-width: 700px; /* Max width */
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
+            position: relative; /* For close button positioning */
+        }
+
+        .modal .close {
+            color: #aaa;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .modal .close:hover,
+        .modal .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        #meetingForm label {
+            display: block;
+            margin-top: 10px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        #meetingForm input[type="text"],
+        #meetingForm input[type="datetime-local"],
+        #meetingForm input[type="number"],
+        #meetingForm textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 0.95em;
+        }
+         #meetingForm textarea {
+             min-height: 80px;
+             resize: vertical;
+         }
+
+        #meetingForm button[type="submit"],
+        #meetingForm button[type="button"] {
+             margin-top: 15px;
+             padding: 10px 20px;
+        }
+        #addAgendaItemBtn {
+             background-color: var(--info-color);
+             color: white;
+             border: none;
+             border-radius: var(--border-radius); /* Added */
+             cursor: pointer; /* Added */
+        }
+         #addAgendaItemBtn:hover {
+             background-color: #138496;
+         }
+
+        .agenda-item {
+            border: 1px dashed var(--medium-grey);
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: var(--border-radius);
+            background-color: var(--light-grey);
+            position: relative; /* For remove button positioning */
+        }
+        .agenda-item h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+        .removeAgendaItemBtn {
+             background-color: var(--danger-color);
+             color: white;
+             border: none;
+             padding: 5px 10px;
+             font-size: 0.9em;
+             border-radius: var(--border-radius); /* Added */
+             cursor: pointer; /* Added */
+             position: absolute; /* Position delete button */
+             top: 10px;
+             right: 10px;
+        }
+         .removeAgendaItemBtn:hover {
+             background-color: #c82333;
+         }
+
+         /* --- View Modal Specific Styles --- */
+         #viewMeetingModal .modal-content {
+             max-width: 800px; /* Wider for details */
+         }
+         #viewMeetingDetails {
+             line-height: 1.8;
+         }
+         #viewMeetingDetails strong {
+             display: inline-block;
+             min-width: 100px; /* Align labels */
+             color: var(--primary-color-dark);
+         }
+         #viewMeetingDetails ul {
+             list-style: none;
+             padding-left: 0;
+             margin-top: 15px;
+         }
+         #viewMeetingDetails li {
+             background-color: var(--light-grey);
+             padding: 15px;
+             margin-bottom: 10px;
+             border-radius: var(--border-radius);
+             border: 1px solid var(--border-color);
+         }
+         #viewMeetingDetails h4 {
+             margin-top: 0;
+             margin-bottom: 10px;
+             color: var(--primary-color);
+             border-bottom: 1px solid var(--medium-grey);
+             padding-bottom: 5px;
+         }
+         #viewMeetingDetails .agenda-detail {
+             margin-bottom: 8px;
+         }
+         #viewMeetingDetails .agenda-detail strong {
+             min-width: 80px; /* Smaller width for agenda labels */
+         }
+         #viewMeetingDetails .json-data {
+             font-family: monospace;
+             background-color: #e9ecef;
+             padding: 2px 5px;
+             border-radius: 3px;
+             word-break: break-all; /* Wrap long JSON strings */
+         }
+        /* --- End Modal Styles --- */
 
     </style>
 </head>
@@ -239,61 +628,627 @@
             </header>
 
             <main class="content-area">
-                <p>请从左侧菜单选择功能。</p>
-                <!-- 主要内容将在这里加载 -->
+                <!-- 内容将由 JavaScript 动态加载 -->
             </main>
         </div>
     </div>
 
+    <!-- Meeting Modal -->
+    <div id="meetingModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle">新增会议</h2> <!-- Dynamic Title -->
+            <form id="meetingForm">
+                <input type="hidden" id="meetingId" name="id"> <!-- For editing -->
+
+                <label for="meetingTitle">会议名称:</label>
+                <input type="text" id="meetingTitle" name="title" required>
+
+                <label for="meetingIntro">会议介绍:</label>
+                <textarea id="meetingIntro" name="intro"></textarea>
+
+                <label for="meetingTime">会议时间:</label>
+                <input type="datetime-local" id="meetingTime" name="time">
+
+                <h3>议程项</h3>
+                <div id="agendaItemsContainer">
+                    <!-- Agenda items will be added here dynamically -->
+                </div>
+                <button type="button" id="addAgendaItemBtn" class="btn">添加议程项</button>
+                <hr style="margin-top: 20px; margin-bottom: 20px;">
+
+                <button type="submit" class="btn btn-primary">保存会议</button>
+                <button type="button" class="btn btn-secondary" id="cancelModalBtn">取消</button>
+            </form>
+        </div>
+    </div>
+    <!-- End Meeting Modal -->
+
+    <!-- View Meeting Modal -->
+    <div id="viewMeetingModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>会议详情</h2>
+            <div id="viewMeetingDetails">
+                <!-- Details will be populated here -->
+                <p>加载中...</p>
+            </div>
+             <button type="button" class="btn btn-secondary" id="closeViewModalBtn" style="margin-top: 20px;">关闭</button>
+        </div>
+    </div>
+    <!-- End View Meeting Modal -->
+
+
     <script>
-        // 可以在这里添加 JavaScript 来处理导航点击、内容加载等
-        document.addEventListener('DOMContentLoaded', () => {
-            const navLinks = document.querySelectorAll('.sidebar-nav a');
-            const currentPath = window.location.search;
+        document.addEventListener('DOMContentLoaded', () => { // Restore listener structure
+            // Keep the body of attachActionListeners commented out
 
-            navLinks.forEach(link => {
-                // 移除所有 active 类
-                link.classList.remove('active');
-                // 如果链接的 href 与当前 URL 参数匹配，则添加 active 类
-                if (link.getAttribute('href') === currentPath) {
-                    link.classList.add('active');
+            const navLinks = document.querySelectorAll('.sidebar-nav a'); // Restore variable declarations
+            const contentArea = document.querySelector('.content-area');
+            const currentPath = window.location.search || '?id=1'; // 默认到会议管理
+
+            // --- Helper function to render status span ---
+            function renderStatus(status) {
+                let className = '';
+                switch (status) {
+                    case '未开始': className = 'status-upcoming'; break;
+                    case '进行中': className = 'status-ongoing'; break;
+                    case '已结束': className = 'status-finished'; break;
+                    default: className = 'status-unknown'; status = '未知'; // Handle unexpected status
                 }
-                // 为没有参数的首页或默认页添加 active
-                if (!currentPath && link.getAttribute('href') === '?id=1') {
-                     link.classList.add('active');
+                return `<span class="status ${className}">${status}</span>`;
+            }
+
+            // --- Helper function to render action buttons ---
+            function renderActionButtons(meeting) {
+                const isUpcoming = meeting.status === '未开始';
+                const isOngoing = meeting.status === '进行中';
+                const isFinished = meeting.status === '已结束';
+
+                let buttons = '';
+                if (isUpcoming) {
+                    buttons += `<button class="btn-action start" data-id="${meeting.id}">开始会议</button> `;
                 }
+                buttons += `<button class="btn-action view" data-id="${meeting.id}">查看</button> `;
+                if (!isOngoing && !isFinished) { // Can edit only if not started or finished
+                     buttons += `<button class="btn-action edit" data-id="${meeting.id}">编辑</button> `;
+                } else {
+                     buttons += `<button class="btn-action edit disabled" data-id="${meeting.id}" disabled>编辑</button> `;
+                }
+                 if (!isOngoing) { // Can delete only if not ongoing
+                     buttons += `<button class="btn-action delete" data-id="${meeting.id}">删除</button>`;
+                 } else {
+                     buttons += `<button class="btn-action delete disabled" data-id="${meeting.id}" disabled>删除</button>`;
+                 }
+                return buttons;
+            }
 
-                link.addEventListener('click', function(event) {
-                    // 阻止默认跳转，使用 JS 加载内容
-                    event.preventDefault();
+            // --- Function to attach listeners to buttons within a container (or row) ---
+            function attachActionListeners(container) {
+                 console.log("attachActionListeners called, but body is commented out for debugging."); // Keep body commented
+                 /* --- Temporarily comment out the entire body for debugging ---
+                // Start Button Listener
+                container.querySelectorAll('.btn-action.start:not(.listener-attached)').forEach(button => {
+                    button.classList.add('listener-attached'); // Mark as attached
+                    button.addEventListener('click', (e) => {
+                        const row = e.target.closest('tr');
+                        const meetingName = row.querySelector('td:first-child').textContent;
+                        const meetingId = e.target.dataset.id;
 
-                    // 移除其他链接的 active 类
-                    navLinks.forEach(el => el.classList.remove('active'));
-                    // 为当前点击的链接添加 active 类
-                    this.classList.add('active');
-
-                    // 在这里可以添加 AJAX 请求来加载不同页面的内容到 .content-area
-                    const contentArea = document.querySelector('.content-area');
-                    const pageTitle = this.querySelector('span').textContent;
-                    contentArea.innerHTML = `<h1>${pageTitle}</h1><p>这里是 ${pageTitle} 的内容。</p>`;
-
-                    // 更新浏览器地址栏而不刷新页面
-                    window.history.pushState({ page: pageTitle }, pageTitle, this.getAttribute('href'));
+                        if (window.confirm(`确定要开始会议 "${meetingName}" 吗？此操作将同步文件并更新状态。`)) {
+                            console.log(`开始会议: ${meetingName} (ID: ${meetingId})`);
+                            fetch(`/api/meetings/${meetingId}/status`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: '进行中' })
+                            })
+                            .then(response => {
+                                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                                return response.json();
+                            })
+                            .then(updatedMeeting => {
+                                console.log('Meeting status updated:', updatedMeeting);
+                                const statusCell = row.querySelector('td:nth-child(4)'); // 4th cell is status
+                                if (statusCell) statusCell.innerHTML = renderStatus(updatedMeeting.status);
+                                const actionCell = row.querySelector('td:last-child');
+                                if (actionCell) {
+                                     actionCell.innerHTML = renderActionButtons(updatedMeeting);
+                                     // Re-attach listeners ONLY to the newly rendered buttons in this specific row
+                                     attachActionListeners(actionCell);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error starting meeting:', error);
+                                alert(`开始会议失败: ${error.message}`);
+                            });
+                        } else {
+                            console.log(`取消开始会议: ${meetingName}`);
+                        }
+                    });
                 });
-            });
 
-             // 初始加载时根据 URL 设置标题 (保留 H1 以便 JS 正常工作)
-             const activeLink = document.querySelector('.sidebar-nav a.active');
-             const contentArea = document.querySelector('.content-area'); // 获取 contentArea
-             if (activeLink) {
-                 const pageTitle = activeLink.querySelector('span').textContent;
-                 // 更新内容，确保有 H1 供后续点击事件替换
-                 contentArea.innerHTML = `<h1>${pageTitle}</h1><p>这里是 ${pageTitle} 的内容。</p>`;
-             } else {
-                 // 如果没有活动链接（例如直接访问 /huiyi），可以设置一个默认状态
-                 contentArea.innerHTML = `<h1>欢迎</h1><p>请从左侧菜单选择功能。</p>`;
-             }
-        });
+                // Delete Button Listener
+                container.querySelectorAll('.btn-action.delete:not(.disabled):not(.listener-attached)').forEach(button => {
+                    button.classList.add('listener-attached');
+                    button.addEventListener('click', (e) => {
+                        const row = e.target.closest('tr');
+                        const meetingName = row.querySelector('td:first-child').textContent;
+                        const meetingId = e.target.dataset.id;
+                        if (window.confirm(`确定要删除会议 "${meetingName}" 吗？`)) {
+                            console.log(`删除会议: ${meetingName} (ID: ${meetingId})`);
+                            fetch(`/api/meetings/${meetingId}`, { method: 'DELETE' })
+                            .then(response => {
+                                if (!response.ok && response.status !== 204) {
+                                    throw new Error(`HTTP error! status: ${response.status}`);
+                                }
+                                console.log('Meeting deleted successfully');
+                                row.remove();
+                                // Update total count (simple approach)
+                                const paginationSpan = document.querySelector('.pagination-container span');
+                                const currentCount = document.querySelectorAll('.data-table tbody tr').length;
+                                if (paginationSpan) paginationSpan.textContent = `共 ${currentCount} 条`;
+
+                            })
+                            .catch(error => {
+                                console.error('Error deleting meeting:', error);
+                                alert(`删除会议失败: ${error.message}`);
+                            });
+                        }
+                    });
+                });
+
+                // View Button Listener
+                container.querySelectorAll('.btn-action.view:not(.listener-attached)').forEach(button => {
+                     button.classList.add('listener-attached');
+                     button.addEventListener('click', async (e) => { // Make async
+                         const meetingId = e.target.dataset.id;
+                         console.log(`Attempting to view meeting ID: ${meetingId}`);
+                         openViewModal(meetingId); // Call function to open and populate view modal
+                     });
+                });
+
+                 // Edit Button Listener
+                 container.querySelectorAll('.btn-action.edit:not(.disabled):not(.listener-attached)').forEach(button => {
+                     button.classList.add('listener-attached');
+                     button.addEventListener('click', async (e) => { // Make async
+                         const meetingId = e.target.dataset.id;
+                         console.log(`Attempting to edit meeting ID: ${meetingId}`);
+                         try {
+                             const response = await fetch(`/api/meetings/${meetingId}`);
+                             if (!response.ok) {
+                                 throw new Error(`HTTP error! status: ${response.status}`);
+                             }
+                             const meetingData = await response.json();
+                             console.log('Fetched meeting data for edit:', meetingData);
+                             openModal(meetingData); // Open modal with fetched data
+                         } catch (error) {
+                             console.error('Error fetching meeting details for edit:', error);
+                             alert(`加载会议详情失败: ${error.message}`);
+                         }
+                     });
+                 });
+
+                 // Add Meeting Button Listener - Attach only once (logic moved to loadContent)
+                 /* This listener is now attached within loadContent after the button is rendered
+                 const addMeetingButton = document.getElementById('add-meeting-btn');
+                 if (addMeetingButton && !addMeetingButton.classList.contains('listener-attached')) {
+                     addMeetingButton.classList.add('listener-attached');
+                     addMeetingButton.addEventListener('click', () => {
+                         alert('新增会议功能待实现');
+                     });
+                 }
+                 */ // End of attachActionListeners body comment
+            }
+
+
+            // --- Main function to load content based on link --- // Restore function
+            async function loadContent(link) { // Restore function
+                if (!link) return; // Restore function
+
+                navLinks.forEach(el => el.classList.remove('active')); // Restore function
+                link.classList.add('active');
+
+                const pageTitle = link.querySelector('span').textContent;
+                const pageId = link.getAttribute('href');
+
+                contentArea.innerHTML = `<h1>${pageTitle}</h1><p>加载中...</p>`; // Show loading state
+
+                if (pageId === '?id=1') { // 会议管理
+                    try {
+                        const response = await fetch('/api/meetings/');
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        const meetings = await response.json();
+
+                        let tableBodyHtml = '';
+                        if (meetings.length === 0) {
+                            tableBodyHtml = '<tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">暂无会议</td></tr>';
+                        } else {
+                            meetings.forEach(meeting => {
+                                tableBodyHtml += `
+                                    <tr data-id="${meeting.id}">
+                                        <td>${meeting.title || '-'}</td>
+                                        <td>${meeting.intro || '-'}</td>
+                                        <td>${meeting.time || '-'}</td>
+                                        <td>${renderStatus(meeting.status)}</td>
+                                        <td>${renderActionButtons(meeting)}</td>
+                                    </tr>
+                                `;
+                            });
+                        }
+
+                        const meetingListHtml = `
+                            <h1>会议管理</h1>
+                            <div class="controls-bar">
+                                 <div class="filters">
+                                     <input type="text" placeholder="会议名称">
+                                     <input type="text" placeholder="会议状态">
+                                     <button class="btn btn-secondary">查询</button>
+                                     <button class="btn btn-outline">重置</button>
+                                 </div>
+                                 <button class="btn btn-primary" id="add-meeting-btn">新增会议</button>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>会议名称</th>
+                                            <th>会议介绍</th>
+                                            <th>会议时间</th>
+                                            <th>会议状态</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${tableBodyHtml}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="pagination-container">
+                                <span>共 ${meetings.length} 条</span>
+                                <select>
+                                    <option>10 条/页</option>
+                                    <option>20 条/页</option>
+                                </select>
+                                <button disabled><</button> <!-- Changed < to < -->
+                                <span>1</span>
+                                <button>></button> <!-- Changed > to > -->
+                            </div>
+                        `;
+                        contentArea.innerHTML = meetingListHtml;
+
+                        // Attach listeners to the newly added content
+                        attachActionListeners(contentArea);
+
+                        // Attach listener for the Add Meeting button specifically after it's rendered
+                        const renderedAddButton = contentArea.querySelector('#add-meeting-btn');
+                        if (renderedAddButton) {
+                            // Ensure listener isn't attached multiple times if content reloads
+                            if (!renderedAddButton.hasAttribute('data-listener-attached')) {
+                                renderedAddButton.setAttribute('data-listener-attached', 'true');
+                                renderedAddButton.onclick = () => openModal(); // Open modal for new meeting
+                            }
+                        }
+
+                    } catch (error) {
+                         console.error('Failed to load meetings:', error);
+                         contentArea.innerHTML = `<h1>${pageTitle}</h1><p style="color: var(--danger-color);">加载会议列表失败: ${error.message}</p>`;
+                    }
+                } else { // 其他菜单项
+                    // Temporarily comment out the innerHTML assignment to isolate the error
+                    // contentArea.innerHTML = `<h1>${pageTitle}</h1><p>这里是 ${pageTitle} 的内容。</p>`;
+                    console.log(`Rendering content for: ${pageTitle}`); // Log instead
+                    // Temporarily comment out the innerHTML assignment to isolate the error // Restored original logic
+                    contentArea.innerHTML = `<h1>${pageTitle}</h1><p>这里是 ${pageTitle} 的内容。</p>`; // Restored
+                } // Restored
+            } // Restored
+
+
+             // 初始化和点击事件处理
+             navLinks.forEach(link => { // Restored
+                 link.addEventListener('click', function(event) { // Restored
+                    event.preventDefault(); // Restored
+                    const targetHref = this.getAttribute('href'); // Restored
+                    if (window.location.search !== targetHref) { // Restored
+                        loadContent(this); // Restored call
+                        window.history.pushState({ page: this.querySelector('span').textContent }, this.querySelector('span').textContent, targetHref); // Restored
+                    } // Restored
+                }); // Restored
+             }); // Restore event listener
+
+             // 初始加载内容 (使用 async/await)
+             const activeLink = document.querySelector(`.sidebar-nav a[href="${currentPath}"]`); // Restore call
+             loadContent(activeLink || document.querySelector('.sidebar-nav a[href="?id=1"]')); // Restore call
+
+
+             // 监听浏览器前进后退事件
+             window.addEventListener('popstate', (event) => { // Restore event listener
+                 const path = window.location.search || '?id=1'; // Restore event listener
+                 const targetLink = document.querySelector(`.sidebar-nav a[href="${path}"]`); // Restore event listener
+                 loadContent(targetLink); // Restore call
+             }); // Restore event listener
+
+            // --- Modal Logic ---
+            const meetingModal = document.getElementById('meetingModal');
+            const closeModalBtn = meetingModal.querySelector('.close');
+            const cancelModalBtn = document.getElementById('cancelModalBtn'); // Added cancel button
+            const meetingForm = document.getElementById('meetingForm');
+            const agendaItemsContainer = document.getElementById('agendaItemsContainer');
+            const addAgendaItemBtn = document.getElementById('addAgendaItemBtn');
+            const modalTitle = document.getElementById('modalTitle');
+            const meetingIdInput = document.getElementById('meetingId'); // For storing ID during edit
+
+            // Function to open the modal
+            function openModal(meetingData = null) {
+                meetingForm.reset(); // Clear previous data
+                agendaItemsContainer.innerHTML = ''; // Clear previous agenda items
+                meetingIdInput.value = ''; // Clear ID
+
+                if (meetingData) {
+                    // Populate form for editing
+                    modalTitle.textContent = '编辑会议';
+                    meetingIdInput.value = meetingData.id;
+                    document.getElementById('meetingTitle').value = meetingData.title || '';
+                    document.getElementById('meetingIntro').value = meetingData.intro || '';
+                    // Format datetime-local (requires YYYY-MM-DDTHH:mm)
+                    if (meetingData.time) {
+                         // Assuming meetingData.time is in a format JS can parse (like ISO 8601)
+                         // Or adjust based on the actual format from the API
+                         try {
+                            const date = new Date(meetingData.time);
+                            // Pad month, day, hours, minutes with leading zeros if necessary
+                            const pad = (num) => num.toString().padStart(2, '0');
+                            const formattedDateTime = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+                            document.getElementById('meetingTime').value = formattedDateTime;
+                         } catch (e) {
+                             console.error("Error parsing meeting time:", meetingData.time, e);
+                             document.getElementById('meetingTime').value = ''; // Clear if invalid
+                         }
+                    } else {
+                         document.getElementById('meetingTime').value = '';
+                    }
+
+
+                    // Populate agenda items
+                    if (meetingData.agenda_items && meetingData.agenda_items.length > 0) {
+                        meetingData.agenda_items.forEach((item, index) => addAgendaItem(item, index));
+                    }
+                } else {
+                    // Setup for new meeting
+                    modalTitle.textContent = '新增会议';
+                    addAgendaItem(); // Add one empty agenda item by default for new meetings
+                }
+                meetingModal.style.display = 'block';
+            }
+
+            // Function to close the modal
+            function closeModal() {
+                meetingModal.style.display = 'none';
+            }
+
+            // Function to add an agenda item section to the form
+            function addAgendaItem(itemData = null, index = null) {
+                const itemIndex = (index !== null) ? index : agendaItemsContainer.children.length;
+                const newItemHtml = `
+                    <div class="agenda-item" data-index="${itemIndex}">
+                        <h4>议程 ${itemIndex + 1}</h4>
+                        <input type="hidden" name="agenda[${itemIndex}][id]" value="${itemData?.id || ''}" /> <!-- For editing existing items -->
+
+                        <label for="agendaTitle_${itemIndex}">标题:</label>
+                        <input type="text" id="agendaTitle_${itemIndex}" name="agenda[${itemIndex}][title]" value="${itemData?.title || ''}" required />
+
+                        <label for="agendaReporter_${itemIndex}">报告人:</label>
+                        <input type="text" id="agendaReporter_${itemIndex}" name="agenda[${itemIndex}][reporter]" value="${itemData?.reporter || ''}" />
+
+                        <label for="agendaTime_${itemIndex}">预计时间 (分钟):</label>
+                        <input type="number" id="agendaTime_${itemIndex}" name="agenda[${itemIndex}][duration_minutes]" value="${itemData?.duration_minutes || ''}" />
+
+                        <!-- TODO: Add file/page selection logic here if needed -->
+                        <label for="agendaFiles_${itemIndex}">关联文件 (JSON):</label>
+                        <input type="text" id="agendaFiles_${itemIndex}" name="agenda[${itemIndex}][files]" value="${JSON.stringify(itemData?.files || [])}" />
+
+                        <label for="agendaPages_${itemIndex}">关联页码 (JSON):</label>
+                        <input type="text" id="agendaPages_${itemIndex}" name="agenda[${itemIndex}][pages]" value="${JSON.stringify(itemData?.pages || [])}" />
+
+
+                        <button type="button" class="removeAgendaItemBtn btn btn-danger">删除此议程</button>
+                    </div>
+                `;
+                agendaItemsContainer.insertAdjacentHTML('beforeend', newItemHtml);
+            }
+
+
+            // Event Listeners for Modal
+            if (closeModalBtn) {
+                closeModalBtn.onclick = closeModal;
+            }
+            if (cancelModalBtn) { // Added
+                cancelModalBtn.onclick = closeModal;
+            }
+
+            // Close modal if clicked outside the content area
+            window.onclick = function(event) {
+                if (event.target == meetingModal) {
+                    closeModal();
+                }
+            }
+
+            // Add Agenda Item Button
+            if (addAgendaItemBtn) {
+                addAgendaItemBtn.onclick = () => addAgendaItem(); // Call the function without args for new item
+            }
+
+             // Remove Agenda Item Button (using event delegation)
+             agendaItemsContainer.addEventListener('click', function(event) {
+                 if (event.target.classList.contains('removeAgendaItemBtn')) {
+                     event.target.closest('.agenda-item').remove();
+                     // Re-index remaining items visually (optional, depends on how backend handles indices)
+                     agendaItemsContainer.querySelectorAll('.agenda-item').forEach((item, newIndex) => {
+                         item.querySelector('h4').textContent = `议程 ${newIndex + 1}`;
+                         // Update input names/ids if necessary, though backend might handle gaps
+                     });
+                 }
+             });
+
+
+            // Handle Form Submission
+            meetingForm.onsubmit = async function(event) {
+                event.preventDefault();
+                const formData = new FormData(meetingForm);
+                const meetingId = formData.get('id');
+                const meetingData = {
+                    title: formData.get('title'),
+                    intro: formData.get('intro'),
+                    time: formData.get('time') ? new Date(formData.get('time')).toISOString() : null, // Convert to ISO string for backend
+                    agenda_items: []
+                };
+
+                // Collect agenda items
+                const agendaItemElements = agendaItemsContainer.querySelectorAll('.agenda-item');
+                agendaItemElements.forEach((itemElement, index) => {
+                    // Use a consistent way to get the index, maybe from data-attribute if re-indexing is complex
+                    const itemIndex = itemElement.dataset.index; // Or just use loop index if names are updated
+                    const agendaItem = {
+                        // Include ID only if it exists (for updates)
+                        id: formData.get(`agenda[${itemIndex}][id]`) || undefined,
+                        title: formData.get(`agenda[${itemIndex}][title]`),
+                        reporter: formData.get(`agenda[${itemIndex}][reporter]`),
+                        duration_minutes: parseInt(formData.get(`agenda[${itemIndex}][duration_minutes]`), 10) || null,
+                        // Parse JSON strings back into arrays/objects
+                        files: JSON.parse(formData.get(`agenda[${itemIndex}][files]`) || '[]'),
+                        pages: JSON.parse(formData.get(`agenda[${itemIndex}][pages]`) || '[]')
+                    };
+                     // Only add valid items (e.g., with a title)
+                     if (agendaItem.title) {
+                         meetingData.agenda_items.push(agendaItem);
+                     }
+                });
+
+                const apiUrl = meetingId ? `/api/meetings/${meetingId}` : '/api/meetings/';
+                const method = meetingId ? 'PUT' : 'POST';
+
+                console.log('Submitting meeting data:', JSON.stringify(meetingData, null, 2)); // Log data being sent
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(meetingData)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json(); // Try to get error details
+                        throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.detail || response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    console.log('Meeting saved successfully:', result);
+                    closeModal();
+                    // Refresh the meeting list - find the currently active link and reload its content
+                    const activeLink = document.querySelector('.sidebar-nav a.active');
+                    if (activeLink) {
+                        await loadContent(activeLink); // Reload content
+                    } else {
+                        await loadContent(document.querySelector('.sidebar-nav a[href="?id=1"]')); // Fallback
+                    }
+                    alert(`会议 "${result.title}" 已成功${meetingId ? '更新' : '创建'}！`);
+
+                } catch (error) {
+                    console.error('Error saving meeting:', error);
+                    alert(`保存会议失败: ${error.message}`);
+                }
+            }
+
+            // --- Modify attachActionListeners to handle Edit button ---
+            // Find the Edit Button Listener section and replace the placeholder alert
+
+
+            // --- View Modal Logic ---
+            const viewMeetingModal = document.getElementById('viewMeetingModal');
+            const closeViewModalBtn = document.getElementById('closeViewModalBtn');
+            const viewMeetingDetailsContainer = document.getElementById('viewMeetingDetails');
+            const closeViewModalX = viewMeetingModal.querySelector('.close'); // Get the 'X' button
+
+            async function openViewModal(meetingId) {
+                viewMeetingDetailsContainer.innerHTML = '<p>加载中...</p>'; // Show loading
+                viewMeetingModal.style.display = 'block';
+
+                try {
+                    const response = await fetch(`/api/meetings/${meetingId}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const meetingData = await response.json();
+                    console.log('Fetched meeting data for view:', meetingData);
+
+                    // Format date/time nicely for display
+                    let formattedTime = '未设置';
+                    if (meetingData.time) {
+                        try {
+                            formattedTime = new Date(meetingData.time).toLocaleString('zh-CN', { dateStyle: 'long', timeStyle: 'short' });
+                        } catch (e) {
+                            console.error("Error formatting view time:", e);
+                            formattedTime = meetingData.time; // Show raw if formatting fails
+                        }
+                    }
+
+                    let detailsHtml = `
+                        <p><strong>会议名称:</strong> ${meetingData.title || '-'}</p>
+                        <p><strong>会议介绍:</strong> ${meetingData.intro || '-'}</p>
+                        <p><strong>会议时间:</strong> ${formattedTime}</p>
+                        <p><strong>会议状态:</strong> ${renderStatus(meetingData.status)}</p>
+                        <p><strong>会议 ID:</strong> ${meetingData.id}</p>
+                        <h3>议程项 (${meetingData.agenda_items?.length || 0})</h3>
+                    `;
+
+                    if (meetingData.agenda_items && meetingData.agenda_items.length > 0) {
+                        detailsHtml += '<ul>';
+                        meetingData.agenda_items.forEach((item, index) => {
+                            detailsHtml += `
+                                <li>
+                                    <h4>议程 ${index + 1}: ${item.title || '无标题'}</h4>
+                                    <div class="agenda-detail"><strong>报告人:</strong> ${item.reporter || '-'}</div>
+                                    <div class="agenda-detail"><strong>预计时间:</strong> ${item.duration_minutes ? item.duration_minutes + ' 分钟' : '-'}</div>
+                                    <div class="agenda-detail"><strong>关联文件:</strong> <span class="json-data">${JSON.stringify(item.files || [])}</span></div>
+                                    <div class="agenda-detail"><strong>关联页码:</strong> <span class="json-data">${JSON.stringify(item.pages || [])}</span></div>
+                                    <div class="agenda-detail"><strong>议程 ID:</strong> ${item.id}</div>
+                                </li>
+                            `;
+                        });
+                        detailsHtml += '</ul>';
+                    } else {
+                        detailsHtml += '<p>无议程项。</p>';
+                    }
+
+                    viewMeetingDetailsContainer.innerHTML = detailsHtml;
+
+                } catch (error) {
+                    console.error('Error fetching meeting details for view:', error);
+                    viewMeetingDetailsContainer.innerHTML = `<p style="color: var(--danger-color);">加载会议详情失败: ${error.message}</p>`;
+                }
+            }
+
+            function closeViewModal() {
+                viewMeetingModal.style.display = 'none';
+            }
+
+            // Add listeners for closing the view modal
+            if (closeViewModalBtn) {
+                closeViewModalBtn.onclick = closeViewModal;
+            }
+            if (closeViewModalX) {
+                closeViewModalX.onclick = closeViewModal;
+            }
+             // Also close if clicking outside the view modal content
+             window.addEventListener('click', function(event) {
+                 if (event.target == viewMeetingModal) {
+                     closeViewModal();
+                 }
+             });
+
+            // ... (Keep Modal Logic and View Modal Logic as they were) ...
+
+
+        }); // End of DOMContentLoaded // Restore listener end
     </script>
 </body>
 </html>

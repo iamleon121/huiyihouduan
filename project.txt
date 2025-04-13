@@ -1,35 +1,33 @@
 # 会议后端项目详情
 
 ## 项目概述
-这是一个基于FastAPI开发的简单后端服务，主要功能是提供PDF文件上传服务。前端通过Web界面可以选择并上传PDF文件，后端接收并保存这些文件到指定目录。
+这是一个基于FastAPI开发的简单后端服务，主要功能是提供PDF文件上传、转换服务，并增加了会议管理功能，通过API与前端交互，使用SQLite存储会议数据。
 
 ## 项目结构
 ```
 .
 ├── .idea/                      # PyCharm IDE配置目录
-│   ├── huiyihouduan.iml
-│   ├── inspectionProfiles/
-│   │   ├── Project_Default.xml
-│   │   └── profiles_settings.xml
-│   ├── misc.xml
-│   ├── modules.xml
-│   ├── vcs.xml
-│   └── workspace.xml
+│   ├── ...
 ├── .venv/                      # Python虚拟环境目录
 ├── __pycache__/                # Python编译缓存目录
-│   └── main.cpython-313.pyc
-├── main.py                     # 主程序文件
+│   └── ...
+├── crud.py                     # 新增：数据库 CRUD 操作 (会议、议程项)
+├── database.py                 # 新增：数据库连接与会话设置 (SQLite, SQLAlchemy)
+├── main.py                     # 主程序文件 (已更新, 添加API路由)
+├── meetings.db                 # 新增：SQLite 数据库文件
+├── models.py                   # 新增：SQLAlchemy 数据库模型 (Meeting, AgendaItem)
+├── schemas.py                  # 新增：Pydantic 数据模型 (用于 API 数据验证/序列化)
+├── seed_db.py                  # 新增：数据库填充脚本 (用于插入示例数据)
 ├── static/                     # 静态文件目录
-│   ├── huiyi.html              # 新增：会议系统主页面
+│   ├── huiyi.html              # 会议系统主页面 (已更新, 连接后端API)
 │   ├── index.html              # 原文件上传页面
-│   └── pdf2jpg.html            # PDF转JPG页面
+│   ├── pdf2jpg.html            # PDF转JPG页面
+│   └── converted_images/       # PDF转换后的图片目录
 ├── uploads/                    # 上传文件存储目录
-│   ├── Proj_Point_Review.pdf   # 已上传的PDF文件
-│   ├── TS_Rules_Deluxe.pdf     # 已上传的PDF文件
-│   └── shaplet.pdf             # 已上传的PDF文件
+│   ├── ... (示例文件)
 ├── amis-huiyi.txt              # AMIS 配置文件 (参考用)
-├── project.txt                 # 项目说明文件
-└── requirements.txt            # 项目依赖
+├── project.txt                 # 项目说明文件 (本文档)
+└── requirements.txt            # 项目依赖 (已更新, 添加 sqlalchemy)
 ```
 *(注：项目结构已更新以反映新文件)*
 
@@ -41,14 +39,26 @@
 - 实现PDF文件上传API接口 (`/upload`)
 - 实现PDF转JPG功能及API接口 (`/convert-pdf-to-jpg`)
 - 提供PDF转JPG的前端页面 (`/pdf2jpg`)
-- **新增**: 提供会议系统主页面 (`/huiyi`)
+- 提供会议系统主页面 (`/huiyi`)
 - 文件验证（仅接受PDF格式）
 - 文件存储到uploads目录
+- **新增**: 实现会议管理的 CRUD API 接口 (`/api/meetings/`)，使用 SQLAlchemy 与 SQLite 数据库交互。
 
-### 2. 前端界面
-- `static/index.html`: 简洁的文件上传界面
-- `static/pdf2jpg.html`: PDF转JPG操作界面
-- **`static/huiyi.html`**: 新增的会议系统主界面，包含左侧导航和顶部栏。
+### 2. 数据库层
+- **`models.py`**: 定义 `Meeting` 和 `AgendaItem` 的 SQLAlchemy 模型。`AgendaItem` 的 `files` 和 `pages` 字段使用 `JSON` 类型存储列表。
+- **`database.py`**: 配置 SQLite 数据库连接 (`meetings.db`)、引擎和会话 (`SessionLocal`, `get_db` 依赖)。包含 `create_db_tables` 函数用于初始化表结构。
+- **`crud.py`**: 包含用于会议数据（获取列表、获取详情、创建、更新状态、更新信息、删除）的数据库操作函数。
+- **`schemas.py`**: 定义用于 API 数据验证和响应模型的 Pydantic schema (`Meeting`, `MeetingCreate`, `MeetingUpdate`, `AgendaItem`, `AgendaItemCreate` 等)。
+- **`seed_db.py`**: 用于向数据库填充初始示例数据的脚本。
+
+### 3. 前端界面 (`static/huiyi.html`)
+- `static/index.html`: 简洁的文件上传界面。
+- `static/pdf2jpg.html`: PDF转JPG操作界面。
+- **`static/huiyi.html`**: 会议系统主界面，包含左侧导航、顶部栏。
+    - **新增**: 使用 JavaScript `fetch` API 调用后端 `/api/meetings/` 获取会议列表，并动态生成表格内容。
+    - **新增**: 实现“开始会议”按钮功能，点击后弹出确认框，确认后调用 `PUT /api/meetings/{id}/status` 更新状态，并更新前端界面。
+    - **新增**: 实现“删除”按钮功能，点击后弹出确认框，确认后调用 `DELETE /api/meetings/{id}` 删除会议，并从前端表格移除该行。
+    - 操作按钮（查看、编辑、删除、开始会议）采用现代按钮样式。
 
 ## API接口
 
@@ -81,18 +91,58 @@
 - 参数: file (文件对象), dpi (int), format (str), merge (bool)
 - 返回: JSON格式的图片URL列表
 
+### 6. 获取会议列表 (新增)
+- 路径: `/api/meetings/`
+- 方法: GET
+- 功能: 返回会议列表 (基本信息)
+- 返回: JSON 数组，包含会议对象 (符合 `schemas.Meeting`，但 `agenda_items` 为空)
+
+### 7. 获取会议详情 (新增)
+- 路径: `/api/meetings/{meeting_id}`
+- 方法: GET
+- 功能: 返回指定 ID 会议的详细信息 (包括议程项)
+- 返回: JSON 对象 (符合 `schemas.Meeting`)
+
+### 8. 创建会议 (新增)
+- 路径: `/api/meetings/`
+- 方法: POST
+- 功能: 创建新会议及其议程项
+- 请求体: JSON 对象 (符合 `schemas.MeetingCreate`)
+- 返回: JSON 对象 (符合 `schemas.Meeting`)
+
+### 9. 更新会议状态 (新增)
+- 路径: `/api/meetings/{meeting_id}/status`
+- 方法: PUT
+- 功能: 更新指定会议的状态 (例如，从未开始到进行中)
+- 请求体: JSON 对象 (符合 `schemas.MeetingUpdate`，仅需 `status` 字段)
+- 返回: JSON 对象 (符合 `schemas.Meeting`)
+
+### 10. 更新会议信息 (新增)
+- 路径: `/api/meetings/{meeting_id}`
+- 方法: PUT
+- 功能: 更新会议的基本信息 (不包括议程项)
+- 请求体: JSON 对象 (符合 `schemas.MeetingUpdate`)
+- 返回: JSON 对象 (符合 `schemas.Meeting`)
+
+### 11. 删除会议 (新增)
+- 路径: `/api/meetings/{meeting_id}`
+- 方法: DELETE
+- 功能: 删除指定 ID 的会议及其议程项
+- 返回: 状态码 204 (No Content) 或包含成功信息的 JSON
+
 ## 已上传文件
-目前uploads目录中已有3个PDF文件：
+目前uploads目录中已有示例PDF文件：
 - Proj_Point_Review.pdf
 - TS_Rules_Deluxe.pdf
 - shaplet.pdf
 
 ## 技术栈
-- 后端: Python + FastAPI, PyMuPDF (fitz), Pillow (用于图片合并)
-- 前端: HTML + CSS + JavaScript
+- 后端: Python + FastAPI, PyMuPDF (fitz), Pillow (用于图片合并), **SQLAlchemy**
+- 前端: HTML + CSS + JavaScript (使用 `fetch` API)
+- 数据库: **SQLite**
 - 文件处理: Python内置库 (shutil, os, uuid, tempfile)
 
-## 近期改动记录 (2025-04-13)
+## 近期改动记录 (2025-04-13) - 持续更新
 
 1.  **创建会议系统页面**:
     *   根据 `amis-huiyi.txt` 的布局要求，创建了新的HTML文件 `huiyi.html`。
@@ -110,3 +160,39 @@
     *   **整体样式**: 更新配色方案 (深蓝灰侧边栏、浅灰背景、主题蓝高亮)，使用现代字体 ("Inter", "Noto Sans SC")，调整布局间距、圆角和阴影，提升视觉效果。
     *   **侧边栏菜单**: 放大菜单项字体和间距，实现文本居中。
     *   **交互优化**: 修改 JavaScript，阻止菜单链接的默认跳转行为，并使用 `history.pushState` 更新 URL，解决点击卡顿问题，实现更流畅的单页体验。
+5.  **会议列表实现 (huiyi.html)**:
+    *   在“会议管理”内容区域添加了包含筛选、新增按钮、表格和分页的 HTML 结构。
+    *   添加了相应的 CSS 样式，使其符合整体现代风格。
+    *   将表格操作项（查看、编辑、删除）修改为现代按钮样式。
+    *   新增“开始会议”按钮，并添加确认对话框逻辑。
+6.  **数据库集成**:
+    *   **添加依赖**: 在 `requirements.txt` 中添加 `sqlalchemy` 并安装。
+    *   **创建模型 (`models.py`)**: 定义了 `Meeting` 和 `AgendaItem` 的 SQLAlchemy 模型，用于映射数据库表。`AgendaItem` 中的 `files` 和 `pages` 存储为 JSON。
+    *   **数据库配置 (`database.py`)**: 设置了 SQLite 数据库 (`meetings.db`) 连接、引擎和会话管理。
+    *   **CRUD 操作 (`crud.py`)**: 实现了会议数据的增删改查函数。
+    *   **Pydantic Schema (`schemas.py`)**: 定义了用于 API 请求/响应的数据模型。
+    *   **数据库初始化**: 在 `main.py` 启动时调用 `create_db_tables` 创建表结构。
+    *   **数据填充 (`seed_db.py`)**: 创建并执行了脚本，将示例会议数据插入数据库。
+7.  **后端 API 开发 (`main.py`)**:
+    *   添加了 `/api/meetings/` 相关路由，用于获取会议列表、获取详情、创建会议、更新状态、更新信息和删除会议。
+    *   路由函数使用 `Depends(get_db)` 获取数据库会话，并调用 `crud.py` 中的函数执行数据库操作。
+8.  **前端与后端连接 (`static/huiyi.html`)**:
+    *   修改 JavaScript，使用 `fetch` 调用 `/api/meetings/` 获取会议列表数据，并动态渲染表格。
+    *   为“开始会议”按钮添加事件监听，确认后调用 `PUT /api/meetings/{id}/status` API 更新状态。
+    *   为“删除”按钮添加事件监听，确认后调用 `DELETE /api/meetings/{id}` API 删除会议。
+9.  **实现会议 CRUD 功能 (2025-04-13)**:
+    *   **前端 (`static/huiyi.html`)**:
+        *   添加了用于新增/编辑会议的模态框 (`#meetingModal`) 和查看详情的模态框 (`#viewMeetingModal`)。
+        *   实现了模态框的显示/隐藏逻辑。
+        *   实现了在编辑模态框中动态添加/删除议程项的功能。
+        *   实现了“新增会议”按钮 (`#add-meeting-btn`)，点击打开空白编辑模态框。
+        *   实现了表格中“编辑”按钮 (`.edit`)，点击获取会议详情并填充编辑模态框。
+        *   实现了表格中“查看”按钮 (`.view`)，点击获取会议详情并在查看模态框中显示。
+        *   实现了编辑/新增模态框的表单提交逻辑，根据是否存在会议 ID 调用 `POST` 或 `PUT /api/meetings/{id}`。
+        *   在 `addAgendaItem` 函数中添加了对 JSON 字符串的 HTML 实体编码 (`.replace(/"/g, '"')`)，尝试解决 JavaScript 语法错误。
+        *   **注意**: 尽管尝试修复，`static/huiyi.html` 仍存在 `Uncaught SyntaxError`，需要进一步调试。
+    *   **后端 (`schemas.py`, `crud.py`, `main.py`)**:
+        *   更新了 `schemas.py` 中的 `MeetingUpdate` 模型，添加 `agenda_items: Optional[List[AgendaItemUpdate]]` 以接收议程项更新。
+        *   创建了 `AgendaItemUpdate` schema，并为议程项相关 schema 添加了 `reporter` 和 `duration_minutes` 字段。
+        *   重构了 `crud.py` 中的 `update_meeting` 函数，实现议程项的“删旧增新”更新策略。
+        *   更新了 `main.py` 中 `PUT /api/meetings/{meeting_id}` 路由的文档字符串。

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Request, Form
+from fastapi import FastAPI, UploadFile, File, Request, Form, Depends, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates # Although not strictly needed for just serving index.html, it's common for more complex frontends
@@ -9,6 +9,11 @@ import fitz  # PyMuPDF
 import tempfile
 from typing import List, Optional
 import time
+from sqlalchemy.orm import Session
+
+# Import database, models, schemas, crud
+import models, schemas, crud
+from database import SessionLocal, engine, create_db_tables
 
 # Ensure the uploads directory exists
 UPLOAD_DIR = "uploads"
@@ -20,7 +25,24 @@ IMAGES_DIR = "static/converted_images"
 if not os.path.exists(IMAGES_DIR):
     os.makedirs(IMAGES_DIR)
 
+# Create database tables on startup (already done by calling create_db_tables directly)
+# models.Base.metadata.create_all(bind=engine) # Alternative way
+
 app = FastAPI()
+
+# Dependency to get DB session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Optional: Add startup event (alternative way to create tables)
+# @app.on_event("startup")
+# async def startup_event():
+#     create_db_tables()
+
 
 # Mount the static directory to serve static files (like index.html, css, js)
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -218,3 +240,63 @@ async def convert_pdf_to_jpg(
         await file.close()
         if os.path.exists(temp_pdf_path):
             os.remove(temp_pdf_path)
+
+
+# --- Meeting API Endpoints ---
+
+@app.post("/api/meetings/", response_model=schemas.Meeting)
+def create_new_meeting(meeting: schemas.MeetingCreate, db: Session = Depends(get_db)):
+    """创建新会议及其议程项"""
+    db_meeting = crud.get_meeting(db, meeting_id=meeting.id)
+    if db_meeting:
+        raise HTTPException(status_code=400, detail="Meeting ID already registered")
+    return crud.create_meeting(db=db, meeting=meeting)
+
+@app.get("/api/meetings/", response_model=List[schemas.Meeting])
+def read_meetings(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """获取会议列表"""
+    meetings = crud.get_meetings(db, skip=skip, limit=limit)
+    # Manually set agenda_items to empty list as get_meetings doesn't load them
+    # Or adjust the schema/query if needed
+    for m in meetings:
+        m.agenda_items = [] # Ensure the response matches the schema
+    return meetings
+
+@app.get("/api/meetings/{meeting_id}", response_model=schemas.Meeting)
+def read_meeting_details(meeting_id: str, db: Session = Depends(get_db)):
+    """获取单个会议的详细信息（包括议程项）"""
+    db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
+    if db_meeting is None:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    return db_meeting
+
+@app.put("/api/meetings/{meeting_id}/status", response_model=schemas.Meeting)
+def update_meeting_status_endpoint(meeting_id: str, status_update: schemas.MeetingUpdate, db: Session = Depends(get_db)):
+    """更新会议状态"""
+    if status_update.status is None:
+         raise HTTPException(status_code=400, detail="Status field is required")
+    db_meeting = crud.update_meeting_status(db=db, meeting_id=meeting_id, status=status_update.status)
+    if db_meeting is None:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    return db_meeting
+
+@app.put("/api/meetings/{meeting_id}", response_model=schemas.Meeting)
+def update_existing_meeting(meeting_id: str, meeting: schemas.MeetingUpdate, db: Session = Depends(get_db)):
+    """更新会议信息，包括其议程项（采用删除旧项，添加新项的策略）"""
+    db_meeting = crud.update_meeting(db=db, meeting_id=meeting_id, meeting_update=meeting)
+    if db_meeting is None:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    # Need to reload agenda items if the response model expects them
+    db.refresh(db_meeting, attribute_names=['agenda_items'])
+    return db_meeting
+
+
+@app.delete("/api/meetings/{meeting_id}", status_code=204) # Use 204 No Content for successful deletion
+def delete_existing_meeting(meeting_id: str, db: Session = Depends(get_db)):
+    """删除会议"""
+    success = crud.delete_meeting(db=db, meeting_id=meeting_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    return {"detail": "Meeting deleted successfully"} # Or return None with 204 status
+
+# --- End Meeting API Endpoints ---
