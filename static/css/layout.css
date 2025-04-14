@@ -1,0 +1,196 @@
+/* layout.css - 页面布局样式 */
+
+/* 整体布局容器 */
+.app-container {
+    display: flex;
+    height: 100vh;
+}
+
+/* 侧边栏布局 */
+.sidebar {
+    width: 250px; /* 侧边栏宽度 */
+    background-color: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: width 0.3s ease; /* 平滑宽度变化 */
+}
+
+.sidebar-header {
+    height: 65px; /* 侧边栏标题高度 */
+    padding: 0 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center; /* 或 flex-start */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* 侧边栏内部分隔线 */
+    flex-shrink: 0;
+}
+
+.sidebar-header h2 {
+    font-size: 1.3em; /* 调整字号 */
+    font-weight: 600;
+    color: var(--sidebar-text);
+    margin: 0;
+    white-space: nowrap; /* 防止换行 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-nav {
+    flex-grow: 1; /* 导航占据剩余空间 */
+    overflow-y: auto; /* 内容多时滚动 */
+    padding-top: 15px; /* 增加顶部间距 */
+}
+
+.sidebar-nav ul {
+    list-style: none;
+}
+
+.sidebar-nav li a {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* 水平居中文本 */
+    padding: 16px 15px; /* 增加垂直内边距，减少水平内边距以适应居中 */
+    margin: 6px 15px; /* 调整外边距 */
+    color: var(--sidebar-text);
+    text-decoration: none;
+    font-size: 1.05em; /* 放大字体 */
+    font-weight: 500;
+    border-radius: var(--border-radius);
+    transition: background-color 0.2s ease, color 0.2s ease;
+    text-align: center; /* 确保文本居中 */
+}
+
+.sidebar-nav li a span {
+    flex-grow: 1; /* 让 span 占据空间以实现居中 */
+    text-align: center;
+}
+
+.sidebar-nav li a:hover {
+    background-color: var(--sidebar-hover-bg);
+    color: #ffffff; /* 悬停时文字变白 */
+}
+
+.sidebar-nav li a.active {
+    background-color: var(--sidebar-active-bg);
+    color: var(--sidebar-active-text);
+    font-weight: 600;
+}
+
+/* 主内容区布局 */
+.main-content-wrapper {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.top-header {
+    height: 65px; /* 与 sidebar-header 保持一致 */
+    background-color: var(--header-bg);
+    box-shadow: 0 2px 4px var(--shadow-color); /* 添加底部阴影 */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 35px; /* 增加内边距 */
+    flex-shrink: 0;
+    z-index: 10; /* 确保在内容之上 */
+}
+
+.header-title {
+    font-size: 1.4em; /* 调整字号 */
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.user-info {
+    font-weight: 500;
+    color: var(--text-color-light); /* 使用浅色文本 */
+    display: flex;
+    align-items: center;
+}
+
+.content-area {
+    flex-grow: 1;
+    padding: 40px; /* 内容区内边距 */
+    overflow-y: auto;
+    background-color: var(--secondary-color); /* 内容区背景 */
+}
+
+/* 内容区域的头部 */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.section-header h2 {
+    font-size: 1.6em;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0;
+}
+
+/* 内容区域 */
+.content-section {
+    display: none; /* 默认隐藏 */
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.content-section.active {
+    display: block; /* 显示活动区域 */
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 响应式布局 */
+@media (max-width: 992px) { /* 中等屏幕 */
+    .sidebar {
+        width: 70px; /* 缩小侧边栏 */
+    }
+    .sidebar-header h2, .sidebar-nav li a span {
+        display: none; /* 隐藏文字，只留图标 */
+    }
+    .sidebar-nav li a {
+        justify-content: center; /* 图标居中 */
+        margin: 4px 5px;
+        padding: 14px 10px;
+    }
+    .sidebar-nav li a span {
+        margin-left: 0;
+    }
+    .top-header {
+        padding: 0 20px;
+    }
+    .content-area {
+        padding: 30px;
+    }
+}
+
+@media (max-width: 768px) { /* 小屏幕 */
+    .sidebar {
+        position: absolute; /* 或 fixed */
+        left: -250px; /* 侧边栏默认隐藏 */
+        z-index: 100;
+        height: 100%;
+        transition: left 0.3s ease;
+        box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+    }
+    .content-area {
+        padding: 20px;
+    }
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    .filter-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+} 

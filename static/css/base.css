@@ -1,0 +1,46 @@
+/* base.css - 基础样式和重置 */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    font-family: var(--font-family);
+    font-size: 15px; /* 稍微减小基础字号 */
+    line-height: 1.6; /* 增加行高 */
+    color: var(--text-color);
+    background-color: var(--secondary-color);
+    -webkit-font-smoothing: antialiased; /* 字体抗锯齿 */
+    -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+ul, ol {
+    list-style: none;
+}
+
+button, input, select, textarea {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+/* 基础响应式设计 */
+@media (max-width: 992px) {
+    html, body {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 768px) {
+    html, body {
+        font-size: 13px;
+    }
+} 

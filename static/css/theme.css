@@ -1,0 +1,57 @@
+/* theme.css - 颜色变量和主题设置 */
+
+:root {
+    /* 颜色变量 */
+    --primary-color: #007bff; /* 更鲜明的蓝色 */
+    --primary-color-dark: #0056b3;
+    --secondary-color: #f4f7f9; /* 更柔和的背景灰 */
+    --text-color: #343a40; /* 深灰色文本 */
+    --text-color-light: #6c757d; /* 浅灰色文本 */
+    --border-color: #e3e6e9;
+    --sidebar-bg: #2c3e50; /* 深蓝灰色侧边栏 */
+    --sidebar-text: #ecf0f1; /* 浅色侧边栏文字 */
+    --sidebar-hover-bg: #34495e; /* 稍亮的悬停背景 */
+    --sidebar-active-bg: var(--primary-color); /* 选中项用主题色 */
+    --sidebar-active-text: #ffffff;
+    --header-bg: #ffffff;
+    --header-border: #e3e6e9;
+    --content-bg: #ffffff;
+    --shadow-color: rgba(0, 0, 0, 0.05);
+    
+    /* 状态颜色 */
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --danger-color: #dc3545;
+    --light-grey: #f8f9fa;
+    --medium-grey: #dee2e6;
+    
+    /* 字体和尺寸 */
+    --font-family: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif; /* 添加 Noto Sans SC 作为中文回退 */
+    --border-radius: 6px; /* 圆角 */
+    
+    /* 间距 */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+}
+
+/* 暗色模式主题 - 可以配合JS切换使用 */
+[data-theme="dark"] {
+    --primary-color: #0d6efd;
+    --primary-color-dark: #0a58ca;
+    --secondary-color: #1e2228;
+    --text-color: #f8f9fa;
+    --text-color-light: #adb5bd;
+    --border-color: #2d3237;
+    --sidebar-bg: #121417;
+    --sidebar-text: #e9ecef;
+    --sidebar-hover-bg: #212529;
+    --header-bg: #1e2228;
+    --content-bg: #272b31;
+    --shadow-color: rgba(0, 0, 0, 0.2);
+    --light-grey: #2d3237;
+    --medium-grey: #495057;
+} 
