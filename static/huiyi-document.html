@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <title>无纸化会议系统 - 文件管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <link rel="stylesheet" href="./huiyi.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>阜新市政协</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="huiyi-meeting.html"><span>会议管理</span></a></li>
+                    <li><a href="huiyi-document.html" class="active"><span>文件管理</span></a></li>
+                    <li><a href="huiyi-system.html"><span>系统管理</span></a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <div class="main-content-wrapper">
+            <header class="top-header">
+                <div class="header-title">无纸化会议系统</div>
+                <div class="user-info">
+                    管理员
+                </div>
+            </header>
+
+            <main class="content-area">
+                <h1>文件管理</h1>
+                <div class="controls-bar">
+                    <div class="filters">
+                        <input type="text" placeholder="文件名称">
+                        <select>
+                            <option value="">全部类型</option>
+                            <option value="PDF">PDF文件</option>
+                            <option value="DOC">Word文档</option>
+                            <option value="PPT">演示文稿</option>
+                        </select>
+                        <button class="btn btn-secondary">查询</button>
+                        <button class="btn btn-outline">重置</button>
+                    </div>
+                    <button class="btn btn-primary" id="add-file-btn">上传文件</button>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>文件名称</th>
+                                <th>文件类型</th>
+                                <th>文件大小</th>
+                                <th>上传时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">暂无文件数据</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination-container">
+                    <span>共 0 条</span>
+                    <select>
+                        <option>10 条/页</option>
+                        <option>20 条/页</option>
+                    </select>
+                    <button disabled><</button>
+                    <span>1</span>
+                    <button>></button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 文件上传模态框 -->
+    <div id="fileModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>上传文件</h2>
+            <form id="fileForm">
+                <label for="fileName">文件名称:</label>
+                <input type="text" id="fileName" name="name" required>
+
+                <label for="fileDescription">文件描述:</label>
+                <textarea id="fileDescription" name="description"></textarea>
+
+                <label for="fileUpload">选择文件:</label>
+                <input type="file" id="fileUpload" name="file" required>
+
+                <label for="fileMeeting">关联会议:</label>
+                <select id="fileMeeting" name="meeting_id">
+                    <option value="">-- 不关联会议 --</option>
+                    <!-- 会议选项将动态加载 -->
+                </select>
+
+                <button type="submit" class="btn btn-primary">上传</button>
+                <button type="button" class="btn btn-secondary" id="cancelFileBtn">取消</button>
+            </form>
+        </div>
+    </div>
+    <!-- 结束文件上传模态框 -->
+
+    <script src="./huiyi-document.js"></script>
+</body>
+</html> 

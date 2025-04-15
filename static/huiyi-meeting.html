@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <title>无纸化会议系统 - 会议管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <link rel="stylesheet" href="./huiyi.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>阜新市政协</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="huiyi-meeting.html" class="active"><span>会议管理</span></a></li>
+                    <li><a href="huiyi-document.html"><span>文件管理</span></a></li>
+                    <li><a href="huiyi-system.html"><span>系统管理</span></a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <div class="main-content-wrapper">
+            <header class="top-header">
+                <div class="header-title">无纸化会议系统</div>
+                <div class="user-info">
+                    管理员
+                </div>
+            </header>
+
+            <main class="content-area">
+                <h1>会议管理</h1>
+                <div class="controls-bar">
+                    <div class="filters">
+                        <input type="text" placeholder="会议名称">
+                        <input type="text" placeholder="会议状态">
+                        <button class="btn btn-secondary">查询</button>
+                        <button class="btn btn-outline">重置</button>
+                    </div>
+                    <button class="btn btn-primary" id="add-meeting-btn">新增会议</button>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>会议名称</th>
+                                <th>会议介绍</th>
+                                <th>会议时间</th>
+                                <th>会议状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination-container">
+                    <span>共 0 条</span>
+                    <select>
+                        <option>10 条/页</option>
+                        <option>20 条/页</option>
+                    </select>
+                    <button disabled><</button>
+                    <span>1</span>
+                    <button>></button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Meeting Modal -->
+    <div id="meetingModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle">新增会议</h2>
+            <form id="meetingForm">
+                <input type="hidden" id="meetingId" name="id">
+
+                <label for="meetingTitle">会议名称:</label>
+                <input type="text" id="meetingTitle" name="title" required>
+
+                <label for="meetingIntro">会议介绍:</label>
+                <textarea id="meetingIntro" name="intro"></textarea>
+
+                <label for="meetingTime">会议时间:</label>
+                <input type="datetime-local" id="meetingTime" name="time">
+
+                <h3>议程项</h3>
+                <div id="agendaItemsContainer">
+                    <!-- Agenda items will be added here dynamically -->
+                </div>
+                <button type="button" id="addAgendaItemBtn" class="btn">添加议程项</button>
+                <hr style="margin-top: 20px; margin-bottom: 20px;">
+
+                <button type="submit" class="btn btn-primary">保存会议</button>
+                <button type="button" class="btn btn-secondary" id="cancelModalBtn">取消</button>
+            </form>
+        </div>
+    </div>
+    <!-- End Meeting Modal -->
+
+    <!-- View Meeting Modal -->
+    <div id="viewMeetingModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>会议详情</h2>
+            <div id="viewMeetingDetails">
+                <!-- Details will be populated here -->
+                <p>加载中...</p>
+            </div>
+             <button type="button" class="btn btn-secondary" id="closeViewModalBtn" style="margin-top: 20px;">关闭</button>
+        </div>
+    </div>
+    <!-- End View Meeting Modal -->
+
+    <script src="./huiyi-meeting.js"></script>
+</body>
+</html> 

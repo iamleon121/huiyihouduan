@@ -1,9 +1,19 @@
-document.addEventListener('DOMContentLoaded', () => { // Restore listener structure
-    // Keep the body of attachActionListeners commented out
+document.addEventListener('DOMContentLoaded', () => {
+    // 获取当前页面的文件名
+    const currentPath = window.location.pathname.split('/').pop();
+    
+    // 设置导航栏的活动项
+    const navLinks = document.querySelectorAll('.sidebar-nav a');
+    navLinks.forEach(link => {
+        const linkPath = link.getAttribute('href');
+        if (linkPath === currentPath) {
+            link.classList.add('active');
+        } else {
+            link.classList.remove('active');
+        }
+    });
 
-    const navLinks = document.querySelectorAll('.sidebar-nav a'); // Restore variable declarations
     const contentArea = document.querySelector('.content-area');
-    const currentPath = window.location.search || '?id=1'; // 默认到会议管理
 
     // --- Helper function to render status span ---
     function renderStatus(status) {
@@ -158,12 +168,11 @@ document.addEventListener('DOMContentLoaded', () => { // Restore listener struct
          */ // End of attachActionListeners body comment
     }
 
+    // --- Main function to load content based on link ---
+    async function loadContent(link) {
+        if (!link) return;
 
-    // --- Main function to load content based on link --- // Restore function
-    async function loadContent(link) { // Restore function
-        if (!link) return; // Restore function
-
-        navLinks.forEach(el => el.classList.remove('active')); // Restore function
+        navLinks.forEach(el => el.classList.remove('active'));
         link.classList.add('active');
 
         const pageTitle = link.querySelector('span').textContent;
@@ -258,32 +267,349 @@ document.addEventListener('DOMContentLoaded', () => { // Restore listener struct
             // Temporarily comment out the innerHTML assignment to isolate the error // Restored original logic
             contentArea.innerHTML = `<h1>${pageTitle}</h1><p>这里是 ${pageTitle} 的内容。</p>`; // Restored
         } // Restored
-    } // Restored
+    }
 
+    // 根据当前页面初始化相应功能
+    
+    // 会议管理页面
+    if (currentPath === 'huiyi-meeting.html' || currentPath === '') {
+        initMeetingPage();
+    }
+    
+    // 文件管理页面
+    else if (currentPath === 'huiyi-document.html') {
+        initDocumentPage();
+    }
+    
+    // 系统管理页面
+    else if (currentPath === 'huiyi-system.html') {
+        initSystemPage();
+    }
+    
+    // 会议管理页面初始化
+    function initMeetingPage() {
+        fetchMeetings();
+        
+        // 添加会议按钮事件绑定
+        const addMeetingBtn = document.getElementById('add-meeting-btn');
+        if (addMeetingBtn) {
+            addMeetingBtn.addEventListener('click', () => openModal());
+        }
+        
+        // 模态框关闭按钮事件绑定
+        const closeModalBtn = document.querySelector('#meetingModal .close');
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', closeModal);
+        }
+        
+        const cancelModalBtn = document.getElementById('cancelModalBtn');
+        if (cancelModalBtn) {
+            cancelModalBtn.addEventListener('click', closeModal);
+        }
+        
+        // 添加议程项按钮事件绑定
+        const addAgendaItemBtn = document.getElementById('addAgendaItemBtn');
+        if (addAgendaItemBtn) {
+            addAgendaItemBtn.addEventListener('click', () => addAgendaItem());
+        }
+        
+        // 会议表单提交事件绑定
+        const meetingForm = document.getElementById('meetingForm');
+        if (meetingForm) {
+            meetingForm.addEventListener('submit', handleMeetingFormSubmit);
+        }
+        
+        // 查看会议模态框关闭按钮事件绑定
+        const closeViewModalElements = document.querySelectorAll('#viewMeetingModal .close, #closeViewModalBtn');
+        closeViewModalElements.forEach(element => {
+            element.addEventListener('click', closeViewModal);
+        });
+    }
+    
+    // 文件管理页面初始化
+    function initDocumentPage() {
+        fetchFiles();
+        
+        // 上传文件按钮事件绑定
+        const addFileBtn = document.getElementById('add-file-btn');
+        if (addFileBtn) {
+            addFileBtn.addEventListener('click', openFileModal);
+        }
+        
+        // 文件模态框关闭按钮事件绑定
+        const closeFileBtn = document.querySelector('#fileModal .close');
+        const cancelFileBtn = document.getElementById('cancelFileBtn');
+        
+        if (closeFileBtn) {
+            closeFileBtn.addEventListener('click', closeFileModal);
+        }
+        
+        if (cancelFileBtn) {
+            cancelFileBtn.addEventListener('click', closeFileModal);
+        }
+        
+        // 文件表单提交事件绑定
+        const fileForm = document.getElementById('fileForm');
+        if (fileForm) {
+            fileForm.addEventListener('submit', handleFileFormSubmit);
+        }
+    }
+    
+    // 系统管理页面初始化
+    function initSystemPage() {
+        fetchUsers();
+        
+        // 新增用户按钮事件绑定
+        const addUserBtn = document.getElementById('add-user-btn');
+        if (addUserBtn) {
+            addUserBtn.addEventListener('click', openUserModal);
+        }
+        
+        // 用户模态框关闭按钮事件绑定
+        const closeUserBtn = document.querySelector('#userModal .close');
+        const cancelUserBtn = document.getElementById('cancelUserBtn');
+        
+        if (closeUserBtn) {
+            closeUserBtn.addEventListener('click', closeUserModal);
+        }
+        
+        if (cancelUserBtn) {
+            cancelUserBtn.addEventListener('click', closeUserModal);
+        }
+        
+        // 用户表单提交事件绑定
+        const userForm = document.getElementById('userForm');
+        if (userForm) {
+            userForm.addEventListener('submit', handleUserFormSubmit);
+        }
+        
+        // 系统设置表单提交事件绑定
+        const systemSettingsForm = document.getElementById('systemSettingsForm');
+        if (systemSettingsForm) {
+            systemSettingsForm.addEventListener('submit', handleSystemSettingsSubmit);
+        }
+        
+        // 主题选项点击事件绑定
+        const themeOptions = document.querySelectorAll('.theme-option');
+        themeOptions.forEach(option => {
+            option.addEventListener('click', handleThemeSelection);
+        });
+    }
 
-     // 初始化和点击事件处理
-     navLinks.forEach(link => { // Restored
-         link.addEventListener('click', function(event) { // Restored
-            event.preventDefault(); // Restored
-            const targetHref = this.getAttribute('href'); // Restored
-            if (window.location.search !== targetHref) { // Restored
-                loadContent(this); // Restored call
-                window.history.pushState({ page: this.querySelector('span').textContent }, this.querySelector('span').textContent, targetHref); // Restored
-            } // Restored
-        }); // Restored
-     }); // Restore event listener
+    // 会议管理页面函数
+    async function fetchMeetings() {
+        const contentArea = document.querySelector('.content-area');
+        const tableBody = document.querySelector('.data-table tbody');
+        if (!tableBody) return;
+        
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">加载中...</td></tr>';
+        
+        try {
+            const response = await fetch('/api/meetings/');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const meetings = await response.json();
+            
+            let tableBodyHtml = '';
+            if (meetings.length === 0) {
+                tableBodyHtml = '<tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">暂无会议</td></tr>';
+            } else {
+                meetings.forEach(meeting => {
+                    tableBodyHtml += `
+                        <tr data-id="${meeting.id}">
+                            <td>${meeting.title || '-'}</td>
+                            <td>${meeting.intro || '-'}</td>
+                            <td>${meeting.time || '-'}</td>
+                            <td>${renderStatus(meeting.status)}</td>
+                            <td>${renderActionButtons(meeting)}</td>
+                        </tr>
+                    `;
+                });
+            }
+            
+            tableBody.innerHTML = tableBodyHtml;
+            
+            // 更新计数
+            updatePaginationCount(meetings.length);
+            
+            // 附加操作按钮事件
+            attachActionListeners(tableBody);
+            
+        } catch (error) {
+            console.error('Failed to load meetings:', error);
+            tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--danger-color);">加载会议列表失败: ${error.message}</td></tr>`;
+        }
+    }
 
-     // 初始加载内容 (使用 async/await)
-     const activeLink = document.querySelector(`.sidebar-nav a[href="${currentPath}"]`); // Restore call
-     loadContent(activeLink || document.querySelector('.sidebar-nav a[href="?id=1"]')); // Restore call
+    // 文件相关函数
+    function fetchFiles() {
+        const tableBody = document.querySelector('.data-table tbody');
+        if (!tableBody) return;
+        
+        // 模拟文件数据
+        setTimeout(() => {
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">暂无文件数据</td></tr>';
+            
+            // 更新计数
+            updatePaginationCount(0);
+        }, 500);
+    }
+    
+    function openFileModal() {
+        const fileModal = document.getElementById('fileModal');
+        if (fileModal) {
+            fileModal.style.display = 'block';
+        }
+    }
+    
+    function closeFileModal() {
+        const fileModal = document.getElementById('fileModal');
+        if (fileModal) {
+            fileModal.style.display = 'none';
+        }
+    }
+    
+    function handleFileFormSubmit(event) {
+        event.preventDefault();
+        // 模拟文件上传
+        alert('文件上传功能待实现');
+        closeFileModal();
+    }
+    
+    // 系统管理相关函数
+    function fetchUsers() {
+        const tableBody = document.querySelector('.system-section:first-child .data-table tbody');
+        if (!tableBody) return;
+        
+        // 模拟用户数据
+        setTimeout(() => {
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">暂无用户数据</td></tr>';
+        }, 500);
+    }
+    
+    function openUserModal() {
+        const userModal = document.getElementById('userModal');
+        if (userModal) {
+            userModal.style.display = 'block';
+        }
+    }
+    
+    function closeUserModal() {
+        const userModal = document.getElementById('userModal');
+        if (userModal) {
+            userModal.style.display = 'none';
+        }
+    }
+    
+    function handleUserFormSubmit(event) {
+        event.preventDefault();
+        // 模拟用户保存
+        alert('用户保存功能待实现');
+        closeUserModal();
+    }
+    
+    function handleSystemSettingsSubmit(event) {
+        event.preventDefault();
+        // 模拟设置保存
+        alert('系统设置保存功能待实现');
+    }
+    
+    function handleThemeSelection() {
+        document.querySelectorAll('.theme-option').forEach(option => {
+            option.classList.remove('active');
+        });
+        this.classList.add('active');
+    }
+    
+    // 通用函数
+    function updatePaginationCount(count) {
+        const paginationSpan = document.querySelector('.pagination-container span');
+        if (paginationSpan) {
+            paginationSpan.textContent = `共 ${count} 条`;
+        }
+    }
 
+    // --- View Modal Logic ---
+    const viewMeetingModal = document.getElementById('viewMeetingModal');
+    const closeViewModalBtn = document.getElementById('closeViewModalBtn');
+    const viewMeetingDetailsContainer = document.getElementById('viewMeetingDetails');
+    const closeViewModalX = viewMeetingModal.querySelector('.close'); // Get the 'X' button
 
-     // 监听浏览器前进后退事件
-     window.addEventListener('popstate', (event) => { // Restore event listener
-         const path = window.location.search || '?id=1'; // Restore event listener
-         const targetLink = document.querySelector(`.sidebar-nav a[href="${path}"]`); // Restore event listener
-         loadContent(targetLink); // Restore call
-     }); // Restore event listener
+    async function openViewModal(meetingId) {
+        viewMeetingDetailsContainer.innerHTML = '<p>加载中...</p>'; // Show loading
+        viewMeetingModal.style.display = 'block';
+
+        try {
+            const response = await fetch(`/api/meetings/${meetingId}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const meetingData = await response.json();
+            console.log('Fetched meeting data for view:', meetingData);
+
+            // Format date/time nicely for display
+            let formattedTime = '未设置';
+            if (meetingData.time) {
+                try {
+                    formattedTime = new Date(meetingData.time).toLocaleString('zh-CN', { dateStyle: 'long', timeStyle: 'short' });
+                } catch (e) {
+                    console.error("Error formatting view time:", e);
+                    formattedTime = meetingData.time; // Show raw if formatting fails
+                }
+            }
+
+            let detailsHtml = `
+                <p><strong>会议名称:</strong> ${meetingData.title || '-'}</p>
+                <p><strong>会议介绍:</strong> ${meetingData.intro || '-'}</p>
+                <p><strong>会议时间:</strong> ${formattedTime}</p>
+                <p><strong>会议状态:</strong> ${renderStatus(meetingData.status)}</p>
+                <p><strong>会议 ID:</strong> ${meetingData.id}</p>
+                <h3>议程项 (${meetingData.agenda_items?.length || 0})</h3>
+            `;
+
+            if (meetingData.agenda_items && meetingData.agenda_items.length > 0) {
+                detailsHtml += '<ul>';
+                meetingData.agenda_items.forEach((item, index) => {
+                    detailsHtml += `
+                        <li>
+                            <h4>议程 ${index + 1}: ${item.title || '无标题'}</h4>
+                            <div class="agenda-detail"><strong>报告人:</strong> ${item.reporter || '-'}</div>
+                            <div class="agenda-detail"><strong>预计时间:</strong> ${item.duration_minutes ? item.duration_minutes + ' 分钟' : '-'}</div>
+                            <div class="agenda-detail"><strong>关联文件:</strong> <span class="json-data">${JSON.stringify(item.files || [])}</span></div>
+                            <div class="agenda-detail"><strong>关联页码:</strong> <span class="json-data">${JSON.stringify(item.pages || [])}</span></div>
+                            <div class="agenda-detail"><strong>议程 ID:</strong> ${item.id}</div>
+                        </li>
+                    `;
+                });
+                detailsHtml += '</ul>';
+            } else {
+                detailsHtml += '<p>无议程项。</p>';
+            }
+
+            viewMeetingDetailsContainer.innerHTML = detailsHtml;
+
+        } catch (error) {
+            console.error('Error fetching meeting details for view:', error);
+            viewMeetingDetailsContainer.innerHTML = `<p style="color: var(--danger-color);">加载会议详情失败: ${error.message}</p>`;
+        }
+    }
+
+    function closeViewModal() {
+        viewMeetingModal.style.display = 'none';
+    }
+
+    // Add listeners for closing the view modal
+    if (closeViewModalBtn) {
+        closeViewModalBtn.onclick = closeViewModal;
+    }
+    if (closeViewModalX) {
+        closeViewModalX.onclick = closeViewModal;
+    }
+     // Also close if clicking outside the view modal content
+     window.addEventListener('click', function(event) {
+         if (event.target == viewMeetingModal) {
+             closeViewModal();
+         }
+     });
 
     // --- Modal Logic ---
     const meetingModal = document.getElementById('meetingModal');
@@ -476,94 +802,7 @@ document.addEventListener('DOMContentLoaded', () => { // Restore listener struct
         }
     }
 
-    // --- Modify attachActionListeners to handle Edit button ---
-    // Find the Edit Button Listener section and replace the placeholder alert
-
-
-    // --- View Modal Logic ---
-    const viewMeetingModal = document.getElementById('viewMeetingModal');
-    const closeViewModalBtn = document.getElementById('closeViewModalBtn');
-    const viewMeetingDetailsContainer = document.getElementById('viewMeetingDetails');
-    const closeViewModalX = viewMeetingModal.querySelector('.close'); // Get the 'X' button
-
-    async function openViewModal(meetingId) {
-        viewMeetingDetailsContainer.innerHTML = '<p>加载中...</p>'; // Show loading
-        viewMeetingModal.style.display = 'block';
-
-        try {
-            const response = await fetch(`/api/meetings/${meetingId}`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const meetingData = await response.json();
-            console.log('Fetched meeting data for view:', meetingData);
-
-            // Format date/time nicely for display
-            let formattedTime = '未设置';
-            if (meetingData.time) {
-                try {
-                    formattedTime = new Date(meetingData.time).toLocaleString('zh-CN', { dateStyle: 'long', timeStyle: 'short' });
-                } catch (e) {
-                    console.error("Error formatting view time:", e);
-                    formattedTime = meetingData.time; // Show raw if formatting fails
-                }
-            }
-
-            let detailsHtml = `
-                <p><strong>会议名称:</strong> ${meetingData.title || '-'}</p>
-                <p><strong>会议介绍:</strong> ${meetingData.intro || '-'}</p>
-                <p><strong>会议时间:</strong> ${formattedTime}</p>
-                <p><strong>会议状态:</strong> ${renderStatus(meetingData.status)}</p>
-                <p><strong>会议 ID:</strong> ${meetingData.id}</p>
-                <h3>议程项 (${meetingData.agenda_items?.length || 0})</h3>
-            `;
-
-            if (meetingData.agenda_items && meetingData.agenda_items.length > 0) {
-                detailsHtml += '<ul>';
-                meetingData.agenda_items.forEach((item, index) => {
-                    detailsHtml += `
-                        <li>
-                            <h4>议程 ${index + 1}: ${item.title || '无标题'}</h4>
-                            <div class="agenda-detail"><strong>报告人:</strong> ${item.reporter || '-'}</div>
-                            <div class="agenda-detail"><strong>预计时间:</strong> ${item.duration_minutes ? item.duration_minutes + ' 分钟' : '-'}</div>
-                            <div class="agenda-detail"><strong>关联文件:</strong> <span class="json-data">${JSON.stringify(item.files || [])}</span></div>
-                            <div class="agenda-detail"><strong>关联页码:</strong> <span class="json-data">${JSON.stringify(item.pages || [])}</span></div>
-                            <div class="agenda-detail"><strong>议程 ID:</strong> ${item.id}</div>
-                        </li>
-                    `;
-                });
-                detailsHtml += '</ul>';
-            } else {
-                detailsHtml += '<p>无议程项。</p>';
-            }
-
-            viewMeetingDetailsContainer.innerHTML = detailsHtml;
-
-        } catch (error) {
-            console.error('Error fetching meeting details for view:', error);
-            viewMeetingDetailsContainer.innerHTML = `<p style="color: var(--danger-color);">加载会议详情失败: ${error.message}</p>`;
-        }
-    }
-
-    function closeViewModal() {
-        viewMeetingModal.style.display = 'none';
-    }
-
-    // Add listeners for closing the view modal
-    if (closeViewModalBtn) {
-        closeViewModalBtn.onclick = closeViewModal;
-    }
-    if (closeViewModalX) {
-        closeViewModalX.onclick = closeViewModal;
-    }
-     // Also close if clicking outside the view modal content
-     window.addEventListener('click', function(event) {
-         if (event.target == viewMeetingModal) {
-             closeViewModal();
-         }
-     });
-
     // ... (Keep Modal Logic and View Modal Logic as they were) ...
 
+}); // End of DOMContentLoaded
 
-}); // End of DOMContentLoaded // Restore listener end
