@@ -1,29 +1,75 @@
 /**
  * components.css
- * Additional component styles for the modular architecture
+ * Additional component styles for the modular architecture - 现代化美化版
  */
+
+/* 引入变量定义 */
+@import url('/static/css/theme.css');
 
 /* --- Content Section Management --- */
 .content-section {
     display: none; /* Hide all sections by default */
+    animation: fadeIn 0.4s ease-in-out; /* 添加淡入动画 */
 }
 
 .content-section.active {
     display: block; /* Show only the active section */
 }
 
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 25px;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .section-header h2 {
-    font-size: 1.5em;
+    font-size: 1.6em;
     margin: 0;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-color);
+    position: relative;
+}
+
+/* 为不同类型的内容添加不同颜色的标题装饰 */
+.meeting-section .section-header h2::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -15px;
+    width: 50px;
+    height: 3px;
+    background: var(--meeting-color);
+    border-radius: 3px;
+}
+
+.document-section .section-header h2::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -15px;
+    width: 50px;
+    height: 3px;
+    background: var(--document-color);
+    border-radius: 3px;
+}
+
+.schedule-section .section-header h2::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -15px;
+    width: 50px;
+    height: 3px;
+    background: var(--schedule-color);
+    border-radius: 3px;
 }
 
 .action-buttons {

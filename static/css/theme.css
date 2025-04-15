@@ -1,34 +1,59 @@
-/* theme.css - 颜色变量和主题设置 */
+/* theme.css - 颜色变量和主题设置 - 现代化美化版 */
 
 :root {
-    /* 颜色变量 */
-    --primary-color: #007bff; /* 更鲜明的蓝色 */
-    --primary-color-dark: #0056b3;
-    --secondary-color: #f4f7f9; /* 更柔和的背景灰 */
-    --text-color: #343a40; /* 深灰色文本 */
-    --text-color-light: #6c757d; /* 浅灰色文本 */
-    --border-color: #e3e6e9;
-    --sidebar-bg: #2c3e50; /* 深蓝灰色侧边栏 */
-    --sidebar-text: #ecf0f1; /* 浅色侧边栏文字 */
-    --sidebar-hover-bg: #34495e; /* 稍亮的悬停背景 */
-    --sidebar-active-bg: var(--primary-color); /* 选中项用主题色 */
-    --sidebar-active-text: #ffffff;
-    --header-bg: #ffffff;
-    --header-border: #e3e6e9;
-    --content-bg: #ffffff;
-    --shadow-color: rgba(0, 0, 0, 0.05);
+    /* 主色调 - 渐变蓝紫色系 */
+    --primary-color: #4361ee; /* 主色调：现代蓝 */
+    --primary-color-light: #4895ef; /* 浅蓝，用于悬停状态 */
+    --primary-color-dark: #3a0ca3; /* 深蓝紫，用于强调 */
+    --primary-gradient: linear-gradient(135deg, #4361ee, #3a0ca3); /* 主色渐变 */
     
-    /* 状态颜色 */
-    --success-color: #28a745;
-    --warning-color: #ffc107;
-    --info-color: #17a2b8;
-    --danger-color: #dc3545;
+    /* 辅助色系 - 根据会议元素内容设计 */
+    --meeting-color: #4cc9f0; /* 会议管理相关元素 */
+    --document-color: #f72585; /* 文档管理相关元素 */
+    --schedule-color: #7209b7; /* 日程安排相关元素 */
+    --user-color: #4d908e; /* 用户管理相关元素 */
+    --stats-color: #f9c74f; /* 统计数据相关元素 */
+    
+    /* 背景和文本 */
+    --secondary-color: #f8f9fc; /* 更清爽的背景灰 */
+    --text-color: #2b2d42; /* 深蓝灰色文本 */
+    --text-color-light: #6c757d; /* 浅灰色文本 */
+    --border-color: #e9ecef;
+    
+    /* 侧边栏 */
+    --sidebar-bg: #252836; /* 深色侧边栏 */
+    --sidebar-text: #e9ecef; /* 浅色侧边栏文字 */
+    --sidebar-hover-bg: #2e3245; /* 悬停背景 */
+    --sidebar-active-bg: var(--primary-gradient); /* 选中项用渐变 */
+    --sidebar-active-text: #ffffff;
+    
+    /* 页面元素 */
+    --header-bg: #ffffff;
+    --header-border: #e9ecef;
+    --content-bg: #ffffff;
+    --card-bg: #ffffff;
+    --shadow-color: rgba(0, 0, 0, 0.05);
+    --card-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    --hover-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+    --button-shadow: 0 4px 10px rgba(67, 97, 238, 0.25);
+    
+    /* 状态颜色 - 更鲜艳的色彩 */
+    --success-color: #06d6a0;
+    --warning-color: #ffd166;
+    --info-color: #118ab2;
+    --danger-color: #ef476f;
     --light-grey: #f8f9fa;
-    --medium-grey: #dee2e6;
+    --medium-grey: #e9ecef;
     
     /* 字体和尺寸 */
     --font-family: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif; /* 添加 Noto Sans SC 作为中文回退 */
-    --border-radius: 6px; /* 圆角 */
+    --border-radius: 10px; /* 更大的圆角 */
+    --border-radius-lg: 16px; /* 大圆角 */
+    --border-radius-sm: 6px; /* 小圆角 */
+    
+    /* 动画和过渡 */
+    --transition-speed: 0.3s;
+    --transition-function: cubic-bezier(0.4, 0, 0.2, 1);
     
     /* 间距 */
     --spacing-xs: 4px;
@@ -54,4 +79,4 @@
     --shadow-color: rgba(0, 0, 0, 0.2);
     --light-grey: #2d3237;
     --medium-grey: #495057;
-} 
+}

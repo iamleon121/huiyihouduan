@@ -1,5 +1,8 @@
 /* base.css - 基础样式和重置 */
 
+/* 引入变量定义，确保变量在使用前已定义 */
+@import url('/static/css/theme.css');
+
 * {
     box-sizing: border-box;
     margin: 0;

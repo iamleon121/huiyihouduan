@@ -1,5 +1,8 @@
 /* layout.css - 页面布局样式 */
 
+/* 引入变量定义 */
+@import url('/static/css/theme.css');
+
 /* 整体布局容器 */
 .app-container {
     display: flex;
