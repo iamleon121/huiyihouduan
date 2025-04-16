@@ -12,18 +12,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // 添加会议按钮事件绑定
         const addMeetingBtn = document.getElementById('add-meeting-btn');
         if (addMeetingBtn) {
-            addMeetingBtn.addEventListener('click', () => openModal());
+            addMeetingBtn.addEventListener('click', () => openEditView());
         }
         
-        // 模态框关闭按钮事件绑定
-        const closeModalBtn = document.querySelector('#meetingModal .close');
-        if (closeModalBtn) {
-            closeModalBtn.addEventListener('click', closeModal);
+        // 返回列表按钮事件绑定
+        const backToListBtn = document.getElementById('back-to-list-btn');
+        if (backToListBtn) {
+            backToListBtn.addEventListener('click', returnToListView);
         }
         
-        const cancelModalBtn = document.getElementById('cancelModalBtn');
-        if (cancelModalBtn) {
-            cancelModalBtn.addEventListener('click', closeModal);
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+        if (cancelEditBtn) {
+            cancelEditBtn.addEventListener('click', returnToListView);
         }
         
         // 添加议程项按钮事件绑定
@@ -173,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     const meetingData = await response.json();
                     console.log('Fetched meeting data for edit:', meetingData);
-                    openModal(meetingData);
+                    openEditView(meetingData);
                 } catch (error) {
                     console.error('Error fetching meeting details for edit:', error);
                     alert(`加载会议详情失败: ${error.message}`);
@@ -225,57 +225,64 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 模态框相关函数
-    function openModal(meetingData = null) {
-        const meetingModal = document.getElementById('meetingModal');
+    // 页面视图切换相关函数
+    function openEditView(meetingData = null) {
+        const meetingListView = document.getElementById('meeting-list-view');
+        const meetingEditView = document.getElementById('meeting-edit-view');
         const meetingForm = document.getElementById('meetingForm');
         const agendaItemsContainer = document.getElementById('agendaItemsContainer');
-        const modalTitle = document.getElementById('modalTitle');
+        const editViewTitle = document.getElementById('edit-view-title');
         const meetingIdInput = document.getElementById('meetingId');
         
-        meetingForm.reset(); // Clear previous data
-        agendaItemsContainer.innerHTML = ''; // Clear previous agenda items
-        meetingIdInput.value = ''; // Clear ID
+        meetingForm.reset(); // 清除之前的数据
+        agendaItemsContainer.innerHTML = ''; // 清除之前的议程项
+        meetingIdInput.value = ''; // 清除ID
 
         if (meetingData) {
-            // Populate form for editing
-            modalTitle.textContent = '编辑会议';
+            // 填充表单进行编辑
+            editViewTitle.textContent = '编辑会议';
             meetingIdInput.value = meetingData.id;
             document.getElementById('meetingTitle').value = meetingData.title || '';
             document.getElementById('meetingIntro').value = meetingData.intro || '';
             
-            // Format datetime-local (requires YYYY-MM-DDTHH:mm)
+            // 格式化日期时间 (需要 YYYY-MM-DDTHH:mm 格式)
             if (meetingData.time) {
                 try {
                     const date = new Date(meetingData.time);
-                    // Pad month, day, hours, minutes with leading zeros if necessary
+                    // 用前导零填充月、日、小时、分钟
                     const pad = (num) => num.toString().padStart(2, '0');
                     const formattedDateTime = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
                     document.getElementById('meetingTime').value = formattedDateTime;
                 } catch (e) {
-                    console.error("Error parsing meeting time:", meetingData.time, e);
-                    document.getElementById('meetingTime').value = ''; // Clear if invalid
+                    console.error("解析会议时间出错:", meetingData.time, e);
+                    document.getElementById('meetingTime').value = ''; // 无效则清除
                 }
             } else {
                 document.getElementById('meetingTime').value = '';
             }
 
-            // Populate agenda items
+            // 填充议程项
             if (meetingData.agenda_items && meetingData.agenda_items.length > 0) {
                 meetingData.agenda_items.forEach((item, index) => addAgendaItem(item, index));
             }
         } else {
-            // Setup for new meeting
-            modalTitle.textContent = '新增会议';
-            addAgendaItem(); // Add one empty agenda item by default for new meetings
+            // 设置新会议
+            editViewTitle.textContent = '新增会议';
+            addAgendaItem(); // 默认为新会议添加一个空的议程项
         }
-        meetingModal.style.display = 'block';
+        
+        // 切换视图
+        meetingListView.style.display = 'none';
+        meetingEditView.style.display = 'block';
     }
 
-    // 关闭模态框
-    function closeModal() {
-        const meetingModal = document.getElementById('meetingModal');
-        meetingModal.style.display = 'none';
+    // 返回列表视图
+    function returnToListView() {
+        const meetingListView = document.getElementById('meeting-list-view');
+        const meetingEditView = document.getElementById('meeting-edit-view');
+        
+        meetingEditView.style.display = 'none';
+        meetingListView.style.display = 'block';
     }
 
     // 添加议程项
@@ -290,11 +297,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 <label for="agendaTitle_${itemIndex}">标题:</label>
                 <input type="text" id="agendaTitle_${itemIndex}" name="agenda[${itemIndex}][title]" value="${itemData?.title || ''}" required />
 
-                <label for="agendaReporter_${itemIndex}">报告人:</label>
-                <input type="text" id="agendaReporter_${itemIndex}" name="agenda[${itemIndex}][reporter]" value="${itemData?.reporter || ''}" />
-
-                <label for="agendaContent_${itemIndex}">内容:</label>
-                <textarea id="agendaContent_${itemIndex}" name="agenda[${itemIndex}][content]">${itemData?.content || ''}</textarea>
+                <label for="agendaReporter_${itemIndex}">议程文件上传:</label>
+                
+                <div class="file-upload-container">
+                    <div class="file-upload-area" id="fileUploadArea_${itemIndex}">
+                        <div class="file-upload-prompt">
+                            <i class="upload-icon">📄</i>
+                            <p>拖拽文件到此处或</p>
+                            <button type="button" class="btn btn-outline file-select-btn" id="fileSelectBtn_${itemIndex}">选择文件</button>
+                            <p class="file-hint">支持PDF文件，可多选</p>
+                        </div>
+                        <input type="file" id="agendaFiles_${itemIndex}" name="agenda[${itemIndex}][files]" accept=".pdf" multiple style="display: none;" />
+                    </div>
+                    <div class="selected-files" id="selectedFiles_${itemIndex}">
+                        <div class="file-queue-header" style="display: none;">
+                            <h5>待上传文件</h5>
+                            <button type="button" class="btn btn-primary upload-files-btn" id="uploadFilesBtn_${itemIndex}">上传全部</button>
+                        </div>
+                        <ul class="file-queue" id="fileQueue_${itemIndex}"></ul>
+                    </div>
+                </div>
 
                 ${itemIndex > 0 ? `<button type="button" class="btn removeAgendaItemBtn" data-index="${itemIndex}">移除此议程</button>` : ''}
             </div>
@@ -316,6 +338,122 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
+        
+        // 添加文件上传相关事件监听器
+        const fileInput = newItem.querySelector(`#agendaFiles_${itemIndex}`);
+        const selectedFilesDiv = newItem.querySelector(`#selectedFiles_${itemIndex}`);
+        const fileUploadArea = newItem.querySelector(`#fileUploadArea_${itemIndex}`);
+        const fileSelectBtn = newItem.querySelector(`#fileSelectBtn_${itemIndex}`);
+        const fileQueueHeader = selectedFilesDiv.querySelector('.file-queue-header');
+        const fileQueue = newItem.querySelector(`#fileQueue_${itemIndex}`);
+        const uploadFilesBtn = newItem.querySelector(`#uploadFilesBtn_${itemIndex}`);
+        
+        // 存储待上传文件的数组
+        const pendingFiles = [];
+        
+        // 更新文件队列显示
+        function updateFileQueue() {
+            if (pendingFiles.length > 0) {
+                fileQueueHeader.style.display = 'flex';
+                
+                let fileListHTML = '';
+                pendingFiles.forEach((file, idx) => {
+                    fileListHTML += `
+                    <li class="file-item" data-index="${idx}">
+                        <div class="file-info">
+                            <span class="file-name">${file.name}</span>
+                            <span class="file-size">${(file.size / 1024).toFixed(2)} KB</span>
+                        </div>
+                        <button type="button" class="btn-remove-file" data-index="${idx}">×</button>
+                    </li>`;
+                });
+                fileQueue.innerHTML = fileListHTML;
+                
+                // 添加删除文件事件
+                fileQueue.querySelectorAll('.btn-remove-file').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const idx = parseInt(this.dataset.index);
+                        if (!isNaN(idx) && idx >= 0 && idx < pendingFiles.length) {
+                            pendingFiles.splice(idx, 1);
+                            updateFileQueue();
+                        }
+                    });
+                });
+            } else {
+                fileQueueHeader.style.display = 'none';
+                fileQueue.innerHTML = '';
+            }
+        }
+        
+        // 处理文件选择
+        function handleFileSelect(files) {
+            if (files && files.length) {
+                for (let i = 0; i < files.length; i++) {
+                    // 检查是否为PDF文件
+                    if (files[i].type === 'application/pdf') {
+                        pendingFiles.push(files[i]);
+                    }
+                }
+                updateFileQueue();
+            }
+        }
+        
+        // 文件选择按钮点击事件
+        if (fileSelectBtn) {
+            fileSelectBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                fileInput.click();
+            });
+        }
+        
+        // 文件选择变化事件
+        if (fileInput) {
+            fileInput.addEventListener('change', function() {
+                handleFileSelect(this.files);
+                // 重置input以允许选择相同文件
+                this.value = '';
+            });
+        }
+        
+        // 拖拽相关事件
+        if (fileUploadArea) {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                fileUploadArea.addEventListener(eventName, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
+            });
+            
+            // 拖拽样式
+            fileUploadArea.addEventListener('dragenter', function() {
+                this.classList.add('drag-over');
+            }, false);
+            
+            fileUploadArea.addEventListener('dragover', function() {
+                this.classList.add('drag-over');
+            }, false);
+            
+            fileUploadArea.addEventListener('dragleave', function() {
+                this.classList.remove('drag-over');
+            }, false);
+            
+            // 处理文件拖放
+            fileUploadArea.addEventListener('drop', function(e) {
+                this.classList.remove('drag-over');
+                handleFileSelect(e.dataTransfer.files);
+            }, false);
+        }
+        
+        // 上传按钮点击事件
+        if (uploadFilesBtn) {
+            uploadFilesBtn.addEventListener('click', function() {
+                // 这里实现文件上传逻辑
+                alert(`准备上传 ${pendingFiles.length} 个文件`);
+                // 上传成功后清空队列
+                // pendingFiles.length = 0;
+                // updateFileQueue();
+            });
+        }
     }
 
     // 处理会议表单提交
@@ -325,45 +463,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(form);
         const meetingId = formData.get('id');
         
-        // Convert FormData to JSON structure
-        const meetingData = {
-            title: formData.get('title'),
-            intro: formData.get('intro'),
-            time: formData.get('time')
-        };
-        
-        // Process agenda items
-        const agendaItems = [];
+        // 使用FormData直接提交，因为包含文件
         const agendaElements = form.querySelectorAll('.agenda-item');
         
+        // 添加基本会议信息到FormData
+        // FormData已经包含了基本字段，不需要重新添加
+        
+        // 处理文件上传
         agendaElements.forEach(element => {
             const index = element.dataset.index;
-            const id = formData.get(`agenda[${index}][id]`);
-            const title = formData.get(`agenda[${index}][title]`);
-            const reporter = formData.get(`agenda[${index}][reporter]`);
-            const content = formData.get(`agenda[${index}][content]`);
+            const fileInput = element.querySelector(`#agendaFiles_${index}`);
             
-            agendaItems.push({
-                id: id || undefined,
-                title,
-                reporter,
-                content
-            });
+            if (fileInput && fileInput.files.length > 0) {
+                // 多个文件需要单独处理
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    formData.append(`agenda[${index}][files]`, fileInput.files[i]);
+                }
+            }
         });
         
-        meetingData.agenda_items = agendaItems;
-        console.log('Submitting meeting data:', meetingData);
+        console.log('Submitting meeting with files');
         
-        // Determine if we're creating or updating
+        // 确定是创建还是更新
         const method = meetingId ? 'PUT' : 'POST';
         const url = meetingId ? `/api/meetings/${meetingId}` : '/api/meetings/';
         
         fetch(url, {
             method,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(meetingData),
+            body: formData // 直接提交FormData，不设置Content-Type，浏览器会自动设置为multipart/form-data
         })
         .then(response => {
             if (!response.ok) {
@@ -373,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .then(data => {
             console.log('Success:', data);
-            closeModal();
+            returnToListView();
             fetchMeetings(); // 刷新会议列表
         })
         .catch(error => {
@@ -416,11 +543,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (meeting.agenda_items && meeting.agenda_items.length > 0) {
                 agendaItemsHtml = '<h3>会议议程</h3><ul>';
                 meeting.agenda_items.forEach((item, index) => {
+                    let filesHtml = '';
+                    if (item.files && item.files.length > 0) {
+                        filesHtml = '<p><strong>相关文件:</strong></p><ul class="file-list">';
+                        item.files.forEach(file => {
+                            filesHtml += `<li><a href="${file.url}" target="_blank">${file.name}</a> (${(file.size / 1024).toFixed(2)} KB)</li>`;
+                        });
+                        filesHtml += '</ul>';
+                    }
+                    
                     agendaItemsHtml += `
                         <li class="agenda-detail">
                             <h4>议程 ${index + 1}: ${item.title || '无标题'}</h4>
-                            <p>${item.reporter ? `<strong>报告人:</strong> ${item.reporter}` : ''}</p>
-                            <p>${item.content ? `<strong>内容:</strong> ${item.content}` : ''}</p>
+                            ${filesHtml}
                         </li>
                     `;
                 });
@@ -501,4 +636,4 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = '/';
         }
     }
-}); 
+});

@@ -31,41 +31,84 @@
             </header>
 
             <main class="content-area">
-                <h1>会议管理</h1>
-                <div class="controls-bar">
-                    <div class="filters">
-                        <input type="text" placeholder="会议名称">
-                        <input type="text" placeholder="会议状态">
-                        <button class="btn btn-secondary">查询</button>
-                        <button class="btn btn-outline">重置</button>
+                <!-- 会议列表视图 -->
+                <div id="meeting-list-view">
+                    <h1>会议管理</h1>
+                    <div class="controls-bar">
+                        <div class="filters">
+                            <input type="text" placeholder="会议名称">
+                            <input type="text" placeholder="会议状态">
+                            <button class="btn btn-secondary">查询</button>
+                            <button class="btn btn-outline">重置</button>
+                        </div>
+                        <button class="btn btn-primary" id="add-meeting-btn">新增会议</button>
                     </div>
-                    <button class="btn btn-primary" id="add-meeting-btn">新增会议</button>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>会议名称</th>
+                                    <th>会议介绍</th>
+                                    <th>会议时间</th>
+                                    <th>会议状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination-container">
+                        <span>共 0 条</span>
+                        <select>
+                            <option>10 条/页</option>
+                            <option>20 条/页</option>
+                        </select>
+                        <button disabled><</button>
+                        <span>1</span>
+                        <button>></button>
+                    </div>
                 </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>会议名称</th>
-                                <th>会议介绍</th>
-                                <th>会议时间</th>
-                                <th>会议状态</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">加载中...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="pagination-container">
-                    <span>共 0 条</span>
-                    <select>
-                        <option>10 条/页</option>
-                        <option>20 条/页</option>
-                    </select>
-                    <button disabled><</button>
-                    <span>1</span>
-                    <button>></button>
+                
+                <!-- 会议编辑视图 -->
+                <div id="meeting-edit-view" style="display: none;">
+                    <div class="view-header">
+                        <h1 id="edit-view-title">新增会议</h1>
+                        <button class="btn btn-outline" id="back-to-list-btn">返回列表</button>
+                    </div>
+                    
+                    <form id="meetingForm" class="meeting-edit-form">
+                        <input type="hidden" id="meetingId" name="id">
+
+                        <div class="form-group">
+                            <label for="meetingTitle">会议名称:</label>
+                            <input type="text" id="meetingTitle" name="title" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="meetingIntro">会议介绍:</label>
+                            <textarea id="meetingIntro" name="intro"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="meetingTime">会议时间:</label>
+                            <input type="datetime-local" id="meetingTime" name="time">
+                        </div>
+
+                        <div class="form-group">
+                            <h3>议程项</h3>
+                            <div id="agendaItemsContainer">
+                                <!-- 议程项将在这里动态添加 -->
+                            </div>
+                            <button type="button" id="addAgendaItemBtn" class="btn">添加议程项</button>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">保存会议</button>
+                            <button type="button" class="btn btn-secondary" id="cancelEditBtn">取消</button>
+                        </div>
+                    </form>
                 </div>
             </main>
         </div>
@@ -118,4 +161,4 @@
 
     <script src="./huiyi-meeting.js"></script>
 </body>
-</html> 
+</html>

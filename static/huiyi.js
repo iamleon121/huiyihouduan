@@ -572,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     detailsHtml += `
                         <li>
                             <h4>议程 ${index + 1}: ${item.title || '无标题'}</h4>
-                            <div class="agenda-detail"><strong>报告人:</strong> ${item.reporter || '-'}</div>
+                            <div class="agenda-detail"><strong>议程文件上传:</strong> ${item.reporter || '-'}</div>
                             <div class="agenda-detail"><strong>预计时间:</strong> ${item.duration_minutes ? item.duration_minutes + ' 分钟' : '-'}</div>
                             <div class="agenda-detail"><strong>关联文件:</strong> <span class="json-data">${JSON.stringify(item.files || [])}</span></div>
                             <div class="agenda-detail"><strong>关联页码:</strong> <span class="json-data">${JSON.stringify(item.pages || [])}</span></div>
@@ -680,7 +680,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <label for="agendaTitle_${itemIndex}">标题:</label>
                 <input type="text" id="agendaTitle_${itemIndex}" name="agenda[${itemIndex}][title]" value="${itemData?.title || ''}" required />
 
-                <label for="agendaReporter_${itemIndex}">报告人:</label>
+                <label for="agendaReporter_${itemIndex}">议程文件上传:</label>
                 <input type="text" id="agendaReporter_${itemIndex}" name="agenda[${itemIndex}][reporter]" value="${itemData?.reporter || ''}" />
 
                 <label for="agendaTime_${itemIndex}">预计时间 (分钟):</label>
