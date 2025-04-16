@@ -1,10 +1,10 @@
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any, Union
 
 # --- Agenda Item Schemas ---
 class AgendaItemBase(BaseModel):
     title: str
-    files: Optional[List[str]] = None
+    files: Optional[List[Any]] = None  # 允许任何类型的列表元素，包括字符串和字典
     pages: Optional[List[str]] = None
 
 class AgendaItemCreate(AgendaItemBase):

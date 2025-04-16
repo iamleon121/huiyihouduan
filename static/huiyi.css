@@ -362,6 +362,131 @@ html, body {
     opacity: 1;
 }
 
+/* 文件上传进度条样式 */
+.upload-progress {
+    margin-top: 5px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.progress-bar {
+    height: 6px;
+    background-color: #e9ecef;
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0;
+    background-color: var(--primary-color);
+    animation: progress-animation 1.5s infinite ease-in-out;
+}
+
+@keyframes progress-animation {
+    0% { width: 0; }
+    50% { width: 70%; }
+    100% { width: 100%; }
+}
+
+.progress-text {
+    font-size: 0.8em;
+    color: var(--text-color-light);
+    text-align: center;
+}
+
+/* 已上传文件容器样式 */
+.uploaded-files-container {
+    margin: 15px 0;
+    padding: 15px;
+    background-color: var(--light-grey);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.uploaded-files-container h5 {
+    margin: 0 0 10px 0;
+    font-size: 1em;
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.uploaded-files-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.uploaded-file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    margin-bottom: 5px;
+    background-color: white;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.uploaded-file-item .file-info {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.uploaded-file-item .file-info:before {
+    content: '📄';
+    margin-right: 5px;
+}
+
+.uploaded-file-item .file-name {
+    font-weight: 500;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.uploaded-file-item .file-size {
+    color: var(--text-color-light);
+    font-size: 0.85em;
+}
+
+.btn-view-file {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 0.9em;
+    padding: 3px 8px;
+    margin-right: 5px;
+}
+
+.btn-view-file:hover {
+    text-decoration: underline;
+}
+
+.btn-remove-uploaded-file {
+    background: none;
+    border: none;
+    color: var(--danger-color);
+    font-size: 1.2em;
+    cursor: pointer;
+    padding: 0 5px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.btn-remove-uploaded-file:hover {
+    opacity: 1;
+}
+
 .file-list {
     list-style: none;
     padding-left: 10px;
@@ -562,6 +687,42 @@ html, body {
     border-color: #adb5bd;
 }
 
+/* Start button style */
+.btn-action.start {
+    background-color: rgba(40, 167, 69, 0.1); /* Light success background */
+    border-color: rgba(40, 167, 69, 0.3);
+    color: var(--success-color);
+}
+.btn-action.start:hover {
+    background-color: rgba(40, 167, 69, 0.2);
+    border-color: rgba(40, 167, 69, 0.5);
+    color: #1e7e34; /* Darker success color */
+}
+
+/* End button style */
+.btn-action.end {
+    background-color: rgba(255, 193, 7, 0.1); /* Light warning background */
+    border-color: rgba(255, 193, 7, 0.3);
+    color: #d39e00; /* Warning color */
+}
+.btn-action.end:hover {
+    background-color: rgba(255, 193, 7, 0.2);
+    border-color: rgba(255, 193, 7, 0.5);
+    color: #ba8b00; /* Darker warning color */
+}
+
+/* Restart button style */
+.btn-action.restart {
+    background-color: rgba(23, 162, 184, 0.1); /* Light info background */
+    border-color: rgba(23, 162, 184, 0.3);
+    color: #138496; /* Info color */
+}
+.btn-action.restart:hover {
+    background-color: rgba(23, 162, 184, 0.2);
+    border-color: rgba(23, 162, 184, 0.5);
+    color: #117a8b; /* Darker info color */
+}
+
 /* Delete button style */
 .btn-action.delete {
     background-color: rgba(220, 53, 69, 0.1); /* Light danger background */
@@ -574,17 +735,7 @@ html, body {
     color: #a71d2a; /* Darker danger color */
 }
 
-/* Start meeting button style */
-.btn-action.start {
-    background-color: rgba(40, 167, 69, 0.1); /* Light success background */
-    border-color: rgba(40, 167, 69, 0.3);
-    color: var(--success-color);
-}
-.btn-action.start:hover {
-    background-color: rgba(40, 167, 69, 0.2);
-    border-color: rgba(40, 167, 69, 0.5);
-    color: #1a682b; /* Darker success color */
-}
+/* Pagination styles */
 
 /* Disabled state */
 .btn-action.disabled {

@@ -1,50 +1,50 @@
 document.addEventListener('DOMContentLoaded', () => {
     // 检查用户登录状态
     checkLoginStatus();
-    
+
     // 页面初始加载
     initMeetingPage();
-    
+
     // 会议管理页面初始化
     function initMeetingPage() {
         fetchMeetings();
-        
+
         // 添加会议按钮事件绑定
         const addMeetingBtn = document.getElementById('add-meeting-btn');
         if (addMeetingBtn) {
             addMeetingBtn.addEventListener('click', () => openEditView());
         }
-        
+
         // 返回列表按钮事件绑定
         const backToListBtn = document.getElementById('back-to-list-btn');
         if (backToListBtn) {
             backToListBtn.addEventListener('click', returnToListView);
         }
-        
+
         const cancelEditBtn = document.getElementById('cancelEditBtn');
         if (cancelEditBtn) {
             cancelEditBtn.addEventListener('click', returnToListView);
         }
-        
+
         // 添加议程项按钮事件绑定
         const addAgendaItemBtn = document.getElementById('addAgendaItemBtn');
         if (addAgendaItemBtn) {
             addAgendaItemBtn.addEventListener('click', () => addAgendaItem());
         }
-        
+
         // 会议表单提交事件绑定
         const meetingForm = document.getElementById('meetingForm');
         if (meetingForm) {
             meetingForm.addEventListener('submit', handleMeetingFormSubmit);
         }
-        
+
         // 查看会议模态框关闭按钮事件绑定
         const closeViewModalElements = document.querySelectorAll('#viewMeetingModal .close, #closeViewModalBtn');
         closeViewModalElements.forEach(element => {
             element.addEventListener('click', closeViewModal);
         });
     }
-    
+
     // --- Helper function to render status span ---
     function renderStatus(status) {
         let className = '';
@@ -67,8 +67,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isUpcoming) {
             buttons += `<button class="btn-action start" data-id="${meeting.id}">开始会议</button> `;
         }
+        if (isOngoing) {
+            buttons += `<button class="btn-action end" data-id="${meeting.id}">结束会议</button> `;
+        }
+        if (isFinished) {
+            buttons += `<button class="btn-action restart" data-id="${meeting.id}">重新开始</button> `;
+        }
         buttons += `<button class="btn-action view" data-id="${meeting.id}">查看</button> `;
-        if (!isOngoing && !isFinished) { // Can edit only if not started or finished
+        if (!isOngoing) { // Can edit if not ongoing (including finished meetings)
              buttons += `<button class="btn-action edit" data-id="${meeting.id}">编辑</button> `;
         } else {
              buttons += `<button class="btn-action edit disabled" data-id="${meeting.id}" disabled>编辑</button> `;
@@ -80,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
          }
         return buttons;
     }
-    
+
     // --- Function to attach listeners to buttons within a container (or row) ---
     function attachActionListeners(container) {
         // Start Button Listener
@@ -119,6 +125,86 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 } else {
                     console.log(`取消开始会议: ${meetingName}`);
+                }
+            });
+        });
+
+        // End Button Listener
+        container.querySelectorAll('.btn-action.end:not(.listener-attached)').forEach(button => {
+            button.classList.add('listener-attached'); // Mark as attached
+            button.addEventListener('click', (e) => {
+                const row = e.target.closest('tr');
+                const meetingName = row.querySelector('td:first-child').textContent;
+                const meetingId = e.target.dataset.id;
+
+                if (window.confirm(`确定要结束会议 "${meetingName}" 吗？此操作将更新会议状态为已结束。`)) {
+                    console.log(`结束会议: ${meetingName} (ID: ${meetingId})`);
+                    fetch(`/api/meetings/${meetingId}/status`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: '已结束' })
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        return response.json();
+                    })
+                    .then(updatedMeeting => {
+                        console.log('Meeting status updated:', updatedMeeting);
+                        const statusCell = row.querySelector('td:nth-child(4)'); // 4th cell is status
+                        if (statusCell) statusCell.innerHTML = renderStatus(updatedMeeting.status);
+                        const actionCell = row.querySelector('td:last-child');
+                        if (actionCell) {
+                             actionCell.innerHTML = renderActionButtons(updatedMeeting);
+                             // Re-attach listeners ONLY to the newly rendered buttons in this specific row
+                             attachActionListeners(actionCell);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error ending meeting:', error);
+                        alert(`结束会议失败: ${error.message}`);
+                    });
+                } else {
+                    console.log(`取消结束会议: ${meetingName}`);
+                }
+            });
+        });
+
+        // Restart Button Listener
+        container.querySelectorAll('.btn-action.restart:not(.listener-attached)').forEach(button => {
+            button.classList.add('listener-attached'); // Mark as attached
+            button.addEventListener('click', (e) => {
+                const row = e.target.closest('tr');
+                const meetingName = row.querySelector('td:first-child').textContent;
+                const meetingId = e.target.dataset.id;
+
+                if (window.confirm(`确定要重新开始会议 "${meetingName}" 吗？此操作将更新会议状态为进行中。`)) {
+                    console.log(`重新开始会议: ${meetingName} (ID: ${meetingId})`);
+                    fetch(`/api/meetings/${meetingId}/status`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: '进行中' })
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        return response.json();
+                    })
+                    .then(updatedMeeting => {
+                        console.log('Meeting status updated:', updatedMeeting);
+                        const statusCell = row.querySelector('td:nth-child(4)'); // 4th cell is status
+                        if (statusCell) statusCell.innerHTML = renderStatus(updatedMeeting.status);
+                        const actionCell = row.querySelector('td:last-child');
+                        if (actionCell) {
+                             actionCell.innerHTML = renderActionButtons(updatedMeeting);
+                             // Re-attach listeners ONLY to the newly rendered buttons in this specific row
+                             attachActionListeners(actionCell);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error restarting meeting:', error);
+                        alert(`重新开始会议失败: ${error.message}`);
+                    });
+                } else {
+                    console.log(`取消重新开始会议: ${meetingName}`);
                 }
             });
         });
@@ -181,19 +267,19 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-    
+
     // 会议管理页面函数
     async function fetchMeetings() {
         const tableBody = document.querySelector('.data-table tbody');
         if (!tableBody) return;
-        
+
         tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">加载中...</td></tr>';
-        
+
         try {
             const response = await fetch('/api/meetings/');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const meetings = await response.json();
-            
+
             let tableBodyHtml = '';
             if (meetings.length === 0) {
                 tableBodyHtml = '<tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">暂无会议</td></tr>';
@@ -210,15 +296,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 });
             }
-            
+
             tableBody.innerHTML = tableBodyHtml;
-            
+
             // 更新计数
             updatePaginationCount(meetings.length);
-            
+
             // 附加操作按钮事件
             attachActionListeners(tableBody);
-            
+
         } catch (error) {
             console.error('Failed to load meetings:', error);
             tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--danger-color);">加载会议列表失败: ${error.message}</td></tr>`;
@@ -233,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const agendaItemsContainer = document.getElementById('agendaItemsContainer');
         const editViewTitle = document.getElementById('edit-view-title');
         const meetingIdInput = document.getElementById('meetingId');
-        
+
         meetingForm.reset(); // 清除之前的数据
         agendaItemsContainer.innerHTML = ''; // 清除之前的议程项
         meetingIdInput.value = ''; // 清除ID
@@ -244,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
             meetingIdInput.value = meetingData.id;
             document.getElementById('meetingTitle').value = meetingData.title || '';
             document.getElementById('meetingIntro').value = meetingData.intro || '';
-            
+
             // 格式化日期时间 (需要 YYYY-MM-DDTHH:mm 格式)
             if (meetingData.time) {
                 try {
@@ -263,14 +349,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 填充议程项
             if (meetingData.agenda_items && meetingData.agenda_items.length > 0) {
-                meetingData.agenda_items.forEach((item, index) => addAgendaItem(item, index));
+                meetingData.agenda_items.forEach((item, index) => {
+                    // 添加议程项
+                    addAgendaItem(item, index);
+
+                    // 显示已上传的文件
+                    if (item.files && item.files.length > 0) {
+                        setTimeout(() => {
+                            displayExistingFiles(item.files, index);
+                        }, 100); // 等待议程项元素创建完成
+                    }
+                });
             }
         } else {
             // 设置新会议
             editViewTitle.textContent = '新增会议';
             addAgendaItem(); // 默认为新会议添加一个空的议程项
         }
-        
+
         // 切换视图
         meetingListView.style.display = 'none';
         meetingEditView.style.display = 'block';
@@ -280,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function returnToListView() {
         const meetingListView = document.getElementById('meeting-list-view');
         const meetingEditView = document.getElementById('meeting-edit-view');
-        
+
         meetingEditView.style.display = 'none';
         meetingListView.style.display = 'block';
     }
@@ -298,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="text" id="agendaTitle_${itemIndex}" name="agenda[${itemIndex}][title]" value="${itemData?.title || ''}" required />
 
                 <label for="agendaReporter_${itemIndex}">议程文件上传:</label>
-                
+
                 <div class="file-upload-container">
                     <div class="file-upload-area" id="fileUploadArea_${itemIndex}">
                         <div class="file-upload-prompt">
@@ -321,24 +417,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${itemIndex > 0 ? `<button type="button" class="btn removeAgendaItemBtn" data-index="${itemIndex}">移除此议程</button>` : ''}
             </div>
         `;
-        
+
         // Add the new item to the container
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = newItemHtml.trim();
         const newItem = tempDiv.firstChild;
         agendaItemsContainer.appendChild(newItem);
-        
+
         // Attach event listener to the remove button if present
         const removeButton = newItem.querySelector('.removeAgendaItemBtn');
         if (removeButton) {
-            removeButton.addEventListener('click', function(e) {
+            removeButton.addEventListener('click', function() {
                 const index = parseInt(this.dataset.index);
                 if (!isNaN(index)) {
                     agendaItemsContainer.querySelector(`.agenda-item[data-index="${index}"]`).remove();
                 }
             });
         }
-        
+
         // 添加文件上传相关事件监听器
         const fileInput = newItem.querySelector(`#agendaFiles_${itemIndex}`);
         const selectedFilesDiv = newItem.querySelector(`#selectedFiles_${itemIndex}`);
@@ -347,15 +443,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const fileQueueHeader = selectedFilesDiv.querySelector('.file-queue-header');
         const fileQueue = newItem.querySelector(`#fileQueue_${itemIndex}`);
         const uploadFilesBtn = newItem.querySelector(`#uploadFilesBtn_${itemIndex}`);
-        
+
         // 存储待上传文件的数组
         const pendingFiles = [];
-        
+
         // 更新文件队列显示
         function updateFileQueue() {
             if (pendingFiles.length > 0) {
                 fileQueueHeader.style.display = 'flex';
-                
+
                 let fileListHTML = '';
                 pendingFiles.forEach((file, idx) => {
                     fileListHTML += `
@@ -368,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </li>`;
                 });
                 fileQueue.innerHTML = fileListHTML;
-                
+
                 // 添加删除文件事件
                 fileQueue.querySelectorAll('.btn-remove-file').forEach(btn => {
                     btn.addEventListener('click', function() {
@@ -384,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fileQueue.innerHTML = '';
             }
         }
-        
+
         // 处理文件选择
         function handleFileSelect(files) {
             if (files && files.length) {
@@ -397,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateFileQueue();
             }
         }
-        
+
         // 文件选择按钮点击事件
         if (fileSelectBtn) {
             fileSelectBtn.addEventListener('click', function(e) {
@@ -405,7 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fileInput.click();
             });
         }
-        
+
         // 文件选择变化事件
         if (fileInput) {
             fileInput.addEventListener('change', function() {
@@ -414,7 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.value = '';
             });
         }
-        
+
         // 拖拽相关事件
         if (fileUploadArea) {
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -423,37 +519,144 @@ document.addEventListener('DOMContentLoaded', () => {
                     e.stopPropagation();
                 }, false);
             });
-            
+
             // 拖拽样式
             fileUploadArea.addEventListener('dragenter', function() {
                 this.classList.add('drag-over');
             }, false);
-            
+
             fileUploadArea.addEventListener('dragover', function() {
                 this.classList.add('drag-over');
             }, false);
-            
+
             fileUploadArea.addEventListener('dragleave', function() {
                 this.classList.remove('drag-over');
             }, false);
-            
+
             // 处理文件拖放
             fileUploadArea.addEventListener('drop', function(e) {
                 this.classList.remove('drag-over');
                 handleFileSelect(e.dataTransfer.files);
             }, false);
         }
-        
+
         // 上传按钮点击事件
         if (uploadFilesBtn) {
-            uploadFilesBtn.addEventListener('click', function() {
-                // 这里实现文件上传逻辑
-                alert(`准备上传 ${pendingFiles.length} 个文件`);
-                // 上传成功后清空队列
-                // pendingFiles.length = 0;
-                // updateFileQueue();
+            uploadFilesBtn.addEventListener('click', async function() {
+                if (pendingFiles.length === 0) {
+                    alert('没有待上传的文件');
+                    return;
+                }
+
+                // 获取议程项元素
+                const agendaItem = this.closest('.agenda-item');
+                const agendaItemIndex = parseInt(agendaItem.dataset.index);
+
+                // 显示上传进度
+                const fileQueue = agendaItem.querySelector('.file-queue');
+                const fileItems = fileQueue.querySelectorAll('.file-item');
+                fileItems.forEach(item => {
+                    const progressBar = document.createElement('div');
+                    progressBar.className = 'upload-progress';
+                    progressBar.innerHTML = '<div class="progress-bar"></div><span class="progress-text">准备上传...</span>';
+                    item.appendChild(progressBar);
+                });
+
+                try {
+                    // 创建FormData对象
+                    const formData = new FormData();
+                    pendingFiles.forEach(file => {
+                        formData.append('files', file);
+                    });
+
+                    // 发送临时文件上传请求
+                    const response = await fetch('/api/upload-temp-files', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`上传失败: ${response.status} ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    console.log('上传成功:', result);
+
+                    // 将上传的文件信息存储到议程项中
+                    const uploadedFilesContainer = agendaItem.querySelector('.uploaded-files-container') || createUploadedFilesContainer(agendaItem);
+                    const uploadedFilesList = uploadedFilesContainer.querySelector('.uploaded-files-list');
+
+                    // 添加上传的文件到列表中
+                    result.uploaded_files.forEach(file => {
+                        // 创建隐藏输入字段存储文件信息
+                        const fileInfoInput = document.createElement('input');
+                        fileInfoInput.type = 'hidden';
+                        fileInfoInput.name = `agenda[${agendaItemIndex}][temp_files][]`;
+                        fileInfoInput.value = JSON.stringify(file);
+                        agendaItem.appendChild(fileInfoInput);
+
+                        // 添加文件到可视化列表
+                        const fileItem = document.createElement('li');
+                        fileItem.className = 'uploaded-file-item';
+                        fileItem.innerHTML = `
+                            <div class="file-info">
+                                <span class="file-name">${file.name}</span>
+                                <span class="file-size">${(file.size / 1024).toFixed(2)} KB</span>
+                            </div>
+                            <a href="${file.url}" target="_blank" class="btn-view-file">查看</a>
+                            <button type="button" class="btn-remove-uploaded-file" data-temp-id="${file.temp_id}">×</button>
+                        `;
+                        uploadedFilesList.appendChild(fileItem);
+
+                        // 添加删除按钮事件
+                        const removeBtn = fileItem.querySelector('.btn-remove-uploaded-file');
+                        removeBtn.addEventListener('click', function() {
+                            // 移除隐藏输入字段
+                            const tempId = this.dataset.tempId;
+                            const inputs = agendaItem.querySelectorAll(`input[name="agenda[${agendaItemIndex}][temp_files][]"]`);
+                            inputs.forEach(input => {
+                                const fileInfo = JSON.parse(input.value);
+                                if (fileInfo.temp_id === tempId) {
+                                    input.remove();
+                                }
+                            });
+
+                            // 移除列表项
+                            fileItem.remove();
+
+                            // 如果没有文件了，隐藏容器
+                            if (uploadedFilesList.children.length === 0) {
+                                uploadedFilesContainer.style.display = 'none';
+                            }
+                        });
+                    });
+
+                    // 显示已上传文件容器
+                    uploadedFilesContainer.style.display = 'block';
+
+                    // 清空队列
+                    pendingFiles.length = 0;
+                    updateFileQueue();
+
+                    // 显示成功消息
+                    alert(`成功上传 ${result.uploaded_files.length} 个文件`);
+
+                } catch (error) {
+                    console.error('文件上传错误:', error);
+                    alert(`文件上传失败: ${error.message}`);
+
+                    // 移除进度条
+                    fileItems.forEach(item => {
+                        const progressBar = item.querySelector('.upload-progress');
+                        if (progressBar) {
+                            progressBar.remove();
+                        }
+                    });
+                }
             });
         }
+
+
     }
 
     // 处理会议表单提交
@@ -462,35 +665,84 @@ document.addEventListener('DOMContentLoaded', () => {
         const form = e.target;
         const formData = new FormData(form);
         const meetingId = formData.get('id');
-        
-        // 使用FormData直接提交，因为包含文件
+
+        // 收集会议基本信息
+        const meetingData = {
+            id: meetingId || generateUUID(), // 如果没有ID，生成一个新的UUID
+            title: formData.get('title'),
+            intro: formData.get('intro'),
+            time: formData.get('time'),
+            status: '未开始'
+        };
+
+        // 收集议程项信息
         const agendaElements = form.querySelectorAll('.agenda-item');
-        
-        // 添加基本会议信息到FormData
-        // FormData已经包含了基本字段，不需要重新添加
-        
-        // 处理文件上传
+        const agendaItems = [];
+
         agendaElements.forEach(element => {
             const index = element.dataset.index;
-            const fileInput = element.querySelector(`#agendaFiles_${index}`);
-            
-            if (fileInput && fileInput.files.length > 0) {
-                // 多个文件需要单独处理
-                for (let i = 0; i < fileInput.files.length; i++) {
-                    formData.append(`agenda[${index}][files]`, fileInput.files[i]);
+            const agendaItemId = element.querySelector(`input[name="agenda[${index}][id]"]`).value;
+            const agendaItemTitle = element.querySelector(`input[name="agenda[${index}][title]"]`).value;
+
+            // 收集已上传的临时文件信息
+            const tempFileInputs = element.querySelectorAll(`input[name="agenda[${index}][temp_files][]"]`);
+            const tempFiles = [];
+
+            tempFileInputs.forEach(input => {
+                try {
+                    const fileInfo = JSON.parse(input.value);
+                    tempFiles.push(fileInfo);
+                } catch (e) {
+                    console.error('解析文件信息失败:', e);
                 }
-            }
+            });
+
+            // 收集已存在的文件信息
+            const existingFileInputs = element.querySelectorAll(`input[name="agenda[${index}][existing_files][]"]`);
+            const existingFiles = [];
+
+            existingFileInputs.forEach(input => {
+                try {
+                    const fileInfo = JSON.parse(input.value);
+                    existingFiles.push(fileInfo);
+                } catch (e) {
+                    console.error('解析已存在文件信息失败:', e);
+                }
+            });
+
+            // 合并所有文件信息
+            const allFiles = [...tempFiles, ...existingFiles];
+
+            agendaItems.push({
+                id: agendaItemId || null, // 如果没有ID，使用null，让后端生成
+                title: agendaItemTitle,
+                files: allFiles, // 将所有文件信息传给后端
+                pages: []
+            });
         });
-        
-        console.log('Submitting meeting with files');
-        
+
+        // 将议程项添加到会议数据中
+        if (meetingId) {
+            // 更新会议时使用agenda_items字段
+            meetingData.agenda_items = agendaItems;
+        } else {
+            // 创建会议时使用part字段
+            meetingData.part = agendaItems;
+        }
+
+        console.log('Submitting meeting data:', meetingData);
+
         // 确定是创建还是更新
         const method = meetingId ? 'PUT' : 'POST';
         const url = meetingId ? `/api/meetings/${meetingId}` : '/api/meetings/';
-        
+
+        // 先保存会议基本信息
         fetch(url, {
             method,
-            body: formData // 直接提交FormData，不设置Content-Type，浏览器会自动设置为multipart/form-data
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(meetingData)
         })
         .then(response => {
             if (!response.ok) {
@@ -498,35 +750,205 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return response.json();
         })
-        .then(data => {
-            console.log('Success:', data);
+        .then(savedMeeting => {
+            console.log('Meeting saved successfully:', savedMeeting);
+
+            // 保存成功后，处理文件上传
+            const uploadPromises = [];
+
+            // 遍历所有议程项，检查是否有文件需要上传
+            savedMeeting.agenda_items.forEach((agendaItem, index) => {
+                const agendaElement = agendaElements[index];
+                if (!agendaElement) return; // 如果前端和后端的议程项数量不匹配，跳过
+
+                const agendaIndex = agendaElement.dataset.index;
+                const fileInput = agendaElement.querySelector(`#agendaFiles_${agendaIndex}`);
+
+                if (fileInput && fileInput.files.length > 0) {
+                    // 创建FormData对象用于文件上传
+                    const fileFormData = new FormData();
+                    for (let i = 0; i < fileInput.files.length; i++) {
+                        fileFormData.append('files', fileInput.files[i]);
+                    }
+
+                    // 添加上传请求到promises数组
+                    const uploadPromise = fetch(`/api/meetings/${savedMeeting.id}/upload?agenda_item_id=${agendaItem.id}`, {
+                        method: 'POST',
+                        body: fileFormData
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`文件上传失败: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(result => {
+                        console.log(`议程项 ${agendaItem.id} 的文件上传成功:`, result);
+                        return result;
+                    });
+
+                    uploadPromises.push(uploadPromise);
+                }
+            });
+
+            // 等待所有文件上传完成
+            if (uploadPromises.length > 0) {
+                return Promise.all(uploadPromises).then(() => savedMeeting);
+            }
+
+            return savedMeeting;
+        })
+        .then(finalResult => {
+            console.log('All operations completed successfully:', finalResult);
             returnToListView();
             fetchMeetings(); // 刷新会议列表
         })
         .catch(error => {
-            console.error('Error saving meeting:', error);
-            alert(`保存会议失败: ${error.message}`);
+            console.error('Error during meeting save or file upload:', error);
+            alert(`操作失败: ${error.message}`);
         });
+    }
+
+    // 生成UUID函数
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    // 显示已存在的文件
+    function displayExistingFiles(files, agendaItemIndex) {
+        if (!files || !files.length) return;
+
+        console.log(`显示议程项 ${agendaItemIndex} 的已存在文件:`, files);
+
+        // 获取议程项元素
+        const agendaItem = document.querySelector(`.agenda-item[data-index="${agendaItemIndex}"]`);
+        if (!agendaItem) {
+            console.error(`找不到议程项元素: ${agendaItemIndex}`);
+            return;
+        }
+
+        // 创建或获取已上传文件容器
+        const uploadedFilesContainer = agendaItem.querySelector('.uploaded-files-container') || createUploadedFilesContainer(agendaItem);
+        const uploadedFilesList = uploadedFilesContainer.querySelector('.uploaded-files-list');
+
+        // 清空列表
+        uploadedFilesList.innerHTML = '';
+
+        // 添加文件到列表
+        files.forEach(file => {
+            try {
+                // 如果文件是字符串，尝试解析为JSON
+                let fileInfo = file;
+                if (typeof file === 'string') {
+                    try {
+                        fileInfo = JSON.parse(file);
+                    } catch (e) {
+                        // 如果不是JSON，则创建一个简单的文件对象
+                        fileInfo = {
+                            name: file,
+                            url: file,
+                            size: 0
+                        };
+                    }
+                }
+
+                // 获取文件名和大小
+                const fileName = fileInfo.name || '未命名文件';
+                const fileSize = fileInfo.size ? (fileInfo.size / 1024).toFixed(2) + ' KB' : '未知大小';
+                const fileUrl = fileInfo.url || '#';
+
+                // 创建隐藏输入字段存储文件信息
+                const fileInfoInput = document.createElement('input');
+                fileInfoInput.type = 'hidden';
+                fileInfoInput.name = `agenda[${agendaItemIndex}][existing_files][]`;
+                fileInfoInput.value = JSON.stringify(fileInfo);
+                agendaItem.appendChild(fileInfoInput);
+
+                // 添加文件到可视化列表
+                const fileItem = document.createElement('li');
+                fileItem.className = 'uploaded-file-item';
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <span class="file-name">${fileName}</span>
+                        <span class="file-size">${fileSize}</span>
+                    </div>
+                    <a href="${fileUrl}" target="_blank" class="btn-view-file">查看</a>
+                    <button type="button" class="btn-remove-uploaded-file" data-file-url="${fileUrl}">×</button>
+                `;
+                uploadedFilesList.appendChild(fileItem);
+
+                // 添加删除按钮事件
+                const removeBtn = fileItem.querySelector('.btn-remove-uploaded-file');
+                removeBtn.addEventListener('click', function() {
+                    // 移除隐藏输入字段
+                    const fileUrl = this.dataset.fileUrl;
+                    const inputs = agendaItem.querySelectorAll(`input[name="agenda[${agendaItemIndex}][existing_files][]"]`);
+                    inputs.forEach(input => {
+                        try {
+                            const info = JSON.parse(input.value);
+                            if (info.url === fileUrl) {
+                                input.remove();
+                            }
+                        } catch (e) {
+                            console.error('解析文件信息失败:', e);
+                        }
+                    });
+
+                    // 移除列表项
+                    fileItem.remove();
+
+                    // 如果没有文件了，隐藏容器
+                    if (uploadedFilesList.children.length === 0) {
+                        uploadedFilesContainer.style.display = 'none';
+                    }
+                });
+            } catch (e) {
+                console.error('处理文件信息时出错:', e, file);
+            }
+        });
+
+        // 显示已上传文件容器
+        uploadedFilesContainer.style.display = 'block';
+    }
+
+    // 创建已上传文件容器
+    function createUploadedFilesContainer(agendaItem) {
+        const container = document.createElement('div');
+        container.className = 'uploaded-files-container';
+        container.innerHTML = `
+            <h5>已上传文件</h5>
+            <ul class="uploaded-files-list"></ul>
+        `;
+
+        // 插入到文件上传区域之后
+        const fileUploadContainer = agendaItem.querySelector('.file-upload-container');
+        fileUploadContainer.parentNode.insertBefore(container, fileUploadContainer.nextSibling);
+
+        return container;
     }
 
     // 查看会议详情
     async function openViewModal(meetingId) {
         const viewMeetingModal = document.getElementById('viewMeetingModal');
         const viewMeetingDetails = document.getElementById('viewMeetingDetails');
-        
+
         // Show modal with loading state
         viewMeetingModal.style.display = 'block';
         viewMeetingDetails.innerHTML = '<p>加载中...</p>';
-        
+
         try {
             const response = await fetch(`/api/meetings/${meetingId}`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             const meeting = await response.json();
             console.log('Fetched meeting for view:', meeting);
-            
+
             // Format the meeting date and time
             let formattedTime = 'N/A';
             if (meeting.time) {
@@ -537,7 +959,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('Error formatting time:', e);
                 }
             }
-            
+
             // Build the HTML for agenda items
             let agendaItemsHtml = '';
             if (meeting.agenda_items && meeting.agenda_items.length > 0) {
@@ -551,7 +973,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         filesHtml += '</ul>';
                     }
-                    
+
                     agendaItemsHtml += `
                         <li class="agenda-detail">
                             <h4>议程 ${index + 1}: ${item.title || '无标题'}</h4>
@@ -563,7 +985,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 agendaItemsHtml = '<p><em>未设置议程项</em></p>';
             }
-            
+
             // Populate the details view
             viewMeetingDetails.innerHTML = `
                 <h3>${meeting.title || '未命名会议'}</h3>
@@ -572,7 +994,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p><strong>状态:</strong> ${meeting.status || '未知'}</p>
                 ${agendaItemsHtml}
             `;
-            
+
         } catch (error) {
             console.error('Error fetching meeting details:', error);
             viewMeetingDetails.innerHTML = `<p style="color: var(--danger-color);">加载会议详情失败: ${error.message}</p>`;
@@ -584,7 +1006,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const viewMeetingModal = document.getElementById('viewMeetingModal');
         viewMeetingModal.style.display = 'none';
     }
-    
+
     // 更新分页计数
     function updatePaginationCount(count) {
         const paginationSpan = document.querySelector('.pagination-container span');
@@ -601,11 +1023,11 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = '/';
             return;
         }
-        
+
         // 更新用户信息显示
         updateUserInfo(JSON.parse(currentUser));
     }
-    
+
     // 更新顶部用户信息显示
     function updateUserInfo(userInfo) {
         const userInfoElem = document.querySelector('.user-info');
@@ -615,7 +1037,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${userInfo.username} (${userInfo.role === 'admin' ? '管理员' : '普通用户'})
                 <a href="#" id="logoutBtn" style="margin-left: 10px; color: var(--primary-color); text-decoration: none;">退出</a>
             `;
-            
+
             // 绑定退出按钮事件
             const logoutBtn = document.getElementById('logoutBtn');
             if (logoutBtn) {
@@ -623,15 +1045,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-    
+
     // 处理退出登录
     function handleLogout(e) {
         e.preventDefault();
-        
+
         if (confirm('确定要退出登录吗？')) {
             // 清除登录信息
             sessionStorage.removeItem('currentUser');
-            
+
             // 重定向到登录页
             window.location.href = '/';
         }
