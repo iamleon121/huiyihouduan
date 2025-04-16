@@ -74,13 +74,12 @@ async def pdf_to_jpg_page(request: Request):
 
 @app.get("/huiyi", response_class=HTMLResponse)
 async def serve_huiyi_page(request: Request):
-    """提供会议系统主页面"""
-    try:
-        with open("static/huiyi.html", "r", encoding="utf-8") as f:
-            html_content = f.read()
-        return HTMLResponse(content=html_content, status_code=200)
-    except FileNotFoundError:
-        return HTMLResponse(content="<h1>错误: huiyi.html 未找到</h1>", status_code=404)
+    """提供会议系统主页面 - 重定向到新的会议管理页面"""
+    # 重定向到新的会议管理页面
+    return HTMLResponse(
+        content='<html><head><meta http-equiv="refresh" content="0;URL=\'static/huiyi-meeting.html\'"></head></html>',
+        status_code=200
+    )
 
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):

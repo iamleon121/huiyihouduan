@@ -56,8 +56,8 @@
 - `static/pdf2jpg.html`: PDF转JPG操作界面。
 - **`static/huiyi.html`**: 会议系统主界面，包含左侧导航、顶部栏。
     - **新增**: 使用 JavaScript `fetch` API 调用后端 `/api/meetings/` 获取会议列表，并动态生成表格内容。
-    - **新增**: 实现“开始会议”按钮功能，点击后弹出确认框，确认后调用 `PUT /api/meetings/{id}/status` 更新状态，并更新前端界面。
-    - **新增**: 实现“删除”按钮功能，点击后弹出确认框，确认后调用 `DELETE /api/meetings/{id}` 删除会议，并从前端表格移除该行。
+    - **新增**: 实现"开始会议"按钮功能，点击后弹出确认框，确认后调用 `PUT /api/meetings/{id}/status` 更新状态，并更新前端界面。
+    - **新增**: 实现"删除"按钮功能，点击后弹出确认框，确认后调用 `DELETE /api/meetings/{id}` 删除会议，并从前端表格移除该行。
     - 操作按钮（查看、编辑、删除、开始会议）采用现代按钮样式。
 
 ## API接口
@@ -161,10 +161,10 @@
     *   **侧边栏菜单**: 放大菜单项字体和间距，实现文本居中。
     *   **交互优化**: 修改 JavaScript，阻止菜单链接的默认跳转行为，并使用 `history.pushState` 更新 URL，解决点击卡顿问题，实现更流畅的单页体验。
 5.  **会议列表实现 (huiyi.html)**:
-    *   在“会议管理”内容区域添加了包含筛选、新增按钮、表格和分页的 HTML 结构。
+    *   在"会议管理"内容区域添加了包含筛选、新增按钮、表格和分页的 HTML 结构。
     *   添加了相应的 CSS 样式，使其符合整体现代风格。
     *   将表格操作项（查看、编辑、删除）修改为现代按钮样式。
-    *   新增“开始会议”按钮，并添加确认对话框逻辑。
+    *   新增"开始会议"按钮，并添加确认对话框逻辑。
 6.  **数据库集成**:
     *   **添加依赖**: 在 `requirements.txt` 中添加 `sqlalchemy` 并安装。
     *   **创建模型 (`models.py`)**: 定义了 `Meeting` 和 `AgendaItem` 的 SQLAlchemy 模型，用于映射数据库表。`AgendaItem` 中的 `files` 和 `pages` 存储为 JSON。
@@ -178,21 +178,97 @@
     *   路由函数使用 `Depends(get_db)` 获取数据库会话，并调用 `crud.py` 中的函数执行数据库操作。
 8.  **前端与后端连接 (`static/huiyi.html`)**:
     *   修改 JavaScript，使用 `fetch` 调用 `/api/meetings/` 获取会议列表数据，并动态渲染表格。
-    *   为“开始会议”按钮添加事件监听，确认后调用 `PUT /api/meetings/{id}/status` API 更新状态。
-    *   为“删除”按钮添加事件监听，确认后调用 `DELETE /api/meetings/{id}` API 删除会议。
+    *   为"开始会议"按钮添加事件监听，确认后调用 `PUT /api/meetings/{id}/status` API 更新状态。
+    *   为"删除"按钮添加事件监听，确认后调用 `DELETE /api/meetings/{id}` API 删除会议。
 9.  **实现会议 CRUD 功能 (2025-04-13)**:
     *   **前端 (`static/huiyi.html`)**:
         *   添加了用于新增/编辑会议的模态框 (`#meetingModal`) 和查看详情的模态框 (`#viewMeetingModal`)。
         *   实现了模态框的显示/隐藏逻辑。
         *   实现了在编辑模态框中动态添加/删除议程项的功能。
-        *   实现了“新增会议”按钮 (`#add-meeting-btn`)，点击打开空白编辑模态框。
-        *   实现了表格中“编辑”按钮 (`.edit`)，点击获取会议详情并填充编辑模态框。
-        *   实现了表格中“查看”按钮 (`.view`)，点击获取会议详情并在查看模态框中显示。
+        *   实现了"新增会议"按钮 (`#add-meeting-btn`)，点击打开空白编辑模态框。
+        *   实现了表格中"编辑"按钮 (`.edit`)，点击获取会议详情并填充编辑模态框。
+        *   实现了表格中"查看"按钮 (`.view`)，点击获取会议详情并在查看模态框中显示。
         *   实现了编辑/新增模态框的表单提交逻辑，根据是否存在会议 ID 调用 `POST` 或 `PUT /api/meetings/{id}`。
         *   在 `addAgendaItem` 函数中添加了对 JSON 字符串的 HTML 实体编码 (`.replace(/"/g, '"')`)，尝试解决 JavaScript 语法错误。
         *   **注意**: 尽管尝试修复，`static/huiyi.html` 仍存在 `Uncaught SyntaxError`，需要进一步调试。
     *   **后端 (`schemas.py`, `crud.py`, `main.py`)**:
         *   更新了 `schemas.py` 中的 `MeetingUpdate` 模型，添加 `agenda_items: Optional[List[AgendaItemUpdate]]` 以接收议程项更新。
         *   创建了 `AgendaItemUpdate` schema，并为议程项相关 schema 添加了 `reporter` 和 `duration_minutes` 字段。
-        *   重构了 `crud.py` 中的 `update_meeting` 函数，实现议程项的“删旧增新”更新策略。
+        *   重构了 `crud.py` 中的 `update_meeting` 函数，实现议程项的"删旧增新"更新策略。
         *   更新了 `main.py` 中 `PUT /api/meetings/{meeting_id}` 路由的文档字符串。
+
+# 无纸化会议系统开发变动说明
+
+## 系统架构变更
+1. 从单一HTML文件拆分为多个独立的功能页面，便于维护和开发
+2. 添加了登录页面作为系统入口，实现用户认证
+3. 每个功能模块使用单独的JavaScript文件，降低代码耦合度
+
+## 页面结构
+1. 入口页：index.html + index.js
+   - 用户登录界面
+   - 简单的用户认证逻辑
+   - 登录状态保存（sessionStorage）
+   
+2. 会议管理页：huiyi-meeting.html + huiyi-meeting.js
+   - 会议列表展示
+   - 新增/编辑会议功能
+   - 会议议程管理
+   
+3. 文件管理页：huiyi-document.html + huiyi-document.js
+   - 文件列表展示
+   - 文件上传功能
+   - 文件与会议的关联
+   
+4. 系统管理页：huiyi-system.html + huiyi-system.js
+   - 用户管理功能
+   - 系统设置功能
+   - 系统日志查看
+
+## 文件路径处理
+1. 静态资源路径修正
+   - 从相对路径改为以根目录为基准的路径（如 /static/huiyi.css）
+   - 解决了资源加载404问题
+   
+2. 页面导航路径修正
+   - 页面间跳转使用正确的相对路径
+   - 登录/退出重定向到正确的页面
+
+## 用户认证与权限控制
+1. 简单的用户认证系统
+   - 用户登录信息储存在sessionStorage
+   - 测试账号：admin/admin123（管理员）, user/user123（普通用户）
+   
+2. 权限控制实现
+   - 所有页面添加登录检查
+   - 系统管理页面限制只有管理员可访问
+   - 非管理员尝试访问管理页时会自动跳转
+
+## API模拟
+1. 会议管理API
+   - 获取会议列表
+   - 新增/编辑/删除会议
+   - 修改会议状态
+   
+2. 文件管理API
+   - 获取文件列表
+   - 上传/删除文件
+   
+3. 系统管理API
+   - 用户管理（增删改查）
+   - 系统设置保存
+
+## 用户界面改进
+1. 统一的导航结构
+   - 左侧固定导航菜单
+   - 顶部显示用户信息和退出按钮
+   
+2. 响应式设计优化
+   - 适配不同屏幕尺寸
+   - 移动设备友好的布局
+
+## 待解决问题
+1. 服务器端API的实际实现
+2. 文件上传和下载功能的完善
+3. 实际的数据库连接
+4. 更完善的用户权限系统
