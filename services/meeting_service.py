@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 
 import crud
 import models
-from utils import format_file_size, convert_pdf_to_jpg_for_pad_sync
+from utils import format_file_size
+from services.pdf_service import PDFService
 
 # 获取项目根目录
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -41,21 +42,21 @@ class MeetingService:
         return meeting
 
     @staticmethod
-    def create_meeting(db: Session, meeting_data: Dict[str, Any]):
+    async def create_meeting(db: Session, meeting_data: Dict[str, Any]):
         """创建新会议"""
         # 处理临时文件
-        MeetingService.process_temp_files_in_meeting(meeting_data)
+        await MeetingService.process_temp_files_in_meeting(meeting_data)
 
         # 创建会议
         db_meeting = crud.create_meeting(db=db, meeting=meeting_data)
         return db_meeting
 
     @staticmethod
-    def update_meeting(db: Session, meeting_id: str, meeting_data: Dict[str, Any]):
+    async def update_meeting(db: Session, meeting_id: str, meeting_data: Dict[str, Any]):
         """更新会议信息"""
         # 处理临时文件
         if meeting_data.part:
-            MeetingService.process_temp_files_in_meeting_update(meeting_id, meeting_data)
+            await MeetingService.process_temp_files_in_meeting_update(meeting_id, meeting_data)
 
         # 更新会议
         db_meeting = crud.update_meeting(db=db, meeting_id=meeting_id, meeting_update=meeting_data)
@@ -157,7 +158,8 @@ class MeetingService:
             # 为PDF文件创廾JPG文件
             jpg_subdir = os.path.join(jpg_dir, unique_id)
             os.makedirs(jpg_subdir, exist_ok=True)
-            convert_pdf_to_jpg_for_pad_sync(file_path, jpg_subdir)
+            # 使用异步方式调用PDF转JPG功能
+            await PDFService.convert_pdf_to_jpg_for_pad(file_path, jpg_subdir)
 
             # 添加文件信息
             file_info = {
@@ -186,8 +188,13 @@ class MeetingService:
         return {"success": True, "files": uploaded_files}
 
     @staticmethod
-    def get_meeting_jpgs(db: Session, meeting_id: str):
-        """获取会议的JPG文件信息"""
+    async def get_meeting_jpgs(db: Session, meeting_id: str):
+        """获取会议的JPG文件信息
+        使用异步IO和线程池处理文件操作，避免阻塞事件循环。
+        """
+        # 导入异步工具
+        from services.async_utils import AsyncUtils
+
         # 检查会议是否存在
         db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
         if db_meeting is None:
@@ -195,7 +202,10 @@ class MeetingService:
 
         # 获取会议目录
         meeting_dir = os.path.join(UPLOAD_DIR, meeting_id)
-        if not os.path.exists(meeting_dir):
+
+        # 使用线程池检查目录是否存在
+        dir_exists = await AsyncUtils.run_in_threadpool(lambda: os.path.exists(meeting_dir))
+        if not dir_exists:
             raise HTTPException(status_code=404, detail="会议文件目录不存在")
 
         # 准备返回结果
@@ -207,39 +217,57 @@ class MeetingService:
             agenda_dir = os.path.join(meeting_dir, f"agenda_{agenda_item_id}")
             jpg_dir = os.path.join(agenda_dir, "jpgs")
 
-            # 如果议程项目录不存在，跳过
-            if not os.path.exists(agenda_dir):
+            # 使用线程池检查议程项目录是否存在
+            agenda_dir_exists = await AsyncUtils.run_in_threadpool(lambda: os.path.exists(agenda_dir))
+            if not agenda_dir_exists:
                 continue
 
-            # 如果JPG目录不存在，跳过
-            if not os.path.exists(jpg_dir):
+            # 使用线程池检查JPG目录是否存在
+            jpg_dir_exists = await AsyncUtils.run_in_threadpool(lambda: os.path.exists(jpg_dir))
+            if not jpg_dir_exists:
                 continue
 
             # 收集议程项的JPG文件信息
             agenda_files = []
 
-            # 遍历JPG目录中的所有子目录（每个子目录对应一个PDF文件）
-            for pdf_id in os.listdir(jpg_dir):
-                pdf_jpg_dir = os.path.join(jpg_dir, pdf_id)
-                if not os.path.isdir(pdf_jpg_dir):
-                    continue
+            # 使用线程池获取JPG目录中的所有子目录
+            async def get_pdf_dirs():
+                def _get_pdf_dirs():
+                    return [d for d in os.listdir(jpg_dir) if os.path.isdir(os.path.join(jpg_dir, d))]
+                return await AsyncUtils.run_in_threadpool(_get_pdf_dirs)
 
-                # 查找对应的PDF文件
-                pdf_file = None
-                for file in os.listdir(agenda_dir):
-                    if file.startswith(f"{pdf_id}_") and file.lower().endswith(".pdf"):
-                        pdf_file = file
-                        break
+            pdf_dirs = await get_pdf_dirs()
+
+            # 遍历所有PDF对应的目录
+            for pdf_id in pdf_dirs:
+                pdf_jpg_dir = os.path.join(jpg_dir, pdf_id)
+
+                # 使用线程池查找对应的PDF文件
+                async def find_pdf_file():
+                    def _find_pdf_file():
+                        for file in os.listdir(agenda_dir):
+                            if file.startswith(f"{pdf_id}_") and file.lower().endswith(".pdf"):
+                                return file
+                        return None
+                    return await AsyncUtils.run_in_threadpool(_find_pdf_file)
+
+                pdf_file = await find_pdf_file()
 
                 if not pdf_file:
                     continue
 
-                # 收集JPG文件信息
-                jpg_files = []
-                for jpg_file in os.listdir(pdf_jpg_dir):
-                    if jpg_file.lower().endswith(".jpg"):
-                        jpg_path = f"/uploads/{meeting_id}/agenda_{agenda_item_id}/jpgs/{pdf_id}/{jpg_file}"
-                        jpg_files.append(jpg_path)
+                # 使用线程池获取所有JPG文件
+                async def get_jpg_files():
+                    def _get_jpg_files():
+                        jpg_paths = []
+                        for jpg_file in os.listdir(pdf_jpg_dir):
+                            if jpg_file.lower().endswith(".jpg"):
+                                jpg_path = f"/uploads/{meeting_id}/agenda_{agenda_item_id}/jpgs/{pdf_id}/{jpg_file}"
+                                jpg_paths.append(jpg_path)
+                        return jpg_paths
+                    return await AsyncUtils.run_in_threadpool(_get_jpg_files)
+
+                jpg_files = await get_jpg_files()
 
                 # 如果有JPG文件，添加到结果中
                 if jpg_files:
@@ -267,8 +295,13 @@ class MeetingService:
         return result
 
     @staticmethod
-    def get_meeting_package(db: Session, meeting_id: str):
-        """获取会议的完整信息包，包括会议基本信息、议程项和文件信息"""
+    async def get_meeting_package(db: Session, meeting_id: str):
+        """获取会议的完整信息包，包括会议基本信息、议程项和文件信息
+        使用异步IO和线程池处理文件操作，避免阻塞事件循环。
+        """
+        # 导入异步工具
+        from services.async_utils import AsyncUtils
+
         # 检查会议是否存在
         db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
         if db_meeting is None:
@@ -299,24 +332,43 @@ class MeetingService:
                 "files": []
             }
 
-            # 如果议程项目录存在，收集文件信息
-            if os.path.exists(agenda_dir):
-                # 收集PDF文件信息
-                for file in os.listdir(agenda_dir):
-                    if file.lower().endswith(".pdf"):
-                        file_path = os.path.join(agenda_dir, file)
-                        file_size = os.path.getsize(file_path)
-                        # 从UUID_filename.pdf格式中提取原始文件名
-                        original_name = "_".join(file.split("_")[1:]) if "_" in file else file
-                        file_info = {
-                            "name": original_name,
-                            "path": file_path,
-                            "size": file_size,
-                            "formatted_size": format_file_size(file_size),
-                            "url": f"/uploads/{meeting_id}/agenda_{agenda_item_id}/{file}",
-                            "type": "pdf"
-                        }
-                        agenda_info["files"].append(file_info)
+            # 使用线程池检查议程项目录是否存在
+            agenda_dir_exists = await AsyncUtils.run_in_threadpool(lambda: os.path.exists(agenda_dir))
+            if agenda_dir_exists:
+                # 使用线程池获取目录中的所有PDF文件
+                async def get_pdf_files():
+                    def _get_pdf_files():
+                        return [f for f in os.listdir(agenda_dir) if f.lower().endswith(".pdf")]
+                    return await AsyncUtils.run_in_threadpool(_get_pdf_files)
+
+                pdf_files = await get_pdf_files()
+
+                # 并行处理所有PDF文件
+                async def process_pdf_file(file):
+                    file_path = os.path.join(agenda_dir, file)
+
+                    # 使用线程池获取文件大小
+                    file_size = await AsyncUtils.run_in_threadpool(lambda: os.path.getsize(file_path))
+
+                    # 从UUID_filename.pdf格式中提取原始文件名
+                    original_name = "_".join(file.split("_")[1:]) if "_" in file else file
+
+                    # 创建文件信息字典
+                    return {
+                        "name": original_name,
+                        "path": file_path,
+                        "size": file_size,
+                        "formatted_size": format_file_size(file_size),
+                        "url": f"/uploads/{meeting_id}/agenda_{agenda_item_id}/{file}",
+                        "type": "pdf"
+                    }
+
+                # 并行处理所有PDF文件，但限制并发数量为4
+                tasks = [process_pdf_file(file) for file in pdf_files]
+                file_results = await AsyncUtils.gather_with_concurrency(4, *tasks)
+
+                # 添加文件信息到议程项
+                agenda_info["files"] = file_results
 
             # 添加议程项信息到结果中
             result["agenda_items"].append(agenda_info)
@@ -324,8 +376,13 @@ class MeetingService:
         return result
 
     @staticmethod
-    def download_meeting_package(db: Session, meeting_id: str):
-        """下载会议的JPG文件包，将所有JPG文件打包成ZIP文件"""
+    async def download_meeting_package(db: Session, meeting_id: str):
+        """下载会议的JPG文件包，将所有JPG文件打包成ZIP文件
+        使用异步IO和线程池处理文件操作，避免阻塞事件循环。
+        """
+        # 导入异步工具
+        from services.async_utils import AsyncUtils
+
         # 检查会议是否存在
         db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
         if db_meeting is None:
@@ -333,7 +390,10 @@ class MeetingService:
 
         # 获取会议目录
         meeting_dir = os.path.join(UPLOAD_DIR, meeting_id)
-        if not os.path.exists(meeting_dir):
+
+        # 使用线程池检查目录是否存在
+        dir_exists = await AsyncUtils.run_in_threadpool(lambda: os.path.exists(meeting_dir))
+        if not dir_exists:
             raise HTTPException(status_code=404, detail="会议文件目录不存在")
 
         # 创建内存中的ZIP文件
@@ -345,44 +405,65 @@ class MeetingService:
                 agenda_dir = os.path.join(meeting_dir, f"agenda_{agenda_item_id}")
                 jpg_dir = os.path.join(agenda_dir, "jpgs")
 
-                # 如果议程项目录不存在，跳过
-                if not os.path.exists(agenda_dir):
+                # 使用线程池检查目录是否存在
+                agenda_dir_exists = await AsyncUtils.run_in_threadpool(lambda: os.path.exists(agenda_dir))
+                if not agenda_dir_exists:
                     continue
 
-                # 如果JPG目录不存在，跳过
-                if not os.path.exists(jpg_dir):
+                # 使用线程池检查JPG目录是否存在
+                jpg_dir_exists = await AsyncUtils.run_in_threadpool(lambda: os.path.exists(jpg_dir))
+                if not jpg_dir_exists:
                     continue
 
-                # 遍历JPG目录中的所有子目录（每个子目录对应一个PDF文件）
-                for pdf_id in os.listdir(jpg_dir):
+                # 使用线程池获取JPG目录中的所有子目录
+                async def get_pdf_dirs():
+                    def _get_pdf_dirs():
+                        return [d for d in os.listdir(jpg_dir) if os.path.isdir(os.path.join(jpg_dir, d))]
+                    return await AsyncUtils.run_in_threadpool(_get_pdf_dirs)
+
+                pdf_dirs = await get_pdf_dirs()
+
+                # 遍历所有PDF对应的目录
+                for pdf_id in pdf_dirs:
                     pdf_jpg_dir = os.path.join(jpg_dir, pdf_id)
-                    if not os.path.isdir(pdf_jpg_dir):
-                        continue
 
-                    # 查找对应的PDF文件
-                    pdf_file = None
-                    for file in os.listdir(agenda_dir):
-                        if file.startswith(f"{pdf_id}_") and file.lower().endswith(".pdf"):
-                            pdf_file = file
-                            break
+                    # 使用线程池查找对应的PDF文件
+                    async def find_pdf_file():
+                        def _find_pdf_file():
+                            for file in os.listdir(agenda_dir):
+                                if file.startswith(f"{pdf_id}_") and file.lower().endswith(".pdf"):
+                                    return file
+                            return None
+                        return await AsyncUtils.run_in_threadpool(_find_pdf_file)
+
+                    pdf_file = await find_pdf_file()
 
                     # 如果找不到对应的PDF文件，使用默认名称
                     pdf_name = pdf_file.split("_", 1)[1] if pdf_file and "_" in pdf_file else f"document_{pdf_id}.pdf"
 
-                    # 遍历所有JPG文件
-                    for jpg_file in os.listdir(pdf_jpg_dir):
-                        if jpg_file.lower().endswith(".jpg"):
-                            jpg_path = os.path.join(pdf_jpg_dir, jpg_file)
-                            # 在ZIP文件中创建层次结构
-                            zip_path = f"{db_meeting.title}/议程{agenda_item_id}_{agenda_item.title}/{pdf_name}/{jpg_file}"
-                            zip_file.write(jpg_path, zip_path)
+                    # 使用线程池获取所有JPG文件
+                    async def get_jpg_files():
+                        def _get_jpg_files():
+                            return [f for f in os.listdir(pdf_jpg_dir) if f.lower().endswith(".jpg")]
+                        return await AsyncUtils.run_in_threadpool(_get_jpg_files)
+
+                    jpg_files = await get_jpg_files()
+
+                    # 遍历所有JPG文件并添加到ZIP包中
+                    for jpg_file in jpg_files:
+                        jpg_path = os.path.join(pdf_jpg_dir, jpg_file)
+                        # 在ZIP文件中创建层次结构
+                        zip_path = f"{db_meeting.title}/议程{agenda_item_id}_{agenda_item.title}/{pdf_name}/{jpg_file}"
+
+                        # 使用线程池将文件添加到ZIP包中
+                        await AsyncUtils.run_in_threadpool(lambda: zip_file.write(jpg_path, zip_path))
 
         # 将指针移动到文件开头
         zip_buffer.seek(0)
         return zip_buffer
 
     @staticmethod
-    def process_temp_files_in_meeting(meeting_data):
+    async def process_temp_files_in_meeting(meeting_data):
         """处理会议中的临时文件，将它们从临时目录移动到正式目录
         文件去重：检查文件名是否已存在，如果存在则复用已有文件而不是创建新文件
         自动转换：PDF文件会自动转换为JPG格式，用于无线平板显示
@@ -489,8 +570,8 @@ class MeetingService:
                             if not os.path.exists(jpg_subdir) and pdf_path and os.path.exists(pdf_path):
                                 print(f"为已存在的PDF生成JPG文件: {pdf_path}")
                                 os.makedirs(jpg_subdir, exist_ok=True)
-                                # 使用同步方式调用PDF转JPG功能
-                                convert_pdf_to_jpg_for_pad_sync(pdf_path, jpg_subdir)
+                                # 使用异步方式调用PDF转JPG功能
+                                await PDFService.convert_pdf_to_jpg_for_pad(pdf_path, jpg_subdir)
                             continue
 
                         # 获取临时文件路径
@@ -539,8 +620,8 @@ class MeetingService:
                             pdf_uuid = pdf_filename.split("_")[0] if "_" in pdf_filename else ""
                             jpg_subdir = os.path.join(jpg_dir, pdf_uuid)
                             os.makedirs(jpg_subdir, exist_ok=True)
-                            # 使用同步方式调用PDF转JPG功能
-                            convert_pdf_to_jpg_for_pad_sync(new_path, jpg_subdir)
+                            # 使用异步方式调用PDF转JPG功能
+                            await PDFService.convert_pdf_to_jpg_for_pad(new_path, jpg_subdir)
 
                     except Exception as e:
                         print(f"处理临时文件时出错: {e}")
@@ -560,7 +641,7 @@ class MeetingService:
             # 即使文件处理失败，也应该允许会议信息保存
 
     @staticmethod
-    def process_temp_files_in_meeting_update(meeting_id, meeting_data):
+    async def process_temp_files_in_meeting_update(meeting_id, meeting_data):
         """处理会议更新中的临时文件
         文件去重：检查文件名是否已存在，如果存在则复用已有文件而不是创建新文件
         自动转换：PDF文件会自动转换为JPG格式，用于无线平板显示
@@ -665,8 +746,8 @@ class MeetingService:
                             if not os.path.exists(jpg_subdir) and pdf_path and os.path.exists(pdf_path):
                                 print(f"为已存在的PDF生成JPG文件: {pdf_path}")
                                 os.makedirs(jpg_subdir, exist_ok=True)
-                                # 使用同步方式调用PDF转JPG功能
-                                convert_pdf_to_jpg_for_pad_sync(pdf_path, jpg_subdir)
+                                # 使用异步方式调用PDF转JPG功能
+                                await PDFService.convert_pdf_to_jpg_for_pad(pdf_path, jpg_subdir)
                             continue
 
                         # 获取临时文件路径
@@ -715,8 +796,8 @@ class MeetingService:
                             pdf_uuid = pdf_filename.split("_")[0] if "_" in pdf_filename else ""
                             jpg_subdir = os.path.join(jpg_dir, pdf_uuid)
                             os.makedirs(jpg_subdir, exist_ok=True)
-                            # 使用同步方式调用PDF转JPG功能
-                            convert_pdf_to_jpg_for_pad_sync(new_path, jpg_subdir)
+                            # 使用异步方式调用PDF转JPG功能
+                            await PDFService.convert_pdf_to_jpg_for_pad(new_path, jpg_subdir)
 
                     except Exception as e:
                         print(f"处理临时文件时出错: {e}")

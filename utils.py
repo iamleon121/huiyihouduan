@@ -28,7 +28,7 @@ def format_file_size(size_bytes):
 
 
 # 此函数已移动到services/pdf_service.py中
-def ensure_jpg_for_pdf(pdf_path, jpg_dir):
+async def ensure_jpg_for_pdf(pdf_path, jpg_dir):
     """
     确保PDF文件有对应的JPG文件，如果没有则生成。
 
@@ -44,11 +44,11 @@ def ensure_jpg_for_pdf(pdf_path, jpg_dir):
     """
     # 导入PDFService并调用其方法
     from services.pdf_service import PDFService
-    return PDFService.ensure_jpg_for_pdf(pdf_path, jpg_dir)
+    return await PDFService.ensure_jpg_for_pdf(pdf_path, jpg_dir)
 
 
 # 此函数已移动到services/pdf_service.py中
-def ensure_jpg_in_zip(zipf, agenda_item_id, pdf_uuid, jpg_dir, original_pdf_name=None, pdf_path=None):
+async def ensure_jpg_in_zip(zipf, agenda_item_id, pdf_uuid, jpg_dir, original_pdf_name=None, pdf_path=None):
     """
     确保ZIP包中包含JPG文件，如果没有则生成。
 
@@ -68,7 +68,7 @@ def ensure_jpg_in_zip(zipf, agenda_item_id, pdf_uuid, jpg_dir, original_pdf_name
     """
     # 导入PDFService并调用其方法
     from services.pdf_service import PDFService
-    return PDFService.ensure_jpg_in_zip(zipf, agenda_item_id, pdf_uuid, jpg_dir, original_pdf_name, pdf_path)
+    return await PDFService.ensure_jpg_in_zip(zipf, agenda_item_id, pdf_uuid, jpg_dir, original_pdf_name, pdf_path)
 
 
 # 此函数已移动到services/pdf_service.py中

@@ -40,14 +40,14 @@ UPLOAD_DIR = os.path.join(project_root, "uploads")
 # --- 会议基本CRUD操作 ---
 
 @router.post("/", response_model=schemas.Meeting)
-def create_new_meeting(meeting: schemas.MeetingCreate, db: Session = Depends(get_db)):
+async def create_new_meeting(meeting: schemas.MeetingCreate, db: Session = Depends(get_db)):
     """创建新会议及其议程项"""
     db_meeting = crud.get_meeting(db, meeting_id=meeting.id)
     if db_meeting:
         raise HTTPException(status_code=400, detail="Meeting ID already registered")
 
     # 使用MeetingService创建会议
-    db_meeting = MeetingService.create_meeting(db=db, meeting_data=meeting)
+    db_meeting = await MeetingService.create_meeting(db=db, meeting_data=meeting)
 
     # 不再更新会议变更识别码
     # 只有状态变为"进行中"时才会更新识别码
@@ -102,10 +102,10 @@ def read_meeting_details(meeting_id: str, db: Session = Depends(get_db)):
 
 
 @router.put("/{meeting_id}", response_model=schemas.Meeting)
-def update_existing_meeting(meeting_id: str, meeting: schemas.MeetingUpdate, db: Session = Depends(get_db)):
+async def update_existing_meeting(meeting_id: str, meeting: schemas.MeetingUpdate, db: Session = Depends(get_db)):
     """更新会议信息，包括其议程项（采用删除旧项，添加新项的策略）"""
     # 使用MeetingService更新会议
-    db_meeting = MeetingService.update_meeting(db=db, meeting_id=meeting_id, meeting_data=meeting)
+    db_meeting = await MeetingService.update_meeting(db=db, meeting_id=meeting_id, meeting_data=meeting)
 
     # 不再更新会议变更识别码
     # 只有状态变为"进行中"时才会更新识别码
@@ -183,17 +183,17 @@ def get_meeting_status_token(db: Session = Depends(get_db)):
 
 
 @router.put("/{meeting_id}/status", response_model=schemas.Meeting)
-def update_meeting_status_endpoint(meeting_id: str, status_update: schemas.MeetingUpdate, db: Session = Depends(get_db)):
+async def update_meeting_status_endpoint(meeting_id: str, status_update: schemas.MeetingUpdate, db: Session = Depends(get_db)):
     """更新会议状态，仅当会议转变为"进行中"状态时更新会议变更识别码"""
     # 获取要更新的新状态
     new_status = status_update.status
     if new_status is None:
         raise HTTPException(status_code=400, detail="必须提供状态字段")
-        
+
     # 使用MeetingService更新会议状态
     # 在服务层中处理识别码更新逻辑
-    db_meeting = MeetingService.update_meeting(db=db, meeting_id=meeting_id, meeting_data=status_update)
-    
+    db_meeting = await MeetingService.update_meeting(db=db, meeting_id=meeting_id, meeting_data=status_update)
+
     return db_meeting
 
 
@@ -232,7 +232,7 @@ async def upload_meeting_files(
 
 
 @router.get("/{meeting_id}/jpgs", response_model=dict)
-def get_meeting_jpgs(meeting_id: str, db: Session = Depends(get_db)):
+async def get_meeting_jpgs(meeting_id: str, db: Session = Depends(get_db)):
     """
     获取指定会议的所有JPG文件信息，用于平板客户端
 
@@ -241,11 +241,11 @@ def get_meeting_jpgs(meeting_id: str, db: Session = Depends(get_db)):
               格式为 {"agenda_items": [{"id": 1, "files": [{"pdf_id": "xxx", "jpg_files": ["path1"]}]}]}
     """
     # 使用MeetingService获取会议JPG文件
-    result = MeetingService.get_meeting_jpgs(db=db, meeting_id=meeting_id)
+    result = await MeetingService.get_meeting_jpgs(db=db, meeting_id=meeting_id)
     return result
 
 @router.get("/{meeting_id}/package", response_model=dict)
-def get_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
+async def get_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
     """
     获取会议的完整信息包
 
@@ -266,12 +266,12 @@ def get_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
         HTTPException: 当会议不存在或会议文件目录不存在时，返回404错误
     """
     # 使用MeetingService获取会议信息包
-    result = MeetingService.get_meeting_package(db=db, meeting_id=meeting_id)
+    result = await MeetingService.get_meeting_package(db=db, meeting_id=meeting_id)
     return result
 
 
 @router.get("/{meeting_id}/download-package")
-def download_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
+async def download_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
     """
     下载会议的JPG文件包，打包为ZIP格式
     仅包含会议的JPG图片文件，不包含PDF文件
@@ -284,15 +284,15 @@ def download_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
         StreamingResponse: ZIP文件流响应
     """
     # 使用MeetingService下载会议文件包
-    zip_buffer = MeetingService.download_meeting_package(db=db, meeting_id=meeting_id)
-    
+    zip_buffer = await MeetingService.download_meeting_package(db=db, meeting_id=meeting_id)
+
     # 获取会议信息用于文件名
     db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
     zip_filename = f"{db_meeting.title.replace(' ', '_')}_{meeting_id}_jpgs.zip"
-    
+
     # 准备响应
     headers = {
         'Content-Disposition': f'attachment; filename="{zip_filename}"'
     }
-    
+
     return StreamingResponse(zip_buffer, media_type="application/zip", headers=headers)

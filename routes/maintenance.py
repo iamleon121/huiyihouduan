@@ -94,15 +94,10 @@ async def trigger_temp_cleanup(background_tasks: BackgroundTasks):
         # 创建一个可在后台运行的函数版本
         def run_cleanup():
             print(f"[{datetime.now()}] 后台任务开始执行临时文件清理")
-            # 直接使用主线程运行清理函数，避免异步问题
+            # 使用AsyncUtils来运行异步函数
             try:
-                # 创建一个事件循环
-                new_loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(new_loop)
-
-                # 在新循环中运行清理任务
-                new_loop.run_until_complete(FileService.cleanup_temp_files())
-                new_loop.close()
+                from services.async_utils import AsyncUtils
+                AsyncUtils.run_sync(FileService.cleanup_temp_files)
                 print(f"[{datetime.now()}] 后台清理任务完成")
             except Exception as e:
                 print(f"[{datetime.now()}] 后台清理任务出错: {str(e)}")

@@ -1,32 +1,59 @@
-from fastapi import FastAPI, UploadFile, File, Request, Form, Depends, HTTPException, BackgroundTasks, Path, Body, status
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse, StreamingResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates # Although not strictly needed for just serving index.html, it's common for more complex frontends
-import shutil
+from contextlib import asynccontextmanager
 import os
-import uuid
-import fitz  # PyMuPDF
-import tempfile
-from typing import List, Optional
-import time
-from sqlalchemy.orm import Session
-import asyncio
-from datetime import datetime, timedelta
-import json
-from PIL import Image, ImageFile
-import io
-import logging
-import re
 import sys
-import math
-import zipfile
+import asyncio
+from datetime import datetime
 
-# 导入工具函数
-from utils import format_file_size, ensure_jpg_for_pdf, ensure_jpg_in_zip, convert_pdf_to_jpg_for_pad, convert_pdf_to_jpg_for_pad_sync
+# 导入数据库相关模块
+import models, crud
+from database import SessionLocal, engine
 
-# Import database, models, schemas, crud
-import models, schemas, crud
-from database import SessionLocal, engine, create_db_tables
+# 导入文件服务
+from services.file_service import FileService
+
+# 定义应用生命周期管理器
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    应用生命周期管理器
+
+    在FastAPI应用启动时创建两个后台任务，并在应用关闭时清理资源。
+    1. FileService.background_cleanup_task: 定期清理临时文件
+    2. FileService.background_cleanup_meetings_task: 定期清理孤立的会议文件夹
+
+    同时初始化会议变更状态识别码，确保系统正常运行。
+    """
+    # 启动时执行的代码
+    print(f"[{datetime.now()}] 临时文件自动清理服务已启动")
+
+    # 创建任务并保存引用，以便在应用关闭时取消
+    cleanup_task = asyncio.create_task(FileService.background_cleanup_task())
+    meetings_cleanup_task = asyncio.create_task(FileService.background_cleanup_meetings_task())
+
+    # 初始化会议变更状态识别码
+    with SessionLocal() as db:
+        crud.get_meeting_change_status_token(db)  # 确保存在初始识别码
+
+    # 将控制权返回给应用
+    yield
+
+    # 应用关闭时执行的代码
+    print(f"[{datetime.now()}] 应用正在关闭，正在清理资源...")
+
+    # 取消后台任务
+    cleanup_task.cancel()
+    meetings_cleanup_task.cancel()
+
+    # 等待任务取消完成
+    try:
+        await asyncio.gather(cleanup_task, meetings_cleanup_task, return_exceptions=True)
+    except asyncio.CancelledError:
+        pass
+
+    print(f"[{datetime.now()}] 应用已安全关闭")
 
 # 导入路由模块
 from routes.meetings import router as meetings_router
@@ -41,7 +68,7 @@ project_root = current_dir
 sys.path.append(project_root)
 
 # 创建FastAPI应用
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 # 添加静态文件支持
 app.mount("/static", StaticFiles(directory=os.path.join(project_root, "static")), name="static")
@@ -171,30 +198,6 @@ async def serve_huiyi_page(request: Request):
 
 # 导入文件服务
 from services.file_service import FileService
-
-# 启动后台任务
-@app.on_event("startup")
-async def startup_event():
-    """
-    应用启动时执行的事件处理器
-
-    在FastAPI应用启动时自动执行，创建两个后台任务：
-    1. FileService.background_cleanup_task: 定期清理临时文件
-    2. FileService.background_cleanup_meetings_task: 定期清理孤立的会议文件夹
-
-    同时初始化会议变更状态识别码，确保系统正常运行。
-
-    注意：这个方法使用的是已弃用的on_event机制，应考虑在未来重构中替换为lifespan上下文管理器。
-    """
-    print(f"[{datetime.now()}] 临时文件自动清理服务已启动")
-    # 在后台启动临时文件清理任务
-    asyncio.create_task(FileService.background_cleanup_task())
-    # 在后台启动无效会议文件夹清理任务
-    asyncio.create_task(FileService.background_cleanup_meetings_task())
-
-    # 初始化会议变更状态识别码
-    with SessionLocal() as db:
-        crud.get_meeting_change_status_token(db)  # 确保存在初始识别码
 
 # --- Maintenance API Endpoints ---
 # 注意：维护相关路由已移动到routes/maintenance.py
