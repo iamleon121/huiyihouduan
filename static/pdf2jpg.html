@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF 转 JPG 工具</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            border: 1px solid #ccc;
+            padding: 30px;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .upload-section {
+            margin-bottom: 30px;
+        }
+        input[type="file"] {
+            margin-bottom: 15px;
+            width: 100%;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            flex: 1;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #e2f0fb;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        #selectedFiles {
+            margin-top: 20px;
+            list-style: none;
+            padding: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #fff;
+        }
+        #selectedFiles li {
+            background-color: #e9ecef;
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            display: flex;
+            justify-content: space-between;
+        }
+        .remove-file {
+            color: #dc3545;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .settings-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .settings-section h3 {
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .result-section {
+            margin-top: 30px;
+        }
+        .image-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .image-item {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .image-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .image-item .image-info {
+            padding: 8px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            font-size: 0.8em;
+            text-align: center;
+        }
+        .download-all {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PDF 转 JPG 工具</h1>
+
+        <div class="upload-section">
+            <input type="file" id="fileInput" accept=".pdf">
+            <div class="button-group">
+                <button id="addFilesBtn">选择文件</button>
+                <button id="convertBtn" disabled>转换为JPG</button>
+            </div>
+            <div id="message"></div>
+            <h3>已选择文件:</h3>
+            <ul id="selectedFiles"></ul>
+        </div>
+
+        <div class="settings-section">
+            <h3>转换设置</h3>
+            <div class="form-group">
+                <label for="dpiSelect">DPI (图像质量):</label>
+                <select id="dpiSelect">
+                    <option value="100">100 DPI (低质量)</option>
+                    <option value="200" selected>200 DPI (中等质量)</option>
+                    <option value="300">300 DPI (高质量)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="formatSelect">图像格式:</label>
+                <select id="formatSelect">
+                    <option value="jpg" selected>JPG</option>
+                    <option value="png">PNG</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="mergeOption">多页PDF处理:</label>
+                <div>
+                    <input type="checkbox" id="mergeOption" name="merge">
+                    <label for="mergeOption" style="display: inline; font-weight: normal;">将所有页面合并为一张图片 (宽度统一为1920像素)</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="result-section" id="resultSection" style="display: none;">
+            <h2>转换结果</h2>
+            <div class="loading" id="loadingIndicator">
+                <div class="loading-spinner"></div>
+                <p>正在转换，请稍候...</p>
+            </div>
+            <div class="image-gallery" id="imageGallery"></div>
+            <div class="download-all">
+                <button id="downloadAllBtn">下载所有图片</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const addFilesBtn = document.getElementById('addFilesBtn');
+        const convertBtn = document.getElementById('convertBtn');
+        const messageDiv = document.getElementById('message');
+        const selectedFilesList = document.getElementById('selectedFiles');
+        const resultSection = document.getElementById('resultSection');
+        const imageGallery = document.getElementById('imageGallery');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        const dpiSelect = document.getElementById('dpiSelect');
+        const formatSelect = document.getElementById('formatSelect');
+
+        let selectedFile = null;
+        let convertedImages = [];
+
+        // 选择文件按钮点击事件
+        addFilesBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 文件选择变化事件
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                selectedFile = fileInput.files[0];
+                updateFileList();
+                convertBtn.disabled = false;
+            }
+        });
+
+        // 更新文件列表
+        function updateFileList() {
+            selectedFilesList.innerHTML = '';
+            if (selectedFile) {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `
+                    <span>${selectedFile.name} (${formatFileSize(selectedFile.size)})</span>
+                    <span class="remove-file" title="移除文件">×</span>
+                `;
+
+                const removeBtn = listItem.querySelector('.remove-file');
+                removeBtn.addEventListener('click', () => {
+                    selectedFile = null;
+                    updateFileList();
+                    convertBtn.disabled = true;
+                    fileInput.value = '';
+                });
+
+                selectedFilesList.appendChild(listItem);
+            }
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 转换按钮点击事件
+        convertBtn.addEventListener('click', async () => {
+            if (!selectedFile) {
+                showMessage('请先选择PDF文件', 'error');
+                return;
+            }
+
+            // 显示加载指示器
+            resultSection.style.display = 'block';
+            loadingIndicator.style.display = 'block';
+            imageGallery.innerHTML = '';
+            convertedImages = [];
+            showMessage('开始转换...', 'info');
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('dpi', dpiSelect.value);
+            formData.append('format', formatSelect.value);
+            formData.append('merge', document.getElementById('mergeOption').checked);
+
+            try {
+                const response = await fetch('/api/v1/pdf/convert-to-jpg', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || '转换失败');
+                }
+
+                const result = await response.json();
+
+                // 隐藏加载指示器
+                loadingIndicator.style.display = 'none';
+
+                // 显示转换后的图片
+                if (result.images && result.images.length > 0) {
+                    convertedImages = result.images;
+                    displayImages(result.images);
+                    showMessage(`成功将PDF转换为${result.images.length}张图片`, 'success');
+                } else {
+                    showMessage('转换成功，但没有生成图片', 'info');
+                }
+            } catch (error) {
+                console.error('转换过程中发生错误:', error);
+                loadingIndicator.style.display = 'none';
+                showMessage(`转换失败: ${error.message}`, 'error');
+            }
+        });
+
+        // 显示转换后的图片
+        function displayImages(images) {
+            imageGallery.innerHTML = '';
+
+            images.forEach((image, index) => {
+                const imageItem = document.createElement('div');
+                imageItem.className = 'image-item';
+
+                const img = document.createElement('img');
+                img.src = image.url;
+                img.alt = `Page ${index + 1}`;
+
+                const imageInfo = document.createElement('div');
+                imageInfo.className = 'image-info';
+                imageInfo.textContent = image.merged ? '合并的所有页面' : `第 ${index + 1} 页`;
+
+                const downloadLink = document.createElement('a');
+                downloadLink.href = image.url;
+                downloadLink.download = image.filename;
+                downloadLink.appendChild(img);
+
+                imageItem.appendChild(downloadLink);
+                imageItem.appendChild(imageInfo);
+                imageGallery.appendChild(imageItem);
+            });
+        }
+
+        // 下载所有图片
+        downloadAllBtn.addEventListener('click', () => {
+            if (convertedImages.length === 0) {
+                showMessage('没有可下载的图片', 'error');
+                return;
+            }
+
+            // 创建一个隐藏的下载链接并触发点击
+            convertedImages.forEach(image => {
+                const link = document.createElement('a');
+                link.href = image.url;
+                link.download = image.filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        });
+
+        // 显示消息
+        function showMessage(text, type) {
+            messageDiv.textContent = text;
+            messageDiv.className = type;
+        }
+    </script>
+</body>
+</html>

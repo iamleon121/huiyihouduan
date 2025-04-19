@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <title>无纸化会议系统 - 系统管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <link rel="stylesheet" href="./huiyi.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>阜新市政协</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="huiyi-meeting.html"><span class="icon">📅</span><span>会议管理</span></a></li>
+                    <li><a href="huiyi-document.html"><span class="icon">📄</span><span>文件管理</span></a></li>
+                    <li><a href="huiyi-system.html" class="active"><span class="icon">⚙️</span><span>系统管理</span></a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <div class="main-content-wrapper">
+            <header class="top-header">
+                <div class="header-title">无纸化会议系统</div>
+                <div class="user-info">
+                    admin (管理员) <a href="#" id="logoutBtn" style="margin-left: 10px; color: var(--primary-color); text-decoration: none;">退出</a>
+                </div>
+            </header>
+
+            <main class="content-area">
+                <h1>系统管理</h1>
+                
+                <div class="system-panel">
+                    <div class="system-section">
+                        <h2><span class="icon">👥</span> 用户管理</h2>
+                        <div class="system-controls">
+                            <button class="btn btn-primary" id="add-user-btn"><span class="icon">➕</span> 新增用户</button>
+                            <button class="btn btn-secondary"><span class="icon">🔒</span> 用户权限设置</button>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>用户名</th>
+                                        <th>姓名</th>
+                                        <th>角色</th>
+                                        <th>状态</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">暂无用户数据</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="system-section">
+                        <h2><span class="icon">🔧</span> 系统设置</h2>
+                        <form id="systemSettingsForm">
+                            <div class="settings-group">
+                                <label for="systemName"><span class="icon">🏷️</span> 系统名称:</label>
+                                <input type="text" id="systemName" name="systemName" value="无纸化会议系统">
+                            </div>
+                            
+                            <div class="settings-group">
+                                <label for="organizationName"><span class="icon">🏢</span> 单位名称:</label>
+                                <input type="text" id="organizationName" name="organizationName" value="阜新市政协">
+                            </div>
+                            
+                            <div class="settings-group">
+                                <label for="systemLogo"><span class="icon">🖼️</span> 系统Logo:</label>
+                                <input type="file" id="systemLogo" name="systemLogo">
+                            </div>
+                            
+                            <div class="settings-group">
+                                <label><span class="icon">🎨</span> 系统主题:</label>
+                                <div class="theme-options">
+                                    <div class="theme-option active">
+                                        <div class="color-preview" style="background-color: #007bff;"></div>
+                                        <span>蓝色</span>
+                                    </div>
+                                    <div class="theme-option">
+                                        <div class="color-preview" style="background-color: #28a745;"></div>
+                                        <span>绿色</span>
+                                    </div>
+                                    <div class="theme-option">
+                                        <div class="color-preview" style="background-color: #dc3545;"></div>
+                                        <span>红色</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary"><span class="icon">💾</span> 保存设置</button>
+                        </form>
+                    </div>
+                    
+                    <div class="system-section">
+                        <h2><span class="icon">📋</span> 系统日志</h2>
+                        <div class="logs-container">
+                            <div class="log-filters">
+                                <select id="logLevel">
+                                    <option value="">全部级别</option>
+                                    <option value="info">信息</option>
+                                    <option value="warning">警告</option>
+                                    <option value="error">错误</option>
+                                </select>
+                                <input type="date" id="logDate">
+                                <button class="btn btn-secondary"><span class="icon">🔍</span> 查询</button>
+                            </div>
+                            <div class="log-entries">
+                                <p>暂无日志数据</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 用户管理模态框 -->
+    <div id="userModal" class="modal-box" style="display: none;">
+        <div class="user-form">
+            <h2 id="userModalTitle">用户管理</h2>
+            <form id="userForm">
+                <input type="hidden" id="userId">
+                <div class="form-group">
+                    <div class="styled-input with-icon">
+                        <input type="text" id="username" placeholder=" " required>
+                        <label for="username">用户名</label>
+                        <span class="input-icon">👤</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="styled-input with-icon">
+                        <input type="password" id="password" placeholder=" " required>
+                        <label for="password">密码</label>
+                        <span class="input-icon">🔑</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="styled-input with-icon">
+                        <input type="text" id="realname" placeholder=" " required>
+                        <label for="realname">真实姓名</label>
+                        <span class="input-icon">📇</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="styled-input with-icon">
+                        <input type="email" id="email" placeholder=" " required>
+                        <label for="email">邮箱</label>
+                        <span class="input-icon">📧</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="select-container">
+                        <select class="styled-select" id="role" required>
+                            <option value="admin">管理员</option>
+                            <option value="user">普通用户</option>
+                        </select>
+                        <span class="select-icon">⏷</span>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="cancelUserBtn" class="button button-secondary">取消</button>
+                    <button type="submit" id="saveUserBtn" class="button button-primary"><span class="icon">💾</span> 保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- 结束用户管理模态框 -->
+
+    <script src="./huiyi-system.js"></script>
+</body>
+</html> 

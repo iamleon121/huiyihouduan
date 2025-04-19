@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg" version="1.1">
+  <!-- 矩形组，添加触摸交互 -->
+  <g style="cursor:pointer;">
+    <rect id="rect1" x="30" y="30" width="80" height="80" fill="#F6FB42" rx="8">
+      <!-- 点击/触摸时的颜色变化 -->
+      <set attributeName="fill" to="#FF9500" begin="mouseover;touchstart" end="mouseout;touchend" />
+      <animate attributeName="width" from="80" to="90" begin="mousedown;touchstart" dur="0.2s" fill="freeze" />
+      <animate attributeName="width" from="90" to="80" begin="mouseup;touchend" dur="0.2s" fill="freeze" />
+    </rect>
+    
+    <circle id="circle1" cx="180" cy="70" r="40" fill="#FFCF54">
+      <!-- 点击/触摸时的半径变化 -->
+      <set attributeName="fill" to="#FF6A33" begin="mouseover;touchstart" end="mouseout;touchend" />
+      <animate attributeName="r" from="40" to="45" begin="mousedown;touchstart" dur="0.2s" fill="freeze" />
+      <animate attributeName="r" from="45" to="40" begin="mouseup;touchend" dur="0.2s" fill="freeze" />
+    </circle>
+    
+    <polygon id="polygon1" points="240,30 270,90 210,90" fill="#F0BB42">
+      <!-- 点击/触摸时的旋转效果 -->
+      <set attributeName="fill" to="#8A2BE2" begin="mouseover;touchstart" end="mouseout;touchend" />
+      <animateTransform attributeName="transform" type="rotate" from="0 240 60" to="15 240 60" 
+        begin="mousedown;touchstart" dur="0.2s" fill="freeze" />
+      <animateTransform attributeName="transform" type="rotate" from="15 240 60" to="0 240 60" 
+        begin="mouseup;touchend" dur="0.2s" fill="freeze" />
+    </polygon>
+  </g>
+  
+  <!-- 椭圆带旋转动画 -->
+  <g>
+    <ellipse id="ellipse1" cx="100" cy="150" rx="45" ry="25" fill="#FF6A33">
+      <!-- 触摸时暂停/继续旋转 -->
+      <set attributeName="fill" to="#4CAF50" begin="touchstart;mousedown" end="touchend;mouseup" />
+    </ellipse>
+    <animateTransform
+      attributeName="transform"
+      attributeType="XML"
+      type="rotate"
+      from="0 100 150"
+      to="360 100 150"
+      dur="6s"
+      repeatCount="indefinite" />
+  </g>
+  
+  <!-- 文本交互 -->
+  <g>
+    <text id="svgText" x="150" y="180" font-family="Arial" font-size="14" text-anchor="middle" fill="black">
+      点击或触摸图形
+      <animate attributeName="font-size" from="14" to="16" begin="touchstart;mousedown" dur="0.2s" fill="freeze" />
+      <animate attributeName="font-size" from="16" to="14" begin="touchend;mouseup" dur="0.2s" fill="freeze" />
+    </text>
+  </g>
+  
+  <!-- 变换示例 -->
+  <g fill="#8A2BE2" transform="translate(250, 150) scale(0.5) rotate(30)">
+    <rect x="0" y="0" width="30" height="30">
+      <set attributeName="fill" to="#4CAF50" begin="mouseover;touchstart" end="mouseout;touchend" />
+    </rect>
+    <circle cx="50" cy="15" r="15">
+      <set attributeName="fill" to="#FF9500" begin="mouseover;touchstart" end="mouseout;touchend" />
+    </circle>
+  </g>
+</svg>

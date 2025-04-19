@@ -1,0 +1,11 @@
+tree 4c33901e7fd39c45da6542d7d29da4c40bc95fcb
+parent 5b9f1f279f3f7866e1b1fffe590d56680e6b7ff2
+author iamleon121 <iamleon@yeah.net> 1744707334 +0800
+committer iamleon121 <iamleon@yeah.net> 1744707334 +0800
+
+style(css): 优化CSS文件结构并引入现代化主题样式
+
+- 在`layout.css`和`base.css`中引入`theme.css`变量定义
+- 重构`components.css`，添加动画效果和现代化样式
+- 更新`theme.css`，定义现代化配色方案和渐变效果
+- 在`huiyi.html`中直接嵌入CSS样式，确保页面加载稳定性

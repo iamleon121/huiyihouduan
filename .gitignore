@@ -1,0 +1,62 @@
+# Python字节码文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python虚拟环境
+venv/
+env/
+.venv/
+virtualenv/
+ENV/
+env.bak/
+venv.bak/
+Python*/
+Lib/
+Scripts/
+include/
+lib64/
+lib64-win/
+share/
+pyvenv.cfg
+pip-selfcheck.json
+
+# 包管理文件
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+bin/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+
+# 日志文件
+*.log
+
+# 本地配置文件
+.env
+.env.local
+
+# IDE配置
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 上传文件目录
+uploads/
+
+# 大文件
+*.pdf
+*.jpg
+*.jpeg
+*.png
+*.zip

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <title>无纸化会议系统 - 文件管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <link rel="stylesheet" href="./huiyi.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>阜新市政协</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="huiyi-meeting.html"><span class="icon">📅</span><span>会议管理</span></a></li>
+                    <li><a href="huiyi-document.html" class="active"><span class="icon">📄</span><span>文件管理</span></a></li>
+                    <li><a href="huiyi-system.html"><span class="icon">⚙️</span><span>系统管理</span></a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <div class="main-content-wrapper">
+            <header class="top-header">
+                <div class="header-title">无纸化会议系统</div>
+                <div class="user-info">
+                    <span class="icon">👤</span> 管理员
+                </div>
+            </header>
+
+            <main class="content-area">
+                <h1>文件管理</h1>
+                <div class="controls-bar">
+                    <div class="filters">
+                        <input type="text" id="fileName" placeholder="文件名称">
+                        <button class="btn btn-secondary"><span class="icon">🔍</span> 查询</button>
+                        <button class="btn btn-outline"><span class="icon">🔄</span> 重置</button>
+                    </div>
+                    <div class="control-panel">
+                        <button id="cleanup-temp-btn" class="btn btn-secondary"><span class="icon">🧹</span> 一键删除所有可删除文件</button>
+                        <button id="force-cleanup-temp-btn" class="btn btn-danger"><span class="icon">⚠️</span> 强制清理所有临时文件</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>文件名称</th>
+                                <th>文件类型</th>
+                                <th>文件大小</th>
+                                <th>上传时间</th>
+                                <th>所属会议</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="6" style="text-align: center; color: var(--text-color-light);">暂无文件数据</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination-container">
+                    <span>共 0 条</span>
+                    <select>
+                        <option>10 条/页</option>
+                        <option>20 条/页</option>
+                    </select>
+                    <button disabled>&lt;</button>
+                    <span>1</span>
+                    <button>&gt;</button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 文件上传模态框 -->
+    <!-- 此功能已移除，上传文件只能通过会议添加 -->
+    <!-- 结束文件上传模态框 -->
+
+    <script src="./huiyi-document.js"></script>
+</body>
+</html>

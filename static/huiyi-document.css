@@ -1,0 +1,11 @@
+/* 控制面板样式 */
+.control-panel {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.control-panel button {
+    min-width: 120px;
+} 

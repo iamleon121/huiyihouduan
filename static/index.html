@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <title>无纸化会议系统 - 登录</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <link rel="stylesheet" href="/static/huiyi.css">
+    <style>
+        .login-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--secondary-color);
+        }
+        
+        .login-box {
+            background-color: var(--content-bg);
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 15px var(--shadow-color);
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .login-header h1 {
+            font-size: 1.8em;
+            color: var(--text-color);
+            margin-bottom: 10px;
+        }
+        
+        .login-header p {
+            color: var(--text-color-light);
+            font-size: 0.95em;
+        }
+        
+        .login-form .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .login-form label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+        
+        .login-form input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 1em;
+        }
+        
+        .login-form input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+        
+        .login-form .btn-login {
+            width: 100%;
+            padding: 12px;
+            font-size: 1em;
+            margin-top: 15px;
+        }
+        
+        .login-footer {
+            text-align: center;
+            margin-top: 20px;
+            color: var(--text-color-light);
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <h1>无纸化会议系统</h1>
+                <p>阜新市政协</p>
+            </div>
+            
+            <form class="login-form" id="loginForm">
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <input type="text" id="username" name="username" required autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-login">登录</button>
+            </form>
+            
+            <div class="login-footer">
+                © 2023 阜新市政协 无纸化会议系统
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/index.js"></script>
+</body>
+</html>
