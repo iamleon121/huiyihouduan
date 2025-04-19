@@ -90,66 +90,65 @@ document.addEventListener('DOMContentLoaded', () => {
         tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">加载中...</td></tr>';
 
         try {
-            // 从后端API获取用户数据
-            const response = await fetch('/api/v1/users/');
+            // 模拟API获取用户数据
+            setTimeout(() => {
+                // 模拟用户数据
+                const users = [
+                    {id: 1, username: 'admin', real_name: '系统管理员', role: 'admin', status: '正常'},
+                    {id: 2, username: 'user1', real_name: '张三', role: 'user', status: '正常'},
+                    {id: 3, username: 'user2', real_name: '李四', role: 'user', status: '正常'}
+                ];
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+                let tableBodyHtml = '';
+                if (users.length === 0) {
+                    tableBodyHtml = '<tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">暂无用户数据</td></tr>';
+                } else {
+                    users.forEach(user => {
+                        // 根据用户角色显示不同文本
+                        let roleText = '未知';
+                        let roleBadgeClass = '';
 
-            const users = await response.json();
+                        switch (user.role) {
+                            case 'admin':
+                                roleText = '管理员';
+                                roleBadgeClass = 'role-admin';
+                                break;
+                            case 'user':
+                                roleText = '普通用户';
+                                roleBadgeClass = 'role-user';
+                                break;
+                        }
 
-            let tableBodyHtml = '';
-            if (users.length === 0) {
-                tableBodyHtml = '<tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">暂无用户数据</td></tr>';
-            } else {
-                users.forEach(user => {
-                    // 根据用户角色显示不同文本
-                    let roleText = '未知';
-                    let roleBadgeClass = '';
+                        // 根据状态显示不同类样式
+                        const statusClass = user.status === '正常' ? 'status-active' : 'status-inactive';
 
-                    switch (user.role) {
-                        case 'admin':
-                            roleText = '管理员';
-                            roleBadgeClass = 'role-admin';
-                            break;
-                        case 'user':
-                            roleText = '普通用户';
-                            roleBadgeClass = 'role-user';
-                            break;
-                    }
+                        tableBodyHtml += `
+                            <tr data-id="${user.id}">
+                                <td>${user.username || '-'}</td>
+                                <td>${user.real_name || '-'}</td>
+                                <td><span class="role-badge ${roleBadgeClass}">${roleText}</span></td>
+                                <td><span class="user-status ${statusClass}"></span> ${user.status || '正常'}</td>
+                                <td>
+                                    <button class="btn-action edit" data-id="${user.id}">
+                                        <span class="icon">✏️</span> 编辑
+                                    </button>
+                                    <button class="btn-action delete" data-id="${user.id}">
+                                        <span class="icon">🗑️</span> 删除
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
 
-                    // 根据状态显示不同类样式
-                    const statusClass = user.status === '正常' ? 'status-active' : 'status-inactive';
+                tableBody.innerHTML = tableBodyHtml;
 
-                    // 判断是否为admin用户
-                    const isAdmin = user.username === 'admin';
+                // 附加操作按钮事件
+                if (users.length > 0) {
+                    attachUserActionListeners(tableBody);
+                }
+            }, 500);
 
-                    tableBodyHtml += `
-                        <tr data-id="${user.id}" ${isAdmin ? 'class="admin-user"' : ''}>
-                            <td>${user.username || '-'} ${isAdmin ? '<span class="admin-badge">系统管理员</span>' : ''}</td>
-                            <td>${user.real_name || '-'}</td>
-                            <td><span class="role-badge ${roleBadgeClass}">${roleText}</span></td>
-                            <td><span class="user-status ${statusClass}"></span> ${user.status || '正常'}</td>
-                            <td>
-                                <button class="btn-action edit" data-id="${user.id}">
-                                    <span class="icon">✏️</span> 编辑
-                                </button>
-                                <button class="btn-action delete" data-id="${user.id}" ${isAdmin ? 'data-admin="true"' : ''}>
-                                    <span class="icon">🗑️</span> 删除
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            }
-
-            tableBody.innerHTML = tableBodyHtml;
-
-            // 附加操作按钮事件
-            if (users.length > 0) {
-                attachUserActionListeners(tableBody);
-            }
         } catch (error) {
             console.error('Failed to load users:', error);
             tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--danger-color);">加载用户列表失败: ${error.message}</td></tr>`;
@@ -163,14 +162,15 @@ document.addEventListener('DOMContentLoaded', () => {
             button.addEventListener('click', async e => {
                 const userId = e.target.closest('.btn-action').dataset.id;
                 try {
-                    // 从后端获取用户详情
-                    const response = await fetch(`/api/v1/users/${userId}`);
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
-                    const user = await response.json();
+                    // 模拟获取用户详情
+                    const userRow = e.target.closest('tr');
+                    const user = {
+                        id: userId,
+                        username: userRow.cells[0].textContent,
+                        real_name: userRow.cells[1].textContent,
+                        email: 'user' + userId + '@example.com',
+                        role: userRow.querySelector('.role-badge').textContent === '管理员' ? 'admin' : 'user'
+                    };
 
                     // 填充表单数据
                     const userForm = document.getElementById('userForm');
@@ -185,14 +185,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     // 填充其他表单字段
-                    const usernameInput = document.getElementById('username');
-                    const realnameInput = document.getElementById('realname');
-                    const emailInput = document.getElementById('email');
-                    const roleSelect = document.getElementById('role');
-
-                    usernameInput.value = user.username || '';
-                    realnameInput.value = user.real_name || '';
-                    emailInput.value = user.email || '';
+                    document.getElementById('username').value = user.username || '';
+                    document.getElementById('realname').value = user.real_name || '';
+                    document.getElementById('email').value = user.email || '';
 
                     // 清空密码字段
                     document.getElementById('password').value = '';
@@ -200,25 +195,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 编辑时密码可选
                     document.getElementById('password').required = false;
 
-                    // 如果是admin用户，只允许修改密码和邮箱
-                    if (user.username === 'admin') {
-                        // 禁用用户名、姓名和角色选择
-                        usernameInput.disabled = true;
-                        realnameInput.disabled = true;
-                        emailInput.disabled = false; // 允许编辑邮箱
-                        roleSelect.disabled = true;
-
-                        // 显示提示信息
-                        showToast('admin用户只能修改密码和邮箱', 'info');
-                    } else {
-                        // 非admin用户可以编辑所有字段
-                        usernameInput.disabled = false;
-                        realnameInput.disabled = false;
-                        emailInput.disabled = false;
-                        roleSelect.disabled = false;
-                    }
-
                     // 设置角色选择
+                    const roleSelect = document.getElementById('role');
                     if (roleSelect) {
                         roleSelect.value = user.role || 'user';
                     }
@@ -228,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 } catch (error) {
                     console.error('获取用户详情失败:', error);
-                    showToast(`获取用户详情失败: ${error.message}`, 'error');
+                    alert(`获取用户详情失败: ${error.message}`);
                 }
             });
         });
@@ -238,40 +216,24 @@ document.addEventListener('DOMContentLoaded', () => {
             button.addEventListener('click', async e => {
                 const row = e.target.closest('tr');
                 const userId = e.target.closest('.btn-action').dataset.id;
-                const isAdmin = button.hasAttribute('data-admin');
                 const userName = row.querySelector('td:nth-child(2)').textContent;
-
-                // 如果是admin用户，显示警告提示
-                if (isAdmin) {
-                    showToast('admin用户不能被删除', 'warning');
-                    return;
-                }
 
                 if (window.confirm(`确定要删除用户 "${userName}" 吗？`)) {
                     try {
-                        // 调用后端API删除用户
-                        const response = await fetch(`/api/v1/users/${userId}`, {
-                            method: 'DELETE',
-                            headers: {
-                                'Content-Type': 'application/json'
+                        // 模拟删除用户
+                        setTimeout(() => {
+                            // 成功删除，给用户反馈
+                            showToast('用户删除成功！', 'success');
+
+                            // 从DOM中移除行
+                            row.remove();
+
+                            // 如果删除后没有数据，显示无数据提示
+                            if (document.querySelectorAll('.system-section:first-child .data-table tbody tr').length === 0) {
+                                document.querySelector('.system-section:first-child .data-table tbody').innerHTML =
+                                    '<tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">暂无用户数据</td></tr>';
                             }
-                        });
-
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-
-                        // 成功删除，给用户反馈
-                        showToast('用户删除成功！', 'success');
-
-                        // 从DOM中移除行
-                        row.remove();
-
-                        // 如果删除后没有数据，显示无数据提示
-                        if (document.querySelectorAll('.system-section:first-child .data-table tbody tr').length === 0) {
-                            document.querySelector('.system-section:first-child .data-table tbody').innerHTML =
-                                '<tr><td colspan="5" style="text-align: center; color: var(--text-color-light);">暂无用户数据</td></tr>';
-                        }
+                        }, 500);
                     } catch (error) {
                         console.error('删除用户失败:', error);
                         showToast(`删除用户失败: ${error.message}`, 'error');
@@ -298,18 +260,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 新增用户时需要密码
                 document.getElementById('password').required = true;
-
-                // 确保所有输入框都是启用状态
-                document.getElementById('username').disabled = false;
-                document.getElementById('realname').disabled = false;
-                document.getElementById('email').disabled = false;
-                document.getElementById('role').disabled = false;
-
-                // 清空所有输入框，确保没有默认值
-                document.getElementById('username').value = '';
-                document.getElementById('realname').value = '';
-                document.getElementById('email').value = '';
-                document.getElementById('password').value = '';
             }
 
             modal.style.display = 'flex';
@@ -325,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 处理用户表单提交
-    async function handleUserFormSubmit(e) {
+    function handleUserFormSubmit(e) {
         e.preventDefault();
         const form = e.target;
 
@@ -345,74 +295,162 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="icon icon-spin">⏳</span> 保存中...';
 
-        try {
-            // 准备请求数据
-            let userData = {};
+        // 检查用户名是否已存在
+        if (!isEdit) {
+            const existingUsers = document.querySelectorAll('.data-table tbody tr');
+            let usernameExists = false;
 
-            // 如果是admin用户且是编辑操作，只允许修改密码和邮箱
-            if (isEdit && username === 'admin') {
-                // 包含密码和邮箱字段
-                userData = {
-                    email: email // 允许编辑邮箱
-                };
-
-                // 如果提供了密码，添加到请求数据中
-                if (password) {
-                    userData.password = password;
+            existingUsers.forEach(row => {
+                if (row.cells && row.cells[0] && row.cells[0].textContent === username) {
+                    usernameExists = true;
                 }
-            } else {
-                // 非admin用户或新建用户，包含所有字段
-                userData = {
-                    username: username,
-                    real_name: realname,
-                    role: role
-                };
+            });
 
-                // 如果提供了密码，添加到请求数据中
-                if (password) {
-                    userData.password = password;
-                }
+            if (usernameExists) {
+                // 恢复按钮状态
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span class="icon">💾</span> 保存';
+
+                // 显示错误提示
+                showToast('用户名已存在，请使用其他用户名', 'error');
+                return;
             }
-
-            // 准备请求配置
-            const requestOptions = {
-                method: isEdit ? 'PUT' : 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(userData)
-            };
-
-            // 发送请求
-            const url = isEdit ? `/api/v1/users/${userId}` : '/api/v1/users/';
-            const response = await fetch(url, requestOptions);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            // 成功处理
-            showToast(isEdit ? '用户更新成功！' : '用户创建成功！', 'success');
-
-            // 关闭模态框
-            closeUserModal();
-
-            // 重新获取用户列表显示最新数据
-            fetchUsers();
-
-        } catch (error) {
-            console.error('用户操作失败:', error);
-            showToast(`操作失败: ${error.message || '未知错误'}`, 'error');
-        } finally {
-            // 恢复按钮状态
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<span class="icon">💾</span> 保存';
         }
+
+        // 模拟API请求
+        setTimeout(() => {
+            try {
+                // 成功处理
+                showToast(isEdit ? '用户更新成功！' : '用户创建成功！', 'success');
+
+                // 关闭模态框
+                closeUserModal();
+
+                // 模拟添加新用户到表格
+                if (!isEdit) {
+                    addUserToTable({
+                        id: new Date().getTime(), // 模拟生成ID
+                        username: username,
+                        real_name: realname,
+                        email: email,
+                        role: role,
+                        status: '正常'
+                    });
+                } else {
+                    // 重新获取用户列表
+                    fetchUsers();
+                }
+            } catch (error) {
+                console.error('用户操作失败:', error);
+                showToast(`操作失败: ${error.message || '未知错误'}`, 'error');
+            } finally {
+                // 恢复按钮状态
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span class="icon">💾</span> 保存';
+            }
+        }, 1000);
+    }
+
+    // 模拟添加用户到表格
+    function addUserToTable(user) {
+        const tableBody = document.querySelector('.system-section:first-child .data-table tbody');
+        const emptyRow = tableBody.querySelector('tr td[colspan="5"]');
+
+        if (emptyRow) {
+            tableBody.innerHTML = ''; // 清空"暂无数据"行
+        }
+
+        // 根据用户角色显示不同文本
+        let roleText = '未知';
+        let roleBadgeClass = '';
+
+        switch (user.role) {
+            case 'admin':
+                roleText = '管理员';
+                roleBadgeClass = 'role-admin';
+                break;
+            case 'user':
+                roleText = '普通用户';
+                roleBadgeClass = 'role-user';
+                break;
+        }
+
+        // 根据状态显示不同类样式
+        const statusClass = user.status === '正常' ? 'status-active' : 'status-inactive';
+
+        const newRow = document.createElement('tr');
+        newRow.dataset.id = user.id;
+        newRow.innerHTML = `
+            <td>${user.username || '-'}</td>
+            <td>${user.real_name || '-'}</td>
+            <td><span class="role-badge ${roleBadgeClass}">${roleText}</span></td>
+            <td><span class="user-status ${statusClass}"></span> ${user.status || '正常'}</td>
+            <td>
+                <button class="btn-action edit" data-id="${user.id}">
+                    <span class="icon">✏️</span> 编辑
+                </button>
+                <button class="btn-action delete" data-id="${user.id}">
+                    <span class="icon">🗑️</span> 删除
+                </button>
+            </td>
+        `;
+
+        tableBody.appendChild(newRow);
+
+        // 添加事件监听器到新的操作按钮
+        attachUserActionListeners(newRow);
     }
 
 
+
+
+
+    // 获取系统日志
+    function fetchLogs() {
+        const logLevel = document.getElementById('logLevel').value;
+        const logDate = document.getElementById('logDate').value;
+        const logEntries = document.querySelector('.log-entries');
+
+        // 显示加载状态
+        logEntries.innerHTML = '<p style="color: var(--text-color-light);">获取日志中...</p>';
+
+        // 模拟API请求
+        setTimeout(() => {
+            // 模拟日志数据
+            const logs = [
+                { time: '2024-06-10 10:15:32', level: 'info', message: '用户 admin 登录系统' },
+                { time: '2024-06-10 10:30:21', level: 'info', message: '创建了新会议"市政府季度会议"' },
+                { time: '2024-06-10 11:05:15', level: 'warning', message: '用户 user1 尝试访问未授权页面' },
+                { time: '2024-06-10 11:15:42', level: 'info', message: '上传了文件 "report.pdf"' },
+                { time: '2024-06-10 11:20:55', level: 'error', message: '文件 "plan.docx" 上传失败' }
+            ];
+
+            // 根据筛选条件过滤日志
+            let filteredLogs = [...logs];
+
+            if (logLevel) {
+                filteredLogs = filteredLogs.filter(log => log.level === logLevel);
+            }
+
+            // 渲染日志
+            if (filteredLogs.length === 0) {
+                logEntries.innerHTML = '<p style="color: var(--text-color-light);">暂无匹配的日志数据</p>';
+            } else {
+                let logHtml = '';
+                filteredLogs.forEach(log => {
+                    const logClass = log.level === 'error' ? 'color: #d9534f;' :
+                                   log.level === 'warning' ? 'color: #f0ad4e;' : '';
+
+                    logHtml += `<p style="${logClass}">
+                        [${log.time}] [${log.level.toUpperCase()}] ${log.message}
+                    </p>`;
+                });
+
+                logEntries.innerHTML = logHtml;
+            }
+
+        }, 500);
+    }
 
     // 显示提示消息
     function showToast(message, type = 'info') {
