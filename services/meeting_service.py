@@ -29,9 +29,9 @@ class MeetingService:
     """会议服务类，处理会议相关的业务逻辑"""
 
     @staticmethod
-    def get_meetings(db: Session, skip: int = 0, limit: int = 100):
-        """获取会议列表"""
-        return crud.get_meetings(db, skip=skip, limit=limit)
+    def get_meetings(db: Session):
+        """获取所有会议列表"""
+        return crud.get_meetings(db)
 
     @staticmethod
     def get_meeting(db: Session, meeting_id: str):

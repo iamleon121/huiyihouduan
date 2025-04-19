@@ -24,7 +24,7 @@ def create_user(db: Session, user: schemas.UserCreate):
     """创建新用户"""
     # 创建密码哈希
     hashed_password = pwd_context.hash(user.password)
-    
+
     # 创建用户对象
     db_user = models.User(
         username=user.username,
@@ -32,7 +32,7 @@ def create_user(db: Session, user: schemas.UserCreate):
         hashed_password=hashed_password,
         role=user.role
     )
-    
+
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -43,19 +43,19 @@ def update_user(db: Session, user_id: int, user_update: schemas.UserUpdate):
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if db_user is None:
         return None
-    
+
     # 更新用户基本信息
     update_data = user_update.dict(exclude_unset=True)
-    
+
     # 如果更新包含密码，需要创建密码哈希
     if "password" in update_data and update_data["password"]:
         update_data["hashed_password"] = pwd_context.hash(update_data.pop("password"))
-    
+
     # 更新用户字段
     for key, value in update_data.items():
         if hasattr(db_user, key) and value is not None:
             setattr(db_user, key, value)
-    
+
     db.commit()
     db.refresh(db_user)
     return db_user
@@ -65,7 +65,7 @@ def delete_user(db: Session, user_id: int):
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if db_user is None:
         return False
-    
+
     db.delete(db_user)
     db.commit()
     return True
@@ -93,11 +93,11 @@ def get_meeting(db: Session, meeting_id: str):
     """获取单个会议（包括议程项）"""
     return db.query(models.Meeting).filter(models.Meeting.id == meeting_id).first()
 
-def get_meetings(db: Session, skip: int = 0, limit: int = 100):
-    """获取会议列表（不包括议程项，用于列表显示）"""
+def get_meetings(db: Session):
+    """获取所有会议列表（不包括议程项，用于列表显示）"""
     # Eager load agenda_items if needed for list view, but usually not
-    # return db.query(models.Meeting).options(joinedload(models.Meeting.agenda_items)).offset(skip).limit(limit).all()
-    return db.query(models.Meeting).offset(skip).limit(limit).all()
+    # return db.query(models.Meeting).options(joinedload(models.Meeting.agenda_items)).all()
+    return db.query(models.Meeting).all()
 
 def create_meeting(db: Session, meeting: schemas.MeetingCreate):
     """创建新会议"""
@@ -201,7 +201,7 @@ def get_meeting_change_status_token(db: Session):
     if not token:
         # 如果不存在，初始化一个识别码
         new_token = models.SystemSetting(
-            key="meeting_change_status_token", 
+            key="meeting_change_status_token",
             value=str(uuid.uuid4())
         )
         db.add(new_token)
@@ -213,16 +213,16 @@ def update_meeting_change_status_token(db: Session):
     """更新会议变更状态识别码"""
     token = db.query(models.SystemSetting).filter(models.SystemSetting.key == "meeting_change_status_token").first()
     old_token_value = token.value if token else None
-    
+
     # 生成新的识别码，确保与旧的不同
     new_token_value = str(uuid.uuid4())
     # 极少数情况下可能生成相同的UUID，确保生成的新值与旧值不同
     while old_token_value and new_token_value == old_token_value:
         print(f"[识别码] 新旧识别码相同，重新生成: {new_token_value}")
         new_token_value = str(uuid.uuid4())
-    
+
     print(f"[识别码] 旧识别码: {old_token_value}, 新识别码: {new_token_value}")
-    
+
     if token:
         # 更新现有的识别码
         token.value = new_token_value
@@ -233,7 +233,7 @@ def update_meeting_change_status_token(db: Session):
     else:
         # 如果不存在，创建一个新的
         new_token = models.SystemSetting(
-            key="meeting_change_status_token", 
+            key="meeting_change_status_token",
             value=new_token_value
         )
         db.add(new_token)

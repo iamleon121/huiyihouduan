@@ -40,7 +40,7 @@ def get_documents(db: Session = Depends(get_db)):
     document_id = 0
 
     # 获取所有会议信息，用于关联文件
-    meetings = crud.get_meetings(db, skip=0, limit=1000)
+    meetings = crud.get_meetings(db)
     meeting_map = {meeting.id: meeting.title for meeting in meetings}
 
     # 查询所有议程项，用于检查文件引用
@@ -51,22 +51,22 @@ def get_documents(db: Session = Depends(get_db)):
     for item in all_agenda_items:
         if not item.files:
             continue
-            
+
         for file_info in item.files:
             if not isinstance(file_info, dict) or 'path' not in file_info:
                 continue
-                
+
             file_path = file_info.get('path', '')
             if not file_path:
                 continue
-                
+
             # 规范化路径，以便比较
             norm_path = os.path.normpath(file_path).replace("\\", "/")
-            
+
             # 如果这个文件路径还没有记录，创建一个新条目
             if norm_path not in file_references:
                 file_references[norm_path] = []
-                
+
             # 添加引用信息
             file_references[norm_path].append({
                 "agenda_item_id": item.id,
@@ -102,7 +102,7 @@ def get_documents(db: Session = Depends(get_db)):
                 # 尝试确定文件所属的会议
                 meeting_id = None
                 meeting_title = "未关联会议"
-                
+
                 # 从文件路径中提取会议ID
                 path_parts = file_path.replace("\\", "/").split("/")
                 if "uploads" in path_parts:
@@ -117,11 +117,11 @@ def get_documents(db: Session = Depends(get_db)):
                 norm_path = os.path.normpath(file_path).replace("\\", "/")
                 is_in_use = norm_path in file_references
                 file_usage = file_references.get(norm_path, [])
-                
+
                 # 确定文件是否可删除
                 # 只有未被任何会议引用的文件，或者会议已被删除的文件才可删除
                 is_deletable = not is_in_use
-                
+
                 # 如果文件正在被使用，但所有引用它的会议都已不存在，则也可以删除
                 if is_in_use:
                     all_meetings_deleted = True
@@ -131,7 +131,7 @@ def get_documents(db: Session = Depends(get_db)):
                             all_meetings_deleted = False
                             break
                     is_deletable = all_meetings_deleted
-                
+
                 # 确定文件状态描述
                 if is_in_use and not is_deletable:
                     file_status = "正在使用"
@@ -139,7 +139,7 @@ def get_documents(db: Session = Depends(get_db)):
                     file_status = "会议已删除"
                 else:
                     file_status = "未使用"
-                
+
                 # 处理文件显示名称
                 # 如果文件名格式为UUID_原始文件名.pdf，则提取原始文件名
                 display_name = file_name
@@ -288,18 +288,18 @@ def delete_document(document_id: str, db: Session = Depends(get_db)):
         for item in agenda_items:
             if not item.files:
                 continue
-                
+
             for file_info in item.files:
                 if not isinstance(file_info, dict) or 'path' not in file_info:
                     continue
-                    
+
                 item_file_path = file_info.get('path', '')
                 if not item_file_path:
                     continue
-                    
+
                 # 规范化路径，以便比较
                 item_norm_path = os.path.normpath(item_file_path).replace("\\", "/")
-                
+
                 if item_norm_path == norm_path:
                     # 检查会议是否存在
                     meeting = crud.get_meeting(db, meeting_id=item.meeting_id)

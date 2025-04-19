@@ -1,6 +1,6 @@
 # 无纸化会议系统项目文档
 
-本目录包含无纸化会议系统的项目文档和规划文件。
+本目录包含无纸化会议系统的项目文档和规划文件。这些文档提供了系统设计、开发进度、代码规范和未来计划的详细信息。
 
 ## 文档索引
 
@@ -11,17 +11,27 @@
 - [前端组件](./frontend_components.md) - 前端组件设计和实现
 - [上传目录指南](./uploads_directory_guide.md) - uploads目录结构和使用说明
 
-### 项目管理与进度
-- [项目进度](./project_progress.md) - 项目开发进度、已完成功能和正在进行的工作
-- [开发日志](./development_log.md) - 详细的开发记录和变更历史
-- [周报](./weekly_report.md) - 项目周报和定期进展
-- [任务状态](./task_status.md) - 当前任务状态和分配情况
-
-### 开发计划和规范
-- [会议CRUD功能](./meeting_crud_todo.md) - 会议管理基础功能开发计划
-- [会议创建功能](./meeting_create_todo.md) - 会议创建功能开发计划
+### 开发规范与指南
+- [编码规范](./coding_standards.md) - Python/FastAPI编码规范和最佳实践
 - [会议开发指南](./meeting_development_guidelines.md) - 会议功能开发的一般准则
-- [优化计划](./optimization_plan.md) - 系统优化和性能提升计划
+
+### 重构与优化
+- [渐进式重构计划](./progressive_refactoring_plan.md) - 系统重构的详细计划和策略
+- [重构总结](./refactoring_summary.md) - 已完成的重构工作和后续计划
+- [性能优化计划](./performance_optimization_plan.md) - 系统性能优化策略
+- [异步实现指南](./async_implementation_guide.md) - 异步处理的实现方法和最佳实践
+- [异步PDF处理](./async_pdf_processing.md) - PDF异步处理的具体实现
+
+### 项目管理与进度
+- [项目状态总结](./project_status_summary.md) - 项目当前状态和未来计划的综合概述
+- [项目进度](./project_progress.md) - 项目开发进度和已完成功能
+- [开发日志](./development_log.md) - 详细的开发记录和变更历史
+- [任务清单](./tasks_todo.md) - 当前任务状态和未来计划
+- [重构日志](./refactoring_log.md) - 重构过程的详细记录
+- [异步重构日志](./refactoring_log_async.md) - 异步功能重构的详细记录
+
+### 未来规划
+- [未来改进](./future_improvements.md) - 系统未来改进和功能扩展计划
 
 ## 项目概述
 
@@ -33,6 +43,7 @@
 2. **议程管理** - 为会议添加议程项，设置报告人、时长等
 3. **文件管理** - 上传、管理、查看PDF文件
 4. **PDF转换** - 将PDF文件转换为JPG图片，支持单页JPG和长图模式
+5. **用户管理** - 用户认证、权限控制和系统设置
 
 ## 项目进度概览
 
@@ -46,12 +57,10 @@
 
 ## 最近更新
 
-- 2024-10-16: 优化文档管理页面，移除上传文件按钮，添加客户端分页功能
-- 2024-10-15: 改进会议管理页面用户标头显示格式
-- 2024-10-10: 优化会议创建流程，添加保存按钮防重复点击功能
-- 2023-12-12: 添加项目进度跟踪文档
-- 2023-11-20: 更新API文档，添加文件管理相关接口
-- 2023-10-15: 完成基础项目文档编写
+- 2024-04-19: 完成会议管理页面分页功能移除，显示所有会议
+- 2024-04-19: 优化文档管理页面，保留客户端分页功能
+- 2024-04-19: 完成代码整理，移除无效测试代码和注释
+- 2024-04-19: 更新项目文档，整合重构和优化计划
 
 ## 快速开始
 
@@ -61,8 +70,11 @@ fastapi==0.104.1
 uvicorn==0.24.0
 python-multipart==0.0.6
 PyMuPDF==1.23.7
-Jinja2==3.1.2
-sqlalchemy
+sqlalchemy==2.0.23
+pydantic==2.4.2
+aiofiles==23.2.1
+python-jose==3.3.0
+passlib==1.7.4
 ```
 
 运行项目：
@@ -70,4 +82,4 @@ sqlalchemy
 uvicorn main:app --reload
 ```
 
-更新日期：2024年10月16日
+更新日期：2024年04月19日

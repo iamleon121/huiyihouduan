@@ -56,21 +56,20 @@ async def create_new_meeting(meeting: schemas.MeetingCreate, db: Session = Depen
 
 
 @router.get("/", response_model=List[schemas.Meeting])
-def read_meetings(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_meetings(db: Session = Depends(get_db)):
     """
     获取会议列表
 
-    返回系统中的会议列表，支持分页。
+    返回系统中的所有会议列表，不再支持分页。
 
     Args:
-        skip (int, optional): 跳过的记录数，默认为0
-        limit (int, optional): 返回的最大记录数，默认为100
         db (Session): 数据库会话对象，通过依赖注入获取
 
     Returns:
         List[schemas.Meeting]: 会议对象列表
     """
-    meetings = crud.get_meetings(db, skip=skip, limit=limit)
+    # 获取所有会议，不再使用分页参数
+    meetings = crud.get_meetings(db)
     # Manually set agenda_items to empty list as get_meetings doesn't load them
     # Or adjust the schema/query if needed
     for meeting in meetings:

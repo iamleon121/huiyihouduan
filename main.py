@@ -94,12 +94,7 @@ models.Base.metadata.create_all(bind=engine)
 from seed_users import seed_users
 seed_users()
 
-# 注意：static/converted_images目录已移除，因为它对会议管理模块没有用处
-
-# Create database tables on startup (already done by calling create_db_tables directly)
-# models.Base.metadata.create_all(bind=engine) # Alternative way
-
-# Dependency to get DB session
+# 获取数据库会话的依赖函数
 def get_db():
     db = SessionLocal()
     try:
@@ -107,18 +102,10 @@ def get_db():
     finally:
         db.close()
 
-# Optional: Add startup event (alternative way to create tables)
-# @app.on_event("startup")
-# async def startup_event():
-#     create_db_tables()
-
-
-# Mount the uploads directory to serve uploaded files
+# 挂载上传目录以提供文件访问
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# Optional: Setup Jinja2 templates if you plan more complex HTML rendering later
-# templates = Jinja2Templates(directory="static")
-
+# 页面路由
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     """
@@ -126,12 +113,6 @@ async def read_root(request: Request):
 
     返回static/index.html文件的内容作为HTML响应。
     如果文件不存在，则返回404错误。
-
-    Args:
-        request (Request): FastAPI请求对象
-
-    Returns:
-        HTMLResponse: 包含index.html内容的HTML响应
     """
     try:
         with open("static/index.html", "r", encoding="utf-8") as f:
@@ -159,65 +140,15 @@ async def serve_huiyi_page(request: Request):
         status_code=200
     )
 
-# --- PDF Conversion API Endpoints ---
-# 注意：PDF转换相关路由已移动到routes/pdf_conversion.py
+# 注意：所有API路由已移动到routes目录下的相应模块中
+# - 会议相关路由：routes/meetings.py
+# - 文档相关路由：routes/documents.py
+# - 用户相关路由：routes/users.py
+# - 维护相关路由：routes/maintenance.py
+# - PDF转换相关路由：routes/pdf_conversion.py
 
+# 注意：所有服务函数已移动到services目录下的相应模块中
+# - 文件服务：services/file_service.py
+# - 会议服务：services/meeting_service.py
 
-# --- Meeting API Endpoints ---
-# 注意：会议相关路由已移动到routes/meetings.py
-
-
-
-
-
-
-
-
-
-
-
-
-
-# 会议文件上传API
-# 注意：会议文件上传相关路由已移动到routes/meetings.py
-
-# 临时文件上传API
-# 注意：临时文件上传相关路由已移动到routes/pdf_conversion.py
-
-# --- Document Management API Endpoints ---
-
-# --- Maintenance API Endpoints ---
-# 注意：维护相关路由已移动到routes/maintenance.py
-
-# --- Documents API Endpoints ---
-# 注意：文档相关路由已移动到routes/documents.py
-
-# --- End API Endpoints ---
-
-# 注意：清理临时文件相关函数已移动到services/file_service.py
-
-# 导入文件服务
-from services.file_service import FileService
-
-# --- Maintenance API Endpoints ---
-# 注意：维护相关路由已移动到routes/maintenance.py
-# 以下代码将在测试通过后删除
-
-
-
-# --- User API Endpoints ---
-# 注意：用户相关路由已移动到routes/users.py
-
-# 注意：会议状态测试相关路由已移动到routes/meetings.py
-
-# 注意：convert_pdf_to_jpg_for_pad 和 convert_pdf_to_jpg_for_pad_sync 函数已移动到 utils.py
-
-# 注意：会议 JPG 相关路由已移动到routes/meetings.py
-
-
-
-# 注意：会议包相关路由已移动到routes/meetings.py
-
-# 注意：会议下载包相关路由已移动到routes/meetings.py
-
-# 注意：format_file_size、ensure_jpg_for_pdf 和 ensure_jpg_in_zip 函数已移动到 utils.py
+# 注意：工具函数已移动到utils.py中

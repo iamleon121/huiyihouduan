@@ -1066,11 +1066,11 @@ document.addEventListener('DOMContentLoaded', () => {
         viewMeetingModal.style.display = 'none';
     }
 
-    // 更新分页计数
+    // 更新总数计数
     function updatePaginationCount(count) {
-        const paginationSpan = document.querySelector('.pagination-container span');
-        if (paginationSpan) {
-            paginationSpan.textContent = `共 ${count} 条`;
+        const totalCountSpan = document.querySelector('.total-count-container span');
+        if (totalCountSpan) {
+            totalCountSpan.textContent = `共 ${count} 条`;
         }
     }
 
