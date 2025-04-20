@@ -981,6 +981,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 添加文件到可视化列表
                 const fileItem = document.createElement('li');
                 fileItem.className = 'uploaded-file-item';
+
+                // 为文件项生成唯一ID，用于解绑操作
+                // 如果文件来自文档管理页面，使用文件的实际ID
+                const fileId = fileInfo.id || document.querySelectorAll('.uploaded-file-item').length;
+                const filePath = fileInfo.path || '';
+
                 fileItem.innerHTML = `
                     <div class="file-info">
                         <span class="file-name">${fileName}</span>
@@ -988,16 +994,51 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="file-actions">
                         <a href="${fileUrl}" target="_blank" class="btn-view-file">查看</a>
-                        <button type="button" class="btn-remove-uploaded-file" data-file-url="${fileUrl}">×</button>
+                        <button type="button" class="btn-remove-uploaded-file"
+                            data-file-url="${fileUrl}"
+                            data-file-id="${fileId}"
+                            data-file-path="${filePath}">×</button>
                     </div>
                 `;
                 uploadedFilesList.appendChild(fileItem);
 
                 // 添加删除按钮事件
                 const removeBtn = fileItem.querySelector('.btn-remove-uploaded-file');
-                removeBtn.addEventListener('click', function() {
-                    // 移除隐藏输入字段
+                removeBtn.addEventListener('click', async function() {
+                    // 获取文件信息
                     const fileUrl = this.dataset.fileUrl;
+                    const fileId = this.dataset.fileId || '';
+                    const filePath = this.dataset.filePath || '';
+
+                    // 确认是否要删除文件
+                    if (!confirm(`确定要从会议中移除此文件吗？文件将被解绑并移动到临时文件夹。`)) {
+                        return;
+                    }
+
+                    try {
+                        // 调用API解绑文件
+                        if (fileId) {
+                            const response = await fetch(`/api/v1/documents/${fileId}/unbind`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+
+                            if (!response.ok) {
+                                const errorData = await response.json();
+                                throw new Error(errorData.message || errorData.detail || `解绑失败 (${response.status})`);
+                            }
+
+                            const result = await response.json();
+                            console.log('文件解绑成功:', result);
+                        }
+                    } catch (error) {
+                        console.error('文件解绑失败:', error);
+                        alert(`文件解绑失败: ${error.message}`);
+                    }
+
+                    // 移除隐藏输入字段
                     const inputs = agendaItem.querySelectorAll(`input[name="agenda[${agendaItemIndex}][existing_files][]"]`);
                     inputs.forEach(input => {
                         try {

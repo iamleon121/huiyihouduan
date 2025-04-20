@@ -232,6 +232,211 @@ def delete_all_deletable_documents(db: Session = Depends(get_db)):
             }
         )
 
+@router.post("/{document_id}/unbind")
+async def unbind_document(document_id: str, db: Session = Depends(get_db)):
+    """解绑文档与会议的关联，将文件移动到临时文件夹，删除JPG文件夹"""
+    try:
+        # 首先获取文件路径
+        file_path = None
+
+        # 获取文档列表并尝试查找匹配的文件
+        documents = get_documents(db).get("documents", [])
+        try:
+            doc_id = int(document_id)
+            if 0 <= doc_id < len(documents):
+                target_file = documents[doc_id]
+                file_path = target_file.get("path")
+                meeting_id = target_file.get("meeting_id")
+                original_name = target_file.get("original_name")
+        except (ValueError, TypeError):
+            # 如果document_id不是有效的整数或者找不到文件，返回错误
+            return JSONResponse(
+                status_code=404,
+                content={"message": f"文件不存在: {document_id}"}
+            )
+
+        # 如果找不到文件，返回404错误
+        if not file_path or not os.path.exists(file_path):
+            return JSONResponse(
+                status_code=404,
+                content={"message": f"文件不存在: {document_id}"}
+            )
+
+        # 规范化路径，以便比较
+        norm_path = os.path.normpath(file_path).replace("\\", "/")
+        file_name = os.path.basename(norm_path)
+
+        # 查找所有引用该文件的议程项
+        agenda_items = db.query(models.AgendaItem).all()
+        referenced_items = []
+
+        for item in agenda_items:
+            if not item.files:
+                continue
+
+            # 创建一个新的文件列表，不包含要解绑的文件
+            new_files = []
+            modified = False
+
+            for file_info in item.files:
+                if not isinstance(file_info, dict) or 'path' not in file_info:
+                    new_files.append(file_info)
+                    continue
+
+                item_file_path = file_info.get('path', '')
+                if not item_file_path:
+                    new_files.append(file_info)
+                    continue
+
+                # 规范化路径，以便比较
+                item_norm_path = os.path.normpath(item_file_path).replace("\\", "/")
+
+                if item_norm_path == norm_path:
+                    # 记录引用信息
+                    referenced_items.append({
+                        "agenda_item_id": item.id,
+                        "agenda_item_title": item.title,
+                        "meeting_id": item.meeting_id
+                    })
+                    modified = True
+                else:
+                    new_files.append(file_info)
+
+            # 如果有变化，更新议程项的文件列表
+            if modified:
+                item.files = new_files
+                # 不在这里提交，而是在处理完所有议程项后再提交
+
+        # 在处理完所有议程项后，提交数据库更改
+        if referenced_items:  # 如果有引用被修改，则提交更改
+            db.commit()
+            print(f"成功更新所有议程项的文件列表")
+
+        # 如果没有引用，返回成功消息
+        if not referenced_items:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "message": f"文件没有被任何会议引用，无需解绑",
+                    "status": "success"
+                }
+            )
+
+        # 将文件移动到临时文件夹
+        temp_dir = os.path.join(UPLOAD_DIR, "temp")
+        os.makedirs(temp_dir, exist_ok=True)
+
+        # 提取原始文件名中的UUID和文件名部分
+        original_uuid = ""
+        original_filename = ""
+
+        # 尝试从文件名中提取UUID
+        pdf_filename = os.path.basename(file_path)
+        print(f"处理文件: {pdf_filename}, 路径: {file_path}")
+
+        if "_" in pdf_filename:
+            parts = pdf_filename.split("_")
+            potential_uuid = parts[0]
+            # 验证是否是UUID格式
+            try:
+                uuid_obj = uuid.UUID(potential_uuid)
+                original_uuid = potential_uuid
+                original_filename = "_".join(parts[1:])
+                print(f"从文件名提取到UUID: {original_uuid}, 原始文件名: {original_filename}")
+            except ValueError:
+                print(f"文件名中的第一部分不是UUID: {potential_uuid}")
+                original_filename = pdf_filename
+        else:
+            original_filename = pdf_filename
+
+        # 如果没有提取到UUID，生成一个新的
+        if not original_uuid:
+            original_uuid = str(uuid.uuid4())
+            print(f"生成新的UUID: {original_uuid}")
+
+        # 使用原始的UUID创建新的文件名，保持UUID一致性
+        new_file_name = f"{original_uuid}_{original_filename}"
+        new_file_path = os.path.join(temp_dir, new_file_name)
+        print(f"新文件路径: {new_file_path}")
+
+        # 复制文件到临时文件夹
+        shutil.copy2(file_path, new_file_path)
+
+        # 删除JPG文件夹
+        if meeting_id:
+            # 使用前面提取的原始UUID
+            pdf_uuid = original_uuid
+            print(f"使用原始UUID删除JPG文件夹: {pdf_uuid}")
+
+            # 如果有UUID，尝试删除对应的JPG文件夹
+            if pdf_uuid:
+                print(f"将删除与UUID {pdf_uuid} 相关的JPG文件夹")
+
+                # 定位议程项文件夹
+                for ref_item in referenced_items:
+                    agenda_item_id = ref_item.get("agenda_item_id")
+                    agenda_folder_name = f"agenda_{agenda_item_id}"
+                    agenda_dir = os.path.join(UPLOAD_DIR, meeting_id, agenda_folder_name)
+                    jpg_dir = os.path.join(agenda_dir, "jpgs")
+                    jpg_subdir = os.path.join(jpg_dir, pdf_uuid)
+
+                    print(f"检查JPG文件夹: {jpg_subdir}")
+
+                    # 如果JPG子目录存在，删除它
+                    try:
+                        if os.path.exists(jpg_subdir):
+                            if os.path.isdir(jpg_subdir):
+                                shutil.rmtree(jpg_subdir)
+                                print(f"成功删除JPG文件夹: {jpg_subdir}")
+                            else:
+                                os.remove(jpg_subdir)
+                                print(f"成功删除JPG文件: {jpg_subdir}")
+                        else:
+                            print(f"JPG文件夹不存在: {jpg_subdir}")
+
+                            # 尝试在整个会议目录中搜索相关的JPG文件夹
+                            meeting_dir = os.path.join(UPLOAD_DIR, meeting_id)
+                            if os.path.exists(meeting_dir) and os.path.isdir(meeting_dir):
+                                print(f"在整个会议目录中搜索: {meeting_dir}")
+                                for root, dirs, files in os.walk(meeting_dir):
+                                    if "jpgs" in dirs:
+                                        jpgs_path = os.path.join(root, "jpgs")
+                                        potential_uuid_dir = os.path.join(jpgs_path, pdf_uuid)
+                                        if os.path.exists(potential_uuid_dir) and os.path.isdir(potential_uuid_dir):
+                                            print(f"找到相关JPG文件夹: {potential_uuid_dir}")
+                                            shutil.rmtree(potential_uuid_dir)
+                                            print(f"成功删除JPG文件夹: {potential_uuid_dir}")
+                    except Exception as e:
+                        print(f"删除JPG文件夹时出错: {str(e)}")
+                        import traceback
+                        traceback.print_exc()
+            else:
+                print(f"无法从文件名中提取UUID: {pdf_filename}")
+
+        # 删除原文件
+        os.remove(file_path)
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": f"文件已成功解绑并移动到临时文件夹: {original_filename}",
+                "status": "success",
+                "new_path": new_file_path,
+                "temp_id": original_uuid  # 使用原始的UUID而不是新生成的
+            }
+        )
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"解绑文件时出错: {error_details}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "message": f"解绑文件失败: {str(e)}",
+                "status": "error"
+            }
+        )
+
 @router.delete("/{document_id}")
 def delete_document(document_id: str, db: Session = Depends(get_db)):
     """删除单个文件"""

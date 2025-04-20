@@ -26,14 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('未找到清理临时文件按钮元素');
         }
 
-        // 强制清理临时文件按钮事件绑定
-        const forceCleanupTempBtn = document.getElementById('force-cleanup-temp-btn');
-        if (forceCleanupTempBtn) {
-            console.log('绑定强制清理临时文件按钮事件');
-            forceCleanupTempBtn.addEventListener('click', handleForceCleanupTempFiles);
-        } else {
-            console.error('未找到强制清理临时文件按钮元素');
-        }
+        // 已移除清除缓存文件按钮事件绑定
 
         // 查询和重置按钮事件绑定
         const queryBtn = document.querySelector('.filters .btn-secondary');
@@ -126,11 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cleanupTempBtn.textContent = `一键删除所有可删除文件 (${data.count})`;
             }
 
-            // 更新强制清理按钮的文本
-            const forceCleanupTempBtn = document.getElementById('force-cleanup-temp-btn');
-            if (forceCleanupTempBtn && data.count !== undefined) {
-                forceCleanupTempBtn.textContent = `清除缓存文件 (${data.count})`;
-            }
+            // 已移除清除缓存文件按钮
         } catch (error) {
             console.error('获取临时文件数量出错:', error);
         }
@@ -519,65 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 处理清除缓存文件
-    async function handleForceCleanupTempFiles() {
-        console.log('清除缓存文件按钮被点击');
-
-        if (!confirm("确定要清除缓存文件吗？所有未绑定会议的文件将被删除，不考虑创建时间！")) {
-            console.log('用户取消了清除缓存文件操作');
-            return;
-        }
-
-        try {
-            // 显示加载中的状态
-            const forceCleanupTempBtn = document.getElementById('force-cleanup-temp-btn');
-            if (forceCleanupTempBtn) {
-                forceCleanupTempBtn.disabled = true;
-                forceCleanupTempBtn.textContent = "清理中...";
-            }
-
-            console.log('发送清除缓存文件请求到服务器');
-            const response = await fetch('/api/v1/maintenance/force-cleanup-temp', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            console.log('收到服务器响应', response.status);
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error('服务器返回错误', errorData);
-                alert(`强制清理失败: ${errorData.message || errorData.detail || '未知错误'}`);
-                return;
-            }
-
-            const data = await response.json();
-            console.log('强制清理成功', data);
-
-            // 显示成功消息
-            alert(data.message || "缓存文件清除成功");
-
-            // 刷新文件列表，以便显示清理后的结果
-            currentPage = 1; // 强制清理后重置到第一页
-            fetchFiles();
-
-            // 获取最新的临时文件数量
-            await fetchTempFilesCount();
-        } catch (error) {
-            console.error('强制清理临时文件时出错:', error);
-            alert(`强制清理过程中出错: ${error.message || '未知错误'}`);
-        } finally {
-            // 恢复按钮状态
-            const forceCleanupTempBtn = document.getElementById('force-cleanup-temp-btn');
-            if (forceCleanupTempBtn) {
-                forceCleanupTempBtn.disabled = false;
-                forceCleanupTempBtn.textContent = "清除缓存文件";
-                fetchTempFilesCount(); // 更新按钮上的文件数量
-            }
-        }
-    }
+    // 已移除清除缓存文件功能
 
     // 更新分页信息
     function updatePagination(total) {
