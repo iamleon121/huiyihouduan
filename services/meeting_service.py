@@ -92,11 +92,39 @@ class MeetingService:
         }
 
     @staticmethod
-    def delete_meeting(db: Session, meeting_id: str):
-        """删除会议"""
+    async def delete_meeting(db: Session, meeting_id: str):
+        """删除会议，同时删除相关的ZIP包和文件系统中的会议文件夹"""
+        print(f"\n开始删除会议 {meeting_id} 及其相关资源")
+
+        # 检查会议是否存在
+        db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
+        if db_meeting is None:
+            print(f"错误: 会议 {meeting_id} 未找到")
+            raise HTTPException(status_code=404, detail="会议未找到")
+
+        # 1. 先删除ZIP包
+        await MeetingService.delete_meeting_package(db, meeting_id)
+
+        # 2. 删除文件系统中的会议文件夹
+        meeting_dir = os.path.join(UPLOAD_DIR, meeting_id)
+        if os.path.exists(meeting_dir) and os.path.isdir(meeting_dir):
+            try:
+                print(f"删除会议文件夹: {meeting_dir}")
+                shutil.rmtree(meeting_dir)
+                print(f"成功删除会议文件夹: {meeting_dir}")
+            except Exception as e:
+                print(f"删除会议文件夹失败: {str(e)}")
+                # 即使删除文件夹失败，也继续删除数据库记录
+        else:
+            print(f"会议文件夹不存在: {meeting_dir}")
+
+        # 3. 最后删除数据库中的会议记录
         success = crud.delete_meeting(db=db, meeting_id=meeting_id)
         if not success:
-            raise HTTPException(status_code=404, detail="会议未找到")
+            print(f"删除数据库中的会议记录失败")
+            raise HTTPException(status_code=500, detail="删除数据库中的会议记录失败")
+
+        print(f"会议 {meeting_id} 及其相关资源删除成功")
         return True
 
     @staticmethod
@@ -377,90 +405,50 @@ class MeetingService:
 
     @staticmethod
     async def download_meeting_package(db: Session, meeting_id: str):
-        """下载会议的JPG文件包，将所有JPG文件打包成ZIP文件
-        使用异步IO和线程池处理文件操作，避免阻塞事件循环。
+        """下载会议的JPG文件包，返回预生成的ZIP文件
+        如果文件不存在，尝试重新生成
         """
-        # 导入异步工具
-        from services.async_utils import AsyncUtils
+        print(f"\n开始下载会议 {meeting_id} 的JPG文件包")
 
         # 检查会议是否存在
         db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
         if db_meeting is None:
+            print(f"错误: 会议 {meeting_id} 未找到")
             raise HTTPException(status_code=404, detail="会议未找到")
 
-        # 获取会议目录
-        meeting_dir = os.path.join(UPLOAD_DIR, meeting_id)
+        # 检查是否有预生成的包
+        if hasattr(db_meeting, 'package_path') and db_meeting.package_path and os.path.exists(db_meeting.package_path):
+            print(f"使用预生成的包: {db_meeting.package_path}")
+            # 返回文件内容
+            with open(db_meeting.package_path, 'rb') as f:
+                content = f.read()
+                # 创建内存中的文件对象
+                file_obj = io.BytesIO(content)
+                return file_obj
+        else:
+            print(f"预生成的包不存在，尝试重新生成")
+            # 尝试重新生成包
+            success = await MeetingService.generate_meeting_package(db, meeting_id)
+            if success:
+                # 重新获取会议信息，因为包路径可能已更新
+                db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
+                if hasattr(db_meeting, 'package_path') and db_meeting.package_path and os.path.exists(db_meeting.package_path):
+                    print(f"使用新生成的包: {db_meeting.package_path}")
+                    # 返回文件内容
+                    with open(db_meeting.package_path, 'rb') as f:
+                        content = f.read()
+                        # 创建内存中的文件对象
+                        file_obj = io.BytesIO(content)
+                        return file_obj
 
-        # 使用线程池检查目录是否存在
-        dir_exists = await AsyncUtils.run_in_threadpool(lambda: os.path.exists(meeting_dir))
-        if not dir_exists:
-            raise HTTPException(status_code=404, detail="会议文件目录不存在")
-
-        # 创建内存中的ZIP文件
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            # 遍历会议的所有议程项
-            for agenda_item in db_meeting.agenda_items:
-                agenda_item_id = agenda_item.id
-                agenda_dir = os.path.join(meeting_dir, f"agenda_{agenda_item_id}")
-                jpg_dir = os.path.join(agenda_dir, "jpgs")
-
-                # 使用线程池检查目录是否存在
-                agenda_dir_exists = await AsyncUtils.run_in_threadpool(lambda: os.path.exists(agenda_dir))
-                if not agenda_dir_exists:
-                    continue
-
-                # 使用线程池检查JPG目录是否存在
-                jpg_dir_exists = await AsyncUtils.run_in_threadpool(lambda: os.path.exists(jpg_dir))
-                if not jpg_dir_exists:
-                    continue
-
-                # 使用线程池获取JPG目录中的所有子目录
-                async def get_pdf_dirs():
-                    def _get_pdf_dirs():
-                        return [d for d in os.listdir(jpg_dir) if os.path.isdir(os.path.join(jpg_dir, d))]
-                    return await AsyncUtils.run_in_threadpool(_get_pdf_dirs)
-
-                pdf_dirs = await get_pdf_dirs()
-
-                # 遍历所有PDF对应的目录
-                for pdf_id in pdf_dirs:
-                    pdf_jpg_dir = os.path.join(jpg_dir, pdf_id)
-
-                    # 使用线程池查找对应的PDF文件
-                    async def find_pdf_file():
-                        def _find_pdf_file():
-                            for file in os.listdir(agenda_dir):
-                                if file.startswith(f"{pdf_id}_") and file.lower().endswith(".pdf"):
-                                    return file
-                            return None
-                        return await AsyncUtils.run_in_threadpool(_find_pdf_file)
-
-                    pdf_file = await find_pdf_file()
-
-                    # 如果找不到对应的PDF文件，使用默认名称
-                    pdf_name = pdf_file.split("_", 1)[1] if pdf_file and "_" in pdf_file else f"document_{pdf_id}.pdf"
-
-                    # 使用线程池获取所有JPG文件
-                    async def get_jpg_files():
-                        def _get_jpg_files():
-                            return [f for f in os.listdir(pdf_jpg_dir) if f.lower().endswith(".jpg")]
-                        return await AsyncUtils.run_in_threadpool(_get_jpg_files)
-
-                    jpg_files = await get_jpg_files()
-
-                    # 遍历所有JPG文件并添加到ZIP包中
-                    for jpg_file in jpg_files:
-                        jpg_path = os.path.join(pdf_jpg_dir, jpg_file)
-                        # 在ZIP文件中创建层次结构
-                        zip_path = f"{db_meeting.title}/议程{agenda_item_id}_{agenda_item.title}/{pdf_name}/{jpg_file}"
-
-                        # 使用线程池将文件添加到ZIP包中
-                        await AsyncUtils.run_in_threadpool(lambda: zip_file.write(jpg_path, zip_path))
-
-        # 将指针移动到文件开头
-        zip_buffer.seek(0)
-        return zip_buffer
+            # 如果仍然失败，返回错误
+            print(f"无法生成会议包")
+            error_buffer = io.BytesIO()
+            with zipfile.ZipFile(error_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                error_content = f"无法生成会议 '{db_meeting.title}' (ID: {meeting_id}) 的JPG文件包。"
+                zip_file.writestr("ERROR.txt", error_content)
+            error_buffer.seek(0)
+            return error_buffer
 
     @staticmethod
     async def process_temp_files_in_meeting(meeting_data):
@@ -639,6 +627,146 @@ class MeetingService:
             traceback.print_exc()
             # 不抛出异常，允许程序继续执行
             # 即使文件处理失败，也应该允许会议信息保存
+
+    @staticmethod
+    async def delete_meeting_package(db: Session, meeting_id: str) -> bool:
+        """删除会议的ZIP文件包
+        在会议停止或删除时调用此方法
+
+        Args:
+            db: 数据库会话
+            meeting_id: 会议ID
+
+        Returns:
+            bool: 删除成功返回true，失败返回false
+        """
+        print(f"\n开始删除会议 {meeting_id} 的ZIP文件包")
+
+        # 检查会议是否存在
+        db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
+        if db_meeting is None:
+            print(f"错误: 会议 {meeting_id} 未找到")
+            return False
+
+        # 检查是否有包路径
+        if not hasattr(db_meeting, 'package_path') or not db_meeting.package_path:
+            print(f"会议 {meeting_id} 没有包路径记录")
+            return True  # 没有包路径也算成功
+
+        # 检查文件是否存在
+        package_path = db_meeting.package_path
+        if not os.path.exists(package_path):
+            print(f"包文件不存在: {package_path}")
+            # 清除包路径记录
+            db_meeting.package_path = None
+            db.commit()
+            return True
+
+        try:
+            # 删除文件
+            os.remove(package_path)
+            print(f"成功删除包文件: {package_path}")
+
+            # 清除包路径记录
+            db_meeting.package_path = None
+            db.commit()
+
+            return True
+        except Exception as e:
+            print(f"删除包文件失败: {str(e)}")
+            return False
+
+    @staticmethod
+    async def generate_meeting_package(db: Session, meeting_id: str) -> bool:
+        """为会议预生成JPG文件包，将所有JPG文件打包成ZIP文件并保存到磁盘
+        在会议开始时调用此方法，生成完成后才将会议状态更新为“进行中”
+
+        Args:
+            db: 数据库会话
+            meeting_id: 会议ID
+
+        Returns:
+            bool: 生成成功返回true，失败返回false
+        """
+        print(f"\n开始为会议 {meeting_id} 预生成JPG文件包")
+
+        # 检查会议是否存在
+        db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
+        if db_meeting is None:
+            print(f"错误: 会议 {meeting_id} 未找到")
+            return False
+
+        # 获取会议目录
+        meeting_dir = os.path.join(UPLOAD_DIR, meeting_id)
+        print(f"会议目录: {meeting_dir}")
+
+        # 检查目录是否存在
+        if not os.path.exists(meeting_dir):
+            print(f"错误: 会议目录 {meeting_dir} 不存在")
+            return False
+
+        # 创建会议包目录，如果不存在
+        packages_dir = os.path.join(UPLOAD_DIR, "packages")
+        if not os.path.exists(packages_dir):
+            os.makedirs(packages_dir)
+
+        # 生成ZIP文件路径
+        zip_filename = f"{db_meeting.title.replace(' ', '_')}_{meeting_id}_jpgs.zip"
+        zip_path = os.path.join(packages_dir, zip_filename)
+        print(f"ZIP文件路径: {zip_path}")
+
+        file_count = 0  # 用于跟踪添加到ZIP的文件数量
+
+        try:
+            # 导入异步工具
+            from services.async_utils import AsyncUtils
+
+            # 首先检查是否有JPG文件
+            jpg_files = []
+            for root, dirs, files in os.walk(meeting_dir):
+                for file in files:
+                    if file.lower().endswith(".jpg"):
+                        jpg_files.append((root, file))
+
+            print(f"找到 {len(jpg_files)} 个JPG文件")
+
+            # 如果没有JPG文件，创建一个包含说明文件的ZIP
+            if not jpg_files:
+                print("没有找到JPG文件，添加说明文件到空ZIP包")
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    info_content = f"会议 '{db_meeting.title}' (ID: {meeting_id}) 没有可用的JPG文件。\n请确保会议中包含PDF文件，并且已经成功转换为JPG格式。"
+                    zip_file.writestr("README.txt", info_content)
+            else:
+                # 有JPG文件，创建包含这些文件的ZIP
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    for root, file in jpg_files:
+                        file_path = os.path.join(root, file)
+                        # 创建相对路径
+                        rel_path = os.path.relpath(file_path, meeting_dir)
+                        # 添加文件到ZIP
+                        print(f"添加文件到ZIP: {file_path} -> {rel_path}")
+                        try:
+                            zip_file.write(file_path, rel_path)
+                            file_count += 1
+                            print(f"成功添加文件到ZIP: {file_path}")
+                        except Exception as e:
+                            print(f"添加文件到ZIP失败: {file_path}, 错误: {str(e)}")
+
+            # 检查ZIP文件大小
+            zip_size = os.path.getsize(zip_path)
+            print(f"生成的ZIP文件大小: {zip_size} 字节, 包含 {file_count} 个文件")
+
+            # 更新会议元数据，记录ZIP包路径
+            db_meeting.package_path = zip_path
+            db.commit()
+
+            return True
+
+        except Exception as e:
+            print(f"创建ZIP文件时发生错误: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
 
     @staticmethod
     async def process_temp_files_in_meeting_update(meeting_id, meeting_data):

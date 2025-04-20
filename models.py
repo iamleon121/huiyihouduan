@@ -6,7 +6,7 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     real_name = Column(String, nullable=True)
@@ -14,7 +14,7 @@ class User(Base):
     role = Column(String, default="user")  # 'admin', 'user', 'guest'
     status = Column(String, default="正常")  # '正常', '禁用'
     is_active = Column(Boolean, default=True)
-    
+
     # 这里可以添加与会议或其他实体的关系，如果需要的话
 
 class Meeting(Base):
@@ -25,6 +25,7 @@ class Meeting(Base):
     intro = Column(Text, nullable=True)
     time = Column(String, nullable=True) # Store time as string for simplicity, consider DateTime for real apps
     status = Column(String, default="未开始") # Add a status field
+    package_path = Column(String, nullable=True) # 存储预生成的ZIP包路径
 
     agenda_items = relationship("AgendaItem", back_populates="meeting")
 
@@ -46,6 +47,6 @@ class AgendaItem(Base):
 class SystemSetting(Base):
     """系统设置表，用于存储全局配置如会议变更识别码"""
     __tablename__ = "system_settings"
-    
+
     key = Column(String, primary_key=True, index=True)
     value = Column(String, nullable=False)

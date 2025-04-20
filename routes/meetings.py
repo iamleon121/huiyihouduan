@@ -86,11 +86,11 @@ async def update_existing_meeting(meeting_id: str, meeting: schemas.MeetingUpdat
 
 
 @router.delete("/{meeting_id}", status_code=204) # Use 204 No Content for successful deletion
-def delete_existing_meeting(meeting_id: str, db: Session = Depends(get_db)):
+async def delete_existing_meeting(meeting_id: str, db: Session = Depends(get_db)):
     """
     删除会议
 
-    根据会议ID删除会议及其相关资源，包括数据库记录和文件系统中的文件。
+    根据会议ID删除会议及其相关资源，包括数据库记录、文件系统中的文件和ZIP包。
     成功删除后返回204状态码（无内容）。
 
     Args:
@@ -103,8 +103,8 @@ def delete_existing_meeting(meeting_id: str, db: Session = Depends(get_db)):
     Raises:
         HTTPException: 当会议不存在时，返回404错误
     """
-    # 使用MeetingService删除会议
-    MeetingService.delete_meeting(db=db, meeting_id=meeting_id)
+    # 使用MeetingService删除会议，同时删除ZIP包
+    await MeetingService.delete_meeting(db=db, meeting_id=meeting_id)
 
 @router.get("/status/token", response_model=schemas.MeetingChangeStatus)
 def get_meeting_status_token(db: Session = Depends(get_db)):
@@ -159,23 +159,39 @@ async def update_meeting_status_endpoint(meeting_id: str, status_update: schemas
     new_status = status_update.status
     if new_status is None:
         raise HTTPException(status_code=400, detail="必须提供状态字段")
-    
+
     # 获取当前会议状态
     current_meeting = crud.get_meeting(db, meeting_id=meeting_id)
     if current_meeting is None:
         raise HTTPException(status_code=404, detail="会议未找到")
-    
+
     current_status = current_meeting.status
-    
+
     # 使用MeetingService更新会议状态
     db_meeting = await MeetingService.update_meeting(db=db, meeting_id=meeting_id, meeting_data=status_update)
-    
-    # 如果状态从其他状态变为"进行中"，更新会议状态token
+
+    # 如果状态从其他状态变为"进行中"，先生成ZIP包，然后再更新会议状态token
     if new_status == "进行中" and current_status != "进行中":
-        print(f"[状态变更] 会议 {meeting_id} 状态从 {current_status} 变为 {new_status}，更新状态token")
+        print(f"[状态变更] 会议 {meeting_id} 状态从 {current_status} 变为 {new_status}，先生成ZIP包")
+
+        # 预生成会议文件包
+        success = await MeetingService.generate_meeting_package(db, meeting_id)
+        if not success:
+            raise HTTPException(status_code=500, detail="生成会议文件包失败，无法开始会议")
+
+        print(f"[状态变更] 会议 {meeting_id} ZIP包生成成功，更新状态token")
         # 更新会议变更状态识别码
         crud.update_meeting_change_status_token(db)
-    
+
+    # 如果状态从"进行中"变为其他状态，删除ZIP包
+    elif current_status == "进行中" and new_status != "进行中":
+        print(f"[状态变更] 会议 {meeting_id} 状态从 {current_status} 变为 {new_status}，删除ZIP包")
+
+        # 删除会议文件包
+        await MeetingService.delete_meeting_package(db, meeting_id)
+
+        print(f"[状态变更] 会议 {meeting_id} ZIP包删除完成")
+
     return db_meeting
 
 

@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 更新强制清理按钮的文本
             const forceCleanupTempBtn = document.getElementById('force-cleanup-temp-btn');
             if (forceCleanupTempBtn && data.count !== undefined) {
-                forceCleanupTempBtn.textContent = `强制清理所有临时文件 (${data.count})`;
+                forceCleanupTempBtn.textContent = `清除缓存文件 (${data.count})`;
             }
         } catch (error) {
             console.error('获取临时文件数量出错:', error);
@@ -519,12 +519,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 处理强制清理临时文件
+    // 处理清除缓存文件
     async function handleForceCleanupTempFiles() {
-        console.log('强制清理临时文件按钮被点击');
+        console.log('清除缓存文件按钮被点击');
 
-        if (!confirm("确定要强制清理临时文件目录吗？所有未绑定会议的文件将被删除，不考虑创建时间！")) {
-            console.log('用户取消了强制清理操作');
+        if (!confirm("确定要清除缓存文件吗？所有未绑定会议的文件将被删除，不考虑创建时间！")) {
+            console.log('用户取消了清除缓存文件操作');
             return;
         }
 
@@ -536,8 +536,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 forceCleanupTempBtn.textContent = "清理中...";
             }
 
-            console.log('发送强制清理请求到服务器');
-            const response = await fetch('/api/maintenance/force-cleanup-temp', {
+            console.log('发送清除缓存文件请求到服务器');
+            const response = await fetch('/api/v1/maintenance/force-cleanup-temp', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -557,7 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('强制清理成功', data);
 
             // 显示成功消息
-            alert(data.message || "临时文件强制清理成功");
+            alert(data.message || "缓存文件清除成功");
 
             // 刷新文件列表，以便显示清理后的结果
             currentPage = 1; // 强制清理后重置到第一页
@@ -573,7 +573,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const forceCleanupTempBtn = document.getElementById('force-cleanup-temp-btn');
             if (forceCleanupTempBtn) {
                 forceCleanupTempBtn.disabled = false;
-                forceCleanupTempBtn.textContent = "强制清理所有临时文件";
+                forceCleanupTempBtn.textContent = "清除缓存文件";
+                fetchTempFilesCount(); // 更新按钮上的文件数量
             }
         }
     }

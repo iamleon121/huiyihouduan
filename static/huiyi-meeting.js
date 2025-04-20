@@ -2,11 +2,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // 检查用户登录状态
     checkLoginStatus();
 
+    // 添加全局事件监听器，确保在页面切换时重置按钮状态
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            // 页面变为可见时，重置所有表单按钮状态
+            resetAllFormButtonStates();
+        }
+    });
+
     // 页面初始加载
     initMeetingPage();
 
     // 会议管理页面初始化
     function initMeetingPage() {
+        // 重置所有表单按钮状态
+        resetAllFormButtonStates();
+
         fetchMeetings();
 
         // 添加会议按钮事件绑定
@@ -346,6 +357,19 @@ document.addEventListener('DOMContentLoaded', () => {
         agendaItemsContainer.innerHTML = ''; // 清除之前的议程项
         meetingIdInput.value = ''; // 清除ID
 
+        // 重置保存按钮状态
+        const submitButton = meetingForm.querySelector('button[type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<span class="icon">💾</span> 保存会议';
+        }
+
+        // 移除保存状态消息
+        const saveStatusMessage = meetingForm.querySelector('.save-status-message');
+        if (saveStatusMessage) {
+            saveStatusMessage.remove();
+        }
+
         if (meetingData) {
             // 填充表单进行编辑
             editViewTitle.textContent = '编辑会议';
@@ -398,6 +422,19 @@ document.addEventListener('DOMContentLoaded', () => {
     function returnToListView() {
         const meetingListView = document.getElementById('meeting-list-view');
         const meetingEditView = document.getElementById('meeting-edit-view');
+
+        // 重置保存按钮状态
+        const submitButton = document.querySelector('#meetingForm button[type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<span class="icon">💾</span> 保存会议';
+        }
+
+        // 移除保存状态消息
+        const saveStatusMessage = document.querySelector('.save-status-message');
+        if (saveStatusMessage) {
+            saveStatusMessage.remove();
+        }
 
         meetingEditView.style.display = 'none';
         meetingListView.style.display = 'block';
@@ -848,8 +885,19 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('All operations completed successfully:', finalResult);
             saveStatusMessage.innerHTML = '<span style="color:green;">✓ 保存成功! 正在跳转...</span>';
 
+            // 重置按钮状态，以防下次编辑时状态保留
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalButtonText;
+
             // 延迟一秒后返回列表页面，使用户能看到保存成功的提示
             setTimeout(() => {
+                // 再次确保按钮状态被重置
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalButtonText;
+                }
+
+                // 返回列表视图并刷新会议列表
                 returnToListView();
                 fetchMeetings(); // 刷新会议列表
             }, 1000);
@@ -861,6 +909,13 @@ document.addEventListener('DOMContentLoaded', () => {
             submitButton.innerHTML = originalButtonText;
             saveStatusMessage.innerHTML = `<span style="color:red;">❌ 操作失败: ${error.message}</span>`;
             alert(`操作失败: ${error.message}`);
+
+            // 3秒后自动移除错误消息
+            setTimeout(() => {
+                if (saveStatusMessage.parentNode) {
+                    saveStatusMessage.remove();
+                }
+            }, 3000);
         });
     }
 
@@ -1071,6 +1126,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalCountSpan = document.querySelector('.total-count-container span');
         if (totalCountSpan) {
             totalCountSpan.textContent = `共 ${count} 条`;
+        }
+    }
+
+    // 重置所有表单按钮状态
+    function resetAllFormButtonStates() {
+        console.log('重置所有表单按钮状态');
+
+        // 重置会议表单的保存按钮
+        const meetingForm = document.getElementById('meetingForm');
+        if (meetingForm) {
+            const submitButton = meetingForm.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<span class="icon">💾</span> 保存会议';
+            }
+
+            // 移除保存状态消息
+            const saveStatusMessage = meetingForm.querySelector('.save-status-message');
+            if (saveStatusMessage) {
+                saveStatusMessage.remove();
+            }
         }
     }
 
