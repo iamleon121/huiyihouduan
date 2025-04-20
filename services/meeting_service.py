@@ -849,6 +849,9 @@ class MeetingService:
             os.makedirs(meeting_dir, exist_ok=True)
             print(f"创建会议目录: {meeting_dir}")
 
+            # 记录当前使用的议程项文件夹
+            current_agenda_folders = set()
+
             # 处理议程项中的临时文件
             if not meeting_data.part:
                 print("没有议程项需要处理")
@@ -893,6 +896,9 @@ class MeetingService:
                 agenda_dir = os.path.join(meeting_dir, agenda_folder_name)
                 os.makedirs(agenda_dir, exist_ok=True)
                 print(f"创建议程项目录: {agenda_dir}")
+
+                # 将当前使用的文件夹添加到集合中
+                current_agenda_folders.add(agenda_folder_name)
 
                 # 创廾JPG文件存储目录
                 jpg_dir = os.path.join(agenda_dir, "jpgs")
@@ -994,6 +1000,30 @@ class MeetingService:
                                 print(f"删除空文件夹: {old_folder}")
                             except Exception as e:
                                 print(f"删除空文件夹失败: {e}")
+
+            # 处理完所有议程项后，检查并删除不再使用的文件夹
+            print(f"\n当前使用的议程项文件夹: {current_agenda_folders}")
+
+            # 获取会议目录中的所有议程项文件夹
+            all_agenda_folders = set()
+            for item in os.listdir(meeting_dir):
+                if os.path.isdir(os.path.join(meeting_dir, item)) and item.startswith("agenda_"):
+                    all_agenda_folders.add(item)
+
+            print(f"所有议程项文件夹: {all_agenda_folders}")
+
+            # 找出不再使用的文件夹
+            unused_folders = all_agenda_folders - current_agenda_folders
+            print(f"不再使用的文件夹: {unused_folders}")
+
+            # 删除不再使用的文件夹
+            for folder_name in unused_folders:
+                folder_path = os.path.join(meeting_dir, folder_name)
+                try:
+                    shutil.rmtree(folder_path)
+                    print(f"删除不再使用的文件夹: {folder_path}")
+                except Exception as e:
+                    print(f"删除文件夹失败: {folder_path}, 错误: {e}")
 
         except Exception as e:
             print(f"\n\n处理临时文件时发生全局错误: {e}")
