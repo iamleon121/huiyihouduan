@@ -553,6 +553,9 @@ const MeetingService = {
             // 过滤出所有main页面
             const mainPages = allWebviews.filter(webview => webview.id === 'main');
 
+            // 过滤出所有loading页面
+            const loadingPages = allWebviews.filter(webview => webview.id === 'loading');
+
             // 如果有多个main页面，只保留第一个，关闭其他的
             if (mainPages.length > 1) {
                 console.log(`发现${mainPages.length}个main页面，关闭多余页面`);
@@ -565,6 +568,16 @@ const MeetingService = {
 
                 // 确保第一个页面显示
                 mainPages[0].show();
+            }
+
+            // 如果main页面和loading页面都不存在，自动打开main页面
+            if (mainPages.length === 0 && loadingPages.length === 0) {
+                console.log('检测到main页面和loading页面都不存在，自动打开main页面');
+                plus.webview.open('main.html', 'main', {
+                    scrollIndicator: 'none',
+                    scalable: false
+                });
+                return null; // 返回null，因为新页面还没有完全创建好
             }
 
             return mainPages.length > 0 ? mainPages[0] : null;

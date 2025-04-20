@@ -187,14 +187,9 @@ def update_meeting(db: Session, meeting_id: str, meeting_update: schemas.Meeting
                 raise ValueError(f"同一会议下存在重复的议程项标题: {', '.join(set(duplicate_titles))}")
 
             # 检查每个议程项是否至少包含一个文件
-            empty_file_items = []
-            for i, item in enumerate(agenda_items_data):
-                files = item.get('files', [])
-                if not files or len(files) == 0:
-                    empty_file_items.append(item.get('title') or f"议程项 {i + 1}")
-
-            if empty_file_items:
-                raise ValueError(f"以下议程项没有文件: {', '.join(empty_file_items)}")
+            # 在更新会议时，我们不强制要求每个议程项都有文件
+            # 这样可以允许用户只更新会议的基本信息，而不影响文件
+            # 如果需要强制要求文件，可以在前端进行验证
 
             # Create new agenda items from the provided data
             for position, item_data_dict in enumerate(agenda_items_data, start=1):
@@ -253,6 +248,18 @@ def get_meeting_change_status_token(db: Session):
         db.commit()
         return new_token.value
     return token.value
+
+def update_meeting_status(db: Session, meeting_id: str, status: str):
+    """只更新会议状态，不处理议程项"""
+    db_meeting = db.query(models.Meeting).filter(models.Meeting.id == meeting_id).first()
+    if not db_meeting:
+        return None
+
+    # 更新状态
+    db_meeting.status = status
+    db.commit()
+    db.refresh(db_meeting)
+    return db_meeting
 
 def update_meeting_change_status_token(db: Session):
     """更新会议变更状态识别码"""

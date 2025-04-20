@@ -88,11 +88,13 @@ class MeetingService:
         removed_titles = set(current_titles.keys()) - set(new_titles)
         print(f"被移除的议程项标题: {removed_titles}")
 
-        # 处理被移除的议程项文件夹
+        # 在这里不删除议程项文件夹，而是在process_temp_files_in_meeting_update中处理
+        # 这样可以确保在处理完所有文件后才删除不需要的文件夹
         for title in removed_titles:
             position = current_titles[title]
-            print(f"处理被移除的议程项: 位置={position}, 标题={title}")
-            await MeetingService.delete_agenda_item_folder(meeting_id, position)
+            print(f"记录被移除的议程项: 位置={position}, 标题={title}")
+            # 不在这里删除文件夹
+            # await MeetingService.delete_agenda_item_folder(meeting_id, position)
 
         # 处理临时文件
         if hasattr(meeting_data, 'part') and meeting_data.part:
@@ -983,12 +985,32 @@ class MeetingService:
                         temp_path = file_info.get('path')
                         if not temp_path:
                             print("文件路径为空")
+                            # 不中断处理，将文件信息添加到processed_files
+                            # 这样即使文件不存在，也能保留文件信息
+                            file_info['path'] = ''
+                            file_info['url'] = f"/uploads/{meeting_id}/{agenda_folder_name}/{file_info.get('name', 'unknown')}"
+                            file_info['display_name'] = file_info.get('name', 'unknown')
+                            file_info['meeting_id'] = meeting_id
+                            file_info['agenda_folder'] = agenda_folder_name
+                            processed_files.append(file_info)
+                            existing_files[file_info.get('name', 'unknown')] = file_info
+                            print("文件信息已保留，尽管路径为空")
                             continue
 
                         print(f"临时文件路径: {temp_path}")
 
                         if not os.path.exists(temp_path):
                             print(f"文件不存在: {temp_path}")
+                            # 不中断处理，将文件信息添加到processed_files
+                            # 这样即使文件不存在，也能保留文件信息
+                            file_info['path'] = ''
+                            file_info['url'] = f"/uploads/{meeting_id}/{agenda_folder_name}/{file_info.get('name', 'unknown')}"
+                            file_info['display_name'] = file_info.get('name', 'unknown')
+                            file_info['meeting_id'] = meeting_id
+                            file_info['agenda_folder'] = agenda_folder_name
+                            processed_files.append(file_info)
+                            existing_files[file_info.get('name', 'unknown')] = file_info
+                            print("文件信息已保留，尽管文件不存在")
                             continue
 
                         # 生成新的文件名和路径

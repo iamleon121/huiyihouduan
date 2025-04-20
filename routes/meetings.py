@@ -177,8 +177,8 @@ async def update_meeting_status_endpoint(meeting_id: str, status_update: schemas
 
     # 仅更新会议状态，不处理议程项
     # 不使用 MeetingService.update_meeting 方法，因为它会处理议程项
-    # 直接使用 crud.update_meeting 方法更新状态
-    db_meeting = crud.update_meeting(db=db, meeting_id=meeting_id, meeting_update=status_update)
+    # 直接使用简单的状态更新方法
+    db_meeting = crud.update_meeting_status(db=db, meeting_id=meeting_id, status=new_status)
 
     # 如果状态从其他状态变为"进行中"，先生成ZIP包，然后再更新会议状态token
     if new_status == "进行中" and current_status != "进行中":
