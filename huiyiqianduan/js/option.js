@@ -293,6 +293,14 @@ const OptionService = {
 
 // 在plusready事件中初始化设置服务
 document.addEventListener('plusready', function() {
+    // 检查并管理option页面，确保只有一个实例
+    const cleaned = checkAndManageOptionPage(true); // 保留当前页面
+    if (cleaned) {
+        console.log('option页面单例检查完成，已清理多余实例');
+    } else {
+        console.log('option页面单例检查完成，无需清理');
+    }
+
     OptionService.init();
 });
 

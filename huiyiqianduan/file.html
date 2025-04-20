@@ -18,7 +18,7 @@
             -moz-user-select: none;     /* Firefox */
             -ms-user-select: none;      /* Internet Explorer/Edge */
         }
-        
+
         /* 页面分隔线样式 */
         .page-divider {
             position: absolute;
@@ -30,7 +30,7 @@
             margin: 0 15px;
             transition: all 0.3s ease;
         }
-        
+
         .header {
 	        display: flex;
 	        align-items: center;
@@ -45,7 +45,7 @@
 	        z-index: 1000;
 	        color: white;
 	    }
-        
+
         .back-button {
             position: absolute;
             left: 20px;
@@ -59,7 +59,7 @@
             box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3),
                        0 3px 5px rgba(0, 0, 0, 0.2);
         }
-        
+
         .back-button:hover {
             transform: translateY(-2px);
             box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3),
@@ -70,19 +70,19 @@
             font-weight: normal;
             margin: 0;
         }
-        
+
         .current-time {
 	        position: absolute;
 	        right: 10px;
 	        font-size: 24px;
 	        color: white;
 	    }
-        
+
         .content-container {
             margin-top: 60px;
             padding: 15px;
         }
-        
+
         .file-content {
             background: rgba(255, 255, 255, 0.9);
             padding: 20px;
@@ -92,7 +92,7 @@
             word-wrap: break-word;
             position: relative; /* 确保容器有相对定位，这样分隔线才能正确定位 */
         }
-        
+
         /* macOS风格的功能托盘 */
         .dock-container {
             position: fixed;
@@ -106,7 +106,7 @@
             align-items: center;
             z-index: 1000;
         }
-        
+
         .dock {
             display: flex;
             height: 50px;
@@ -119,14 +119,14 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
         }
-        
+
         /* 页面选择器样式 */
         .page-selector {
             display: flex;
             align-items: center;
             padding: 0 10px;
         }
-        
+
         .page-selector label {
             margin-right: 10px;
             font-size: 16px;
@@ -134,7 +134,7 @@
             color: #ffffff;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
         }
-        
+
         .page-selector select {
             background-color: rgba(255, 255, 255, 0.15);
             border: 2px solid rgba(255, 255, 255, 0.3);
@@ -147,18 +147,18 @@
             cursor: pointer;
             min-width: 40px;
         }
-        
+
         .page-selector select:hover {
             background-color: rgba(255, 255, 255, 0.2);
             border-color: rgba(255, 255, 255, 0.5);
         }
-        
+
         .page-selector select:focus {
             background-color: rgba(255, 255, 255, 0.15);
             border-color: rgba(255, 255, 255, 0.6);
             box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
         }
-        
+
         /* 页面信息样式 */
         .page-info {
             display: flex;
@@ -169,17 +169,17 @@
             font-weight: 500;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
         }
-        
+
         .page-info span {
             margin: 0 5px;
         }
-        
+
         /* 悬停和焦点状态 */
         .page-selector select:hover {
             background-color: rgba(255, 255, 255, 0.25);
             border-color: rgba(255, 255, 255, 0.5);
         }
-        
+
         .page-selector select:focus {
             background-color: rgba(255, 255, 255, 0.2);
             border-color: rgba(255, 255, 255, 0.6);
@@ -193,13 +193,13 @@
         <h1 class="header-title"></h1>
         <div id="current-time" class="current-time"></div>
     </div>
-    
+
     <div class="content-container">
         <div id="fileContent" class="file-content">
             加载中...
         </div>
     </div>
-    
+
     <!-- macOS风格的功能托盘 -->
     <div class="dock-container">
         <div class="dock">
@@ -214,7 +214,8 @@
             </div>
         </div>
     </div>
-    
+
+    <script src="js/page-manager.js"></script>
     <script src="js/file.js"></script>
 </body>
 </html>

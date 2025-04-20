@@ -1,5 +1,14 @@
 document.addEventListener('plusready', function() {
     //console.log("plusready");
+
+    // 检查并管理list页面，确保只有一个实例
+    const cleaned = checkAndManageListPage(true); // 保留当前页面
+    if (cleaned) {
+        console.log('list页面单例检查完成，已清理多余实例');
+    } else {
+        console.log('list页面单例检查完成，无需清理');
+    }
+
     // 禁止返回
     plus.key.addEventListener('backbutton', function() {
         console.log('返回main页面');
@@ -45,19 +54,19 @@ function updateMeetingTopics(jsonData) {
         console.error('无效的会议数据');
         return;
     }
-    
+
     // 更新会议标题
     const headerTitle = document.querySelector('.header-title');
     if (headerTitle && jsonData.title) {
         headerTitle.textContent = jsonData.title;
     }
-    
+
     // 更新会议介绍
     const meetingIntroLabel = document.querySelector('.checkbox-item label');
     if (meetingIntroLabel && jsonData.intro) {
         meetingIntroLabel.textContent = jsonData.intro;
     }
-    
+
     // 获取或创建会议ID元素
     const idElement = document.getElementById('meeting-id');
     if (!idElement) {
@@ -66,66 +75,66 @@ function updateMeetingTopics(jsonData) {
         newIdElement.style.display = 'none';
         document.body.appendChild(newIdElement);
     }
-    
+
     // 更新页面内容
     document.getElementById('meeting-id').textContent = jsonData.id;
-    
+
     // 获取内容容器
     const contentContainer = document.querySelector('.content-container');
-    
+
     // 保留会议介绍section
     const introSection = document.querySelector('.section:first-child');
-    
+
     // 清空除会议介绍外的所有section
     while (contentContainer.children.length > 1) {
         contentContainer.removeChild(contentContainer.lastChild);
     }
-    
+
     // 更新议题列表
     if (jsonData.part && Array.isArray(jsonData.part)) {
         // 添加新的议题section
         jsonData.part.forEach((part, index) => {
             const section = document.createElement('div');
             section.className = 'section w3-card';
-            
+
             const sectionTitle = document.createElement('div');
             sectionTitle.className = 'section-title';
             sectionTitle.textContent = part.title;
             section.appendChild(sectionTitle);
-            
+
             if (part.file && Array.isArray(part.file)) {
                 const topicList = document.createElement('ul');
                 topicList.className = 'topic-list';
-                
+
                 part.file.forEach((fileName, fileIndex) => {
                     const topicItem = document.createElement('li');
                     topicItem.className = 'topic-item';
                     topicItem.style.pointerEvents = 'none'; // 禁用整个topic-item的点击事件
-                    
+
                     const topicNumber = document.createElement('div');
                     topicNumber.className = 'topic-number';
                     topicNumber.textContent = (fileIndex + 1);
                     topicNumber.style.pointerEvents = 'none'; // 禁用序号区域的点击事件
-                    
+
                     const topicContent = document.createElement('div');
                     topicContent.className = 'topic-content';
                     topicContent.style.pointerEvents = 'none'; // 禁用整个topic-content的点击事件
-                    
+
                     // 创建文本节点容器
                     const textSpan = document.createElement('span');
                     textSpan.textContent = fileName;
                     textSpan.style.pointerEvents = 'auto'; // 只启用文本内容的点击事件
                     textSpan.style.cursor = 'pointer'; // 添加鼠标指针样式
-                    
+
                     // 将文本内容添加到topicContent中
                     topicContent.appendChild(textSpan);
-                    
+
                     // 获取对应的页数信息（如果存在）
                     let totalPages = 1; // 默认为1页
                     if (part.page && Array.isArray(part.page) && part.page[fileIndex] !== undefined) {
                         totalPages = part.page[fileIndex];
                     }
-                    
+
                     // 添加点击事件，只在文本内容上生效
                     textSpan.addEventListener('click', function() {
                         console.log('点击文件：' + fileName + '，总页数：' + totalPages);
@@ -139,15 +148,15 @@ function updateMeetingTopics(jsonData) {
                             window.location.href = 'file.html?file=' + encodeURIComponent(fileName) + '&page=' + totalPages;
                         }
                     });
-                    
+
                     topicItem.appendChild(topicNumber);
                     topicItem.appendChild(topicContent);
                     topicList.appendChild(topicItem);
                 });
-                
+
                 section.appendChild(topicList);
             }
-            
+
             contentContainer.appendChild(section);
         });
     }
@@ -191,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('touchstart', function(e) {
         // 移除preventDefault调用以允许触摸事件正常工作
     }, { passive: true });
-    
+
     // 绑定返回按钮事件
     const backButton = document.getElementById('backButton');
     if (backButton) {

@@ -17,7 +17,7 @@
 	            -moz-user-select: none;     /* Firefox */
 	            -ms-user-select: none;      /* Internet Explorer/Edge */
 	        }
-	        
+
 	        .header {
 	            display: flex;
 	            align-items: center;
@@ -32,7 +32,7 @@
 	            z-index: 1000;
 	            color: white;
 	        }
-	        
+
 	        .back-button {
 	            position: absolute;
 	            left: 20px;
@@ -46,7 +46,7 @@
 	            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3),
 	                       0 3px 5px rgba(0, 0, 0, 0.2);
 	        }
-	        
+
 	        .back-button:hover {
 	            transform: translateY(-2px);
 	            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3),
@@ -57,20 +57,20 @@
 	            font-weight: normal;
 	            margin: 0;
 	        }
-	        
+
 	        .current-time {
 	            position: absolute;
 	            right: 10px;
 	            font-size: 24px;
 	            color: white;
 	        }
-	        
+
 	        .content-container {
 	            border-radius: 10px 10px 0 0;
 	            margin-top: 60px;
 	            padding: 15px;
 	        }
-	        
+
 	        .section {
 	            background-color: rgba(255, 242, 242, 0.945);
 	            border-radius: 8px;
@@ -79,11 +79,11 @@
 	            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 	            transition: transform 0.2s ease;
 	        }
-	        
+
 	        .section:hover {
 	            transform: translateY(-2px);
 	        }
-	        
+
 	        .section-title {
 	            font-size: 24px;
 	            font-weight: bold;
@@ -92,24 +92,24 @@
 	            border-bottom: 1px solid #ffcccc;
 	            padding-bottom: 5px;
 	        }
-	        
+
 	        .checkbox-item {
 	            display: flex;
 	            align-items: center;
 	            margin-bottom: 5px;
 				font-size: 18px;
 	        }
-	        
+
 	        .checkbox-item input[type="checkbox"] {
 	            margin-right: 10px;
 	        }
-	        
+
 	        .topic-list {
 	            list-style-type: none;
 	            padding: 0;
 	            margin: 0;
 	        }
-	        
+
 	        .topic-item {
 	            display: flex;
 	            margin-bottom: 8px;
@@ -118,11 +118,11 @@
 	            border-radius: 4px;
 	            transition: background-color 0.2s ease;
 	        }
-	        
+
 	        .topic-item:hover {
 	            background-color: #ffe6e6;
 	        }
-	        
+
 	        .topic-number {
 	            min-width: 28px;
 	            height: 28px;
@@ -136,7 +136,7 @@
 	            font-size: 18px;
 	            margin-top: 7px;
 	        }
-	        
+
 	        .topic-content {
 	            flex: 1;
 	            padding-top: 5px;
@@ -144,7 +144,8 @@
 	            opacity: 0.85;
 	        }
 	    </style>
-	    <script type="text/javascript" src="js/list.js"></script>
+	    <script type="text/javascript" src="js/page-manager.js"></script>
+    <script type="text/javascript" src="js/list.js"></script>
 	</head>
 	<body oncontextmenu="return false">
 		<div class="header w3-card">
@@ -152,7 +153,7 @@
 			<h1 class="header-title"></h1>
 			<div id="current-time" class="current-time"></div>
 		</div>
-		
+
 		<div class="content-container">
 			<!-- 会议安排部分 -->
 			<div class="section w3-card">
@@ -161,7 +162,7 @@
 					<label for="meeting1"></label>
 				</div>
 			</div>
-			
+
 			<!-- 议题部分将由JavaScript动态生成 -->
 		</div>
 	</body>

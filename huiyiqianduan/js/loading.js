@@ -256,6 +256,14 @@ document.addEventListener('plusready', function plusReadyHandler() {
     // 移除事件监听器，确保只执行一次
     document.removeEventListener('plusready', plusReadyHandler);
 
+    // 检查并管理loading页面，确保只有一个实例
+    const cleaned = checkAndManageLoadingPage(true); // 保留当前页面
+    if (cleaned) {
+        console.log('loading页面单例检查完成，已清理多余实例');
+    } else {
+        console.log('loading页面单例检查完成，无需清理');
+    }
+
     if (!initializePlus()) {
         console.error('plus初始化失败');
         return;

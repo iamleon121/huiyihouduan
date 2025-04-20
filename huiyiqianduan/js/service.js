@@ -406,6 +406,23 @@ const MeetingService = {
             // 检查并管理main页面，确保只有一个main页面存在
             this.checkAndManageMainPage();
 
+            // 检查并管理其他页面，确保它们也是单例
+            if (typeof checkAndManageOptionPage === 'function') {
+                checkAndManageOptionPage(false); // 保留第一个页面
+            }
+
+            if (typeof checkAndManageLoadingPage === 'function') {
+                checkAndManageLoadingPage(false); // 保留第一个页面
+            }
+
+            if (typeof checkAndManageListPage === 'function') {
+                checkAndManageListPage(false); // 保留第一个页面
+            }
+
+            if (typeof checkAndManageFilePage === 'function') {
+                checkAndManageFilePage(false); // 保留第一个页面
+            }
+
             // 检查本地存储的状态数据
             try {
                 const storedStatus = plus.storage.getItem('meetingStatus');
