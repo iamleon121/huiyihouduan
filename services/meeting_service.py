@@ -53,16 +53,28 @@ class MeetingService:
 
     @staticmethod
     async def update_meeting(db: Session, meeting_id: str, meeting_data: Dict[str, Any]):
-        """更新会议信息"""
-        # 处理临时文件
-        if meeting_data.part:
-            await MeetingService.process_temp_files_in_meeting_update(meeting_id, meeting_data)
+        """更新会议信息，包括处理新上传的文件"""
+        print(f"\n\n开始更新会议 {meeting_id}")
 
-        # 更新会议
-        db_meeting = crud.update_meeting(db=db, meeting_id=meeting_id, meeting_update=meeting_data)
+        # 检查会议是否存在
+        db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
         if db_meeting is None:
             raise HTTPException(status_code=404, detail="会议未找到")
 
+        # 处理临时文件
+        if hasattr(meeting_data, 'part') and meeting_data.part:
+            print(f"处理会议编辑中的临时文件，共 {len(meeting_data.part)} 个议程项")
+            await MeetingService.process_temp_files_in_meeting_update(meeting_id, meeting_data)
+        else:
+            print("没有议程项需要处理")
+
+        # 更新会议
+        print(f"更新会议数据库记录")
+        db_meeting = crud.update_meeting(db=db, meeting_id=meeting_id, meeting_update=meeting_data)
+        if db_meeting is None:
+            raise HTTPException(status_code=404, detail="会议更新失败")
+
+        print(f"会议 {meeting_id} 更新成功")
         return db_meeting
 
     @staticmethod
@@ -823,7 +835,11 @@ class MeetingService:
                     continue
 
                 # 创建议程项目录
-                agenda_folder_name = f"agenda_{agenda_item.id}"
+                # 如果议程项有ID，使用ID，否则使用索引
+                if hasattr(agenda_item, 'id') and agenda_item.id:
+                    agenda_folder_name = f"agenda_{agenda_item.id}"
+                else:
+                    agenda_folder_name = f"agenda_{agenda_index+1}"
                 agenda_dir = os.path.join(meeting_dir, agenda_folder_name)
                 os.makedirs(agenda_dir, exist_ok=True)
                 print(f"创建议程项目录: {agenda_dir}")
