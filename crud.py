@@ -194,9 +194,11 @@ def delete_meeting(db: Session, meeting_id: str):
     """删除会议（包括其所有议程项）"""
     db_meeting = db.query(models.Meeting).filter(models.Meeting.id == meeting_id).first()
     if db_meeting:
-        # SQLAlchemy cascade delete should handle AgendaItems if relationship is configured correctly
-        # Otherwise, delete items manually first:
-        # db.query(models.AgendaItem).filter(models.AgendaItem.meeting_id == meeting_id).delete()
+        # 先手动删除议程项，避免外键约束问题
+        db.query(models.AgendaItem).filter(models.AgendaItem.meeting_id == meeting_id).delete(synchronize_session=False)
+        db.flush()
+
+        # 然后删除会议
         db.delete(db_meeting)
         db.commit()
         return True

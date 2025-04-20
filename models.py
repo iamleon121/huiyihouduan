@@ -27,13 +27,18 @@ class Meeting(Base):
     status = Column(String, default="未开始") # Add a status field
     package_path = Column(String, nullable=True) # 存储预生成的ZIP包路径
 
-    agenda_items = relationship("AgendaItem", back_populates="meeting")
+    agenda_items = relationship(
+        "AgendaItem",
+        back_populates="meeting",
+        cascade="all, delete-orphan",  # 添加级联删除选项
+        passive_deletes=True  # 使用数据库级别的级联删除
+    )
 
 class AgendaItem(Base):
     __tablename__ = "agenda_items"
 
     # 使用复合主键：会议ID和位置索引
-    meeting_id = Column(String, ForeignKey("meetings.id"), primary_key=True)
+    meeting_id = Column(String, ForeignKey("meetings.id", ondelete="CASCADE"), primary_key=True)
     position = Column(Integer, primary_key=True)  # 议程项在会议中的位置
 
     title = Column(String, index=True)

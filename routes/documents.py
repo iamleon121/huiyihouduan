@@ -69,7 +69,7 @@ def get_documents(db: Session = Depends(get_db)):
 
             # 添加引用信息
             file_references[norm_path].append({
-                "agenda_item_id": item.id,
+                "agenda_item_id": item.position,
                 "agenda_item_title": item.title,
                 "meeting_id": item.meeting_id
             })
@@ -294,7 +294,7 @@ async def unbind_document(document_id: str, db: Session = Depends(get_db)):
                 if item_norm_path == norm_path:
                     # 记录引用信息
                     referenced_items.append({
-                        "agenda_item_id": item.id,
+                        "agenda_item_id": item.position,
                         "agenda_item_title": item.title,
                         "meeting_id": item.meeting_id
                     })
@@ -375,7 +375,7 @@ async def unbind_document(document_id: str, db: Session = Depends(get_db)):
                 # 定位议程项文件夹
                 for ref_item in referenced_items:
                     agenda_item_id = ref_item.get("agenda_item_id")
-                    agenda_folder_name = f"agenda_{agenda_item_id}"
+                    agenda_folder_name = f"agenda_{agenda_item_id}"  # 使用位置作为文件夹名
                     agenda_dir = os.path.join(UPLOAD_DIR, meeting_id, agenda_folder_name)
                     jpg_dir = os.path.join(agenda_dir, "jpgs")
                     jpg_subdir = os.path.join(jpg_dir, pdf_uuid)
@@ -510,7 +510,7 @@ def delete_document(document_id: str, db: Session = Depends(get_db)):
                     meeting = crud.get_meeting(db, meeting_id=item.meeting_id)
                     if meeting:
                         referenced_items.append({
-                            "agenda_item_id": item.id,
+                            "agenda_item_id": item.position,
                             "agenda_item_title": item.title,
                             "meeting_id": item.meeting_id,
                             "meeting_title": meeting.title

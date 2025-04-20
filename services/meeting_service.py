@@ -71,32 +71,28 @@ class MeetingService:
         ).all()
         print(f"当前会议有 {len(current_agenda_items)} 个议程项")
 
-        # 获取当前议程项的位置列表
-        current_positions = [item.position for item in current_agenda_items]
-        print(f"当前议程项位置列表: {current_positions}")
+        # 获取当前议程项的标题和位置
+        current_titles = {item.title: item.position for item in current_agenda_items}
+        print(f"当前议程项: {current_titles}")
 
-        # 获取更新后的议程项位置列表
-        new_positions = []
+        # 获取更新后的议程项标题
+        new_titles = []
         if hasattr(meeting_data, 'part') and meeting_data.part:
-            for i, item in enumerate(meeting_data.part, start=1):
-                new_positions.append(i)  # 使用列表中的位置作为新的位置
-        print(f"更新后会议将有 {len(new_positions)} 个议程项")
+            for item in meeting_data.part:
+                if hasattr(item, 'title') and item.title:
+                    new_titles.append(item.title)
+        print(f"更新后会议将有 {len(new_titles)} 个议程项")
 
         # 找出被移除的议程项
-        # 注意：由于我们使用位置而不是ID，所以这里的逻辑需要调整
-        # 我们假设如果新的议程项数量少于当前的议程项数量，则表示有议程项被移除
-        # 我们将删除超出新数量的议程项
-        if len(new_positions) < len(current_positions):
-            # 按位置排序当前议程项
-            current_agenda_items.sort(key=lambda x: x.position)
-            # 超出新数量的议程项被认为是被移除的
-            removed_agenda_items = current_agenda_items[len(new_positions):]
-            print(f"有 {len(removed_agenda_items)} 个议程项被移除")
+        # 比较当前标题和新标题，找出被移除的议程项
+        removed_titles = set(current_titles.keys()) - set(new_titles)
+        print(f"被移除的议程项标题: {removed_titles}")
 
-            # 处理被移除的议程项文件夹
-            for item in removed_agenda_items:
-                print(f"处理被移除的议程项: 位置={item.position}, 标题={item.title}")
-                await MeetingService.delete_agenda_item_folder(meeting_id, item.position)
+        # 处理被移除的议程项文件夹
+        for title in removed_titles:
+            position = current_titles[title]
+            print(f"处理被移除的议程项: 位置={position}, 标题={title}")
+            await MeetingService.delete_agenda_item_folder(meeting_id, position)
 
         # 处理临时文件
         if hasattr(meeting_data, 'part') and meeting_data.part:
