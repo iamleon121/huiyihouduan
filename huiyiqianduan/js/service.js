@@ -1,13 +1,10 @@
-// service.js - 无纸化会议系统统一数据控制器
+// service.js - 无纸化会议系统状态轮询服务
 
-// 数据控制器对象
+// 状态轮询服务对象
 const MeetingService = {
-    // 数据相关变量
-    meetingData: null,
-    isDataFetching: false,
+    // 定时器相关变量
     dataFetchTimer: null,
     isDataFetchEnabled: true,
-    lastDataCheckTime: null, // 上次检查数据的时间
 
     // 状态相关变量
     isStatusFetching: false,
@@ -67,9 +64,6 @@ const MeetingService = {
         // 立即开始获取会议状态
         console.log('初始化时获取会议状态');
         this.getMeetingStatus(); // 使用原来的方法名
-
-        // 立即开始数据获取
-        this.getJsonData();
     },
 
     // 从本地存储加载配置
@@ -140,16 +134,6 @@ const MeetingService = {
     // 从本地存储初始化数据
     initializeFromStorage: function() {
         try {
-            // 加载会议数据
-            const storedData = plus.storage.getItem('meetingData');
-            if (storedData) {
-                console.log('本地存储的会议数据内容:', storedData);
-                const data = JSON.parse(storedData);
-                console.log('从本地存储获取到会议数据');
-                this.meetingData = data;
-                this.triggerEvent('dataInit', data);
-            }
-
             // 加载会议状态数据
             const storedStatus = plus.storage.getItem('meetingStatus');
             if (storedStatus) {
@@ -168,55 +152,7 @@ const MeetingService = {
         }
     },
 
-    // 获取JSON数据
-    getJsonData: function() {
-        if (this.isDataFetching) {
-            return;
-        }
-
-        this.isDataFetching = true;
-        console.log('开始获取会议数据，URL:', this.meetingDataUrl);
-
-        // 使用plus.net.XMLHttpRequest直接获取JSON数据
-        // 相比plus.downloader，这种方式不会生成临时文件，更加高效
-
-        try {
-            const xhr = new plus.net.XMLHttpRequest();
-
-            // 设置超时时间
-            xhr.timeout = 5000;
-
-            // 设置事件处理
-            xhr.onload = () => {
-                if (xhr.status === 200) {
-                    // 请求成功，直接解析JSON数据
-                    this.parseJsonData(xhr.responseText);
-                } else {
-                    this.handleError('请求失败', { status: xhr.status });
-                }
-            };
-
-            xhr.onerror = () => {
-                this.handleError('网络请求错误');
-            };
-
-            xhr.ontimeout = () => {
-                this.handleError('请求超时');
-            };
-
-            xhr.onabort = () => {
-                this.handleError('请求被取消');
-            };
-
-            // 打开连接并发送请求
-            xhr.open('GET', this.meetingDataUrl);
-            xhr.send();
-        } catch (error) {
-            this.handleError('创建XMLHttpRequest失败', error);
-        }
-    },
-
-    // 不再需要处理下载完成和读取下载文件的方法，因为现在直接使用XMLHttpRequest获取数据
+    // 不再获取会议数据，该功能已移至loading模块
 
     // 获取会议状态信息
     getMeetingStatus: function() {
@@ -355,14 +291,20 @@ const MeetingService = {
                     // 触发状态变更事件
                     this.triggerEvent('statusChanged', normalizedStatusData);
 
-                    // 检查状态数据中的会议ID与当前会议数据的ID是否一致
-                    if (meetingId && this.meetingData && meetingId.toString() !== this.meetingData.id.toString()) {
-                        console.log('会议ID变更，旧ID:', this.meetingData.id, '新ID:', meetingId);
+                    // 当状态变化时，打开loading页面获取新数据
+                    console.log('状态变化，打开loading页面获取新数据');
 
-                        // 状态变更后立即获取最新会议数据
-                        this.getJsonData();
+                    // 检查loading页面是否已经存在
+                    const existingLoading = plus.webview.getWebviewById('loading');
+                    if (existingLoading) {
+                        console.log('loading页面已存在，显示已有页面');
+                        existingLoading.show();
                     } else {
-                        console.log('会议ID未变更或状态数据中无会议ID');
+                        console.log('loading页面不存在，创建新页面');
+                        plus.webview.open('loading.html', 'loading', {
+                            scrollIndicator: 'none',
+                            scalable: false
+                        });
                     }
                 } else {
                     console.log('会议状态未变更');
@@ -395,83 +337,9 @@ const MeetingService = {
     },
 
 
-    // 解析JSON数据
-    parseJsonData: function(content) {
-        try {
-            const jsonData = JSON.parse(content);
-            if (!this.meetingData || this.meetingData.id !== jsonData.id) {
-                const jsonString = JSON.stringify(jsonData);
-                console.log('更新本地存储的数据内容:', jsonString);
-                plus.storage.setItem('meetingData', jsonString);
-                this.updateData(jsonData);
-            } else {
-                this.triggerEvent('dataUpdate', jsonData);
-            }
-            console.log('JSON数据解析成功');
-        } catch (error) {
-            this.handleError('JSON解析错误', error);
-        } finally {
-            // 确保在请求完成后重置数据获取状态
-            this.isDataFetching = false;
-        }
-    },
+    // 不再解析会议数据，该功能已移至loading模块
 
-    // 不再需要处理下载状态变化的方法，因为现在使用XMLHttpRequest的事件处理
-
-
-    // 统一错误处理
-    handleError: function(message, error = null) {
-        // 输出更详细的错误信息
-        console.error('错误类型:', message);
-        console.error('错误详情:', error);
-        console.error('请求URL:', this.meetingDataUrl);
-
-        // 如果是请求失败，输出状态码
-        if (message === '请求失败' && error && error.status) {
-            console.error('状态码:', error.status);
-        }
-
-        this.triggerEvent('dataUpdateError', { error: message, details: error });
-        this.isDataFetching = false;
-    },
-
-    // 更新数据并触发事件
-    updateData: function(jsonData) {
-        if (!jsonData || !jsonData.id) {
-            this.handleError('无效的会议数据');
-            return;
-        }
-
-        const isNewData = !this.meetingData;
-        const isIdChanged = !isNewData && this.meetingData.id !== jsonData.id;
-
-        this.meetingData = jsonData;
-
-        if (isNewData) {
-            this.triggerEvent('dataInit', jsonData);
-        } else if (isIdChanged) {
-            this.triggerEvent('idChanged', jsonData);
-            // 当会议ID变化时，自动打开loading.html页面
-            console.log('会议ID已变化，打开loading.html页面');
-
-            // 检查loading页面是否已经存在
-            const existingLoading = plus.webview.getWebviewById('loading');
-            if (existingLoading) {
-                console.log('loading页面已存在，显示已有页面');
-                existingLoading.show();
-            } else {
-                console.log('loading页面不存在，创建新页面');
-                plus.webview.open('loading.html', 'loading', {
-                    scrollIndicator: 'none',
-                    scalable: false
-                });
-            }
-        } else {
-            this.triggerEvent('dataUpdate', jsonData);
-        }
-    },
-
-    // 设置数据获取定时器
+    // 设置状态轮询定时器
     setupDataFetchTimer: function() {
         // 清除现有的定时器
         if (this.dataFetchTimer) {
@@ -492,9 +360,8 @@ const MeetingService = {
             this.updateInterval = 10000; // 默认为10秒
         }
 
-        console.log('设置数据获取定时器，间隔:', this.updateInterval, '毫秒');
+        console.log('设置状态轮询定时器，间隔:', this.updateInterval, '毫秒');
 
-        // 使用两个独立的定时器，一个用于状态获取，一个用于数据获取
         // 状态获取定时器 - 严格按照配置的间隔时间
         console.log('创建状态获取定时器，间隔:', this.updateInterval, '毫秒');
         this.statusTimer = setInterval(() => {
@@ -525,30 +392,13 @@ const MeetingService = {
             }
         }, this.updateInterval); // 严格使用配置的间隔时间
 
-        // 数据获取定时器 - 也使用配置的间隔时间，但可以设置为更长
-        console.log('创建数据检查定时器，间隔:', this.updateInterval, '毫秒');
+        // 创建一个定时器用于检查并管理页面
+        console.log('创建页面管理定时器，间隔:', this.updateInterval, '毫秒');
         this.dataFetchTimer = setInterval(() => {
             if (!this.isDataFetchEnabled) {
-                console.log('数据获取已禁用，跳过本次数据检查');
+                console.log('数据获取已禁用，跳过本次页面管理');
                 return; // 如果数据获取被禁用，直接返回
             }
-
-            // 记录当前时间，用于计算实际间隔
-            const now = new Date();
-            if (this.lastDataCheckTime) {
-                const actualInterval = now - this.lastDataCheckTime;
-                const timestamp = now.toISOString();
-                console.log(`[数据定时器] ${timestamp} - 设定间隔: ${this.updateInterval}ms, 实际间隔: ${actualInterval}ms, 偏差: ${actualInterval - this.updateInterval}ms`);
-
-                // 如果实际间隔与设定间隔相差超过2秒，记录警告
-                if (Math.abs(actualInterval - this.updateInterval) > 2000) {
-                    console.warn(`[数据定时器] 警告: 实际间隔(${actualInterval}ms)与设定间隔(${this.updateInterval}ms)相差过大!`);
-                }
-            } else {
-                const timestamp = now.toISOString();
-                console.log(`[数据定时器] ${timestamp} - 首次触发, 设定间隔: ${this.updateInterval}ms`);
-            }
-            this.lastDataCheckTime = now;
 
             // 检查并管理service实例，确保只有一个service页面
             checkAndManageServiceInstance();
@@ -556,38 +406,29 @@ const MeetingService = {
             // 检查并管理main页面，确保只有一个main页面存在
             this.checkAndManageMainPage();
 
-            // 我们不再定时获取会议数据，而是仅在状态变化时获取
-            // 这里只检查并管理main页面，不再主动获取会议数据
-            if (!this.isDataFetching) {
-                try {
-                    // 检查本地存储的状态数据
-                    const storedStatus = plus.storage.getItem('meetingStatus');
-                    if (storedStatus) {
-                        const statusData = JSON.parse(storedStatus);
-                        if (statusData && statusData.token) {
-                            // 如果本地存储的token与当前token不同，更新token
-                            if (this.statusToken !== statusData.token) {
-                                console.log('本地存储的token与当前token不同，更新token');
-                                this.statusToken = statusData.token;
-                            }
+            // 检查本地存储的状态数据
+            try {
+                const storedStatus = plus.storage.getItem('meetingStatus');
+                if (storedStatus) {
+                    const statusData = JSON.parse(storedStatus);
+                    if (statusData && statusData.token) {
+                        // 如果本地存储的token与当前token不同，更新token
+                        if (this.statusToken !== statusData.token) {
+                            console.log('本地存储的token与当前token不同，更新token');
+                            this.statusToken = statusData.token;
                         }
                     }
-                } catch (error) {
-                    console.error('读取本地存储状态数据失败：', error);
                 }
-
-                // 我们不再在定时器中主动获取会议数据
-                // console.log('定时器触发，获取会议数据，间隔:', this.updateInterval, '毫秒');
-                // this.getJsonData();
-            } else {
-                console.log('已有数据获取任务正在进行');
+            } catch (error) {
+                console.error('读取本地存储状态数据失败：', error);
             }
         }, this.updateInterval); // 严格使用配置的间隔时间
     },
 
-    // 获取当前会议数据
+    // 不再提供会议数据获取功能，该功能已移至loading模块
     getMeetingData: function() {
-        return this.meetingData;
+        console.warn('该方法已弃用，请使用LoadingService.getMeetingData()获取会议数据');
+        return null;
     },
 
     // 暂停数据检测
@@ -619,9 +460,8 @@ const MeetingService = {
             this.setupDataFetchTimer();
         }
 
-        // 立即获取数据和状态
+        // 立即获取状态
         this.getMeetingStatus(); // 使用原来的方法名
-        this.getJsonData();
     },
 
     // 事件注册
@@ -788,13 +628,7 @@ document.addEventListener('plusready', function() {
         console.error('读取标题文字设置失败:', error);
     }
 
-    // 添加数据初始化完成事件监听，自动跳转到main页面
-    MeetingService.addEventListener('dataInit', function() {
-        console.log('数据初始化完成，自动跳转到main页面');
-        setTimeout(function() {
-            gotoMain();
-        }, 2000); // 延迟2秒后跳转，确保数据完全加载
-    });
+    // 不再处理数据初始化事件，该功能已移至loading模块
 
     MeetingService.init();
 });

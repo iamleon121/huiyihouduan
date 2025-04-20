@@ -25,23 +25,34 @@ let loadingProgress = 0;
 // 进度条更新定时器
 let progressTimer = null;
 
-// 更新本地存储数据的函数
-function updateLocalStorage() {
+// 获取会议数据的函数
+function fetchMeetingData() {
     if (!initializePlus()) {
-        console.error('plus初始化失败，无法更新本地存储');
+        console.error('plus初始化失败，无法获取会议数据');
         showError('初始化失败，请重启应用');
         return;
     }
 
     // 更新加载文本和进度条
-    updateLoadingText('正在更新数据...');
+    updateLoadingText('正在获取会议数据...');
     setProgress(20);
 
     // 启动进度条动画
     startProgressAnimation(20, 80, 10000); // 从20%到80%，持续10秒
 
-    // 使用MeetingService获取数据
-    if (typeof MeetingService !== 'undefined') {
+    // 初始化并使用LoadingService获取数据
+    if (typeof LoadingService !== 'undefined') {
+        // 初始化LoadingService
+        if (!LoadingService.init()) {
+            console.error('LoadingService初始化失败');
+            showError('LoadingService初始化失败，请重试');
+            stopProgressAnimation();
+            setProgress(20);
+            dataUpdateCompleted = true;
+            showButtons();
+            return;
+        }
+
         // 设置数据更新完成的回调
         const dataUpdateHandler = function(jsonData) {
             console.log('数据更新成功');
@@ -60,17 +71,19 @@ function updateLocalStorage() {
             updateLoadingText('数据更新完成');
 
             // 移除事件监听器，避免重复处理
-            MeetingService.removeEventListener('dataUpdate', dataUpdateHandler);
+            LoadingService.removeEventListener('dataUpdate', dataUpdateHandler);
+            LoadingService.removeEventListener('dataInit', dataUpdateHandler);
+            LoadingService.removeEventListener('idChanged', dataUpdateHandler);
 
             // 如果有数据，输出日志
             if (jsonData) {
-                console.log('获取到的数据:', jsonData.title || '无标题');
+                console.log('获取到的会议数据:', jsonData.title || '无标题');
             }
         };
 
         // 设置数据更新错误的回调
         const errorHandler = function(error) {
-            console.error('数据更新失败:', error);
+            console.error('数据获取失败:', error);
 
             // 停止进度条动画
             stopProgressAnimation();
@@ -85,28 +98,35 @@ function updateLocalStorage() {
             showButtons();
 
             // 显示错误消息
-            showError('数据更新失败，请重试');
+            let errorMessage = '数据获取失败，请重试';
+            if (error && error.message) {
+                errorMessage = error.message;
+            }
+            showError(errorMessage);
 
             // 移除事件监听器，避免重复处理
-            MeetingService.removeEventListener('dataUpdateError', errorHandler);
+            LoadingService.removeEventListener('error', errorHandler);
         };
 
         // 添加事件监听器
-        MeetingService.addEventListener('dataUpdate', dataUpdateHandler);
-        MeetingService.addEventListener('dataUpdateError', errorHandler);
+        LoadingService.addEventListener('dataUpdate', dataUpdateHandler);
+        LoadingService.addEventListener('dataInit', dataUpdateHandler);
+        LoadingService.addEventListener('idChanged', dataUpdateHandler);
+        LoadingService.addEventListener('error', errorHandler);
 
         // 触发数据获取
         try {
-            MeetingService.getJsonData();
+            LoadingService.fetchMeetingData();
         } catch (error) {
             console.error('触发数据获取失败:', error);
             showError('数据服务调用失败，请重试');
             stopProgressAnimation();
             setProgress(20);
+            dataUpdateCompleted = true;
             showButtons();
         }
     } else {
-        console.error('MeetingService未初始化');
+        console.error('LoadingService未定义');
 
         // 停止进度条动画
         stopProgressAnimation();
@@ -121,7 +141,7 @@ function updateLocalStorage() {
         showButtons();
 
         // 显示错误消息
-        showError('数据服务未初始化，请重试');
+        showError('LoadingService未定义，请重试');
     }
 }
 
@@ -245,9 +265,9 @@ document.addEventListener('plusready', function plusReadyHandler() {
     console.log('从配置中读取标题文字');
     updateTitleFromConfig();
 
-    // 开始更新本地存储数据
-    console.log('开始更新本地存储数据');
-    updateLocalStorage();
+    // 开始获取会议数据
+    console.log('开始获取会议数据');
+    fetchMeetingData();
 
     // 创建返回main页面的函数
     window.returnToMain = function() {
@@ -266,18 +286,18 @@ document.addEventListener('plusready', function plusReadyHandler() {
             if (mainView) {
                 // 如果main页面已存在，则显示它而不是重新创建
                 console.log('找到已存在的main页面，显示它');
-                // 恢复main页面的数据检测
+                // 恢复main页面的状态轮询
                 try {
                     // 使用plus.webview.evalJS方法执行main页面中的代码
-                    mainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("数据检测已恢复"); }');
+                    mainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("状态轮询已恢复"); }');
                 } catch (error) {
-                    console.error('恢复数据检测失败：', error);
-                    // 尝试多次恢复数据检测
+                    console.error('恢复状态轮询失败：', error);
+                    // 尝试多次恢复状态轮询
                     setTimeout(function() {
                         try {
-                            mainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("数据检测已通过延迟方式恢复"); }');
+                            mainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("状态轮询已通过延迟方式恢复"); }');
                         } catch (retryError) {
-                            console.error('重试恢复数据检测失败：', retryError);
+                            console.error('重试恢复状态轮询失败：', retryError);
                         }
                     }, 500);
                 }
@@ -293,20 +313,20 @@ document.addEventListener('plusready', function plusReadyHandler() {
                 // 监听页面加载完成事件
                 newMainView.addEventListener('loaded', function() {
                     try {
-                        // 在新页面加载完成后恢复数据检测
-                        newMainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("数据检测已在新页面中启用"); }');
+                        // 在新页面加载完成后恢复状态轮询
+                        newMainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("状态轮询已在新页面中启用"); }');
                     } catch (error) {
-                        console.error('在新页面中启用数据检测失败：', error);
+                        console.error('在新页面中启用状态轮询失败：', error);
                     }
                 });
 
                 // 添加额外的显示事件监听，确保在页面显示时也设置标志
                 newMainView.addEventListener('show', function() {
                     try {
-                        // 确保在页面显示时也恢复数据检测
-                        newMainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("数据检测已在页面显示时启用"); }');
+                        // 确保在页面显示时也恢复状态轮询
+                        newMainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("状态轮询已在页面显示时启用"); }');
                     } catch (error) {
-                        console.error('在页面显示时启用数据检测失败：', error);
+                        console.error('在页面显示时启用状态轮询失败：', error);
                     }
                 });
             }
