@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (window.confirm(`确定要开始会议 "${meetingName}" 吗？此操作将同步文件并更新状态。`)) {
                     console.log(`开始会议: ${meetingName} (ID: ${meetingId})`);
-                    fetch(`/api/meetings/${meetingId}/status`, {
+                    fetch(`/api/v1/meetings/${meetingId}/status`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ status: '进行中' })

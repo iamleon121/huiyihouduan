@@ -147,7 +147,22 @@ document.addEventListener('plusready', function() {
     // 跳转到service页面
     function navigateToService() {
         console.log('准备跳转到service页面...');
+
+        // 检查是否已经有service页面存在
         try {
+            const existingService = plus.webview.getWebviewById('service');
+            if (existingService) {
+                console.log('service页面已存在，显示已有页面');
+                existingService.show();
+                return;
+            }
+        } catch (error) {
+            console.error('检查service页面时出错:', error);
+        }
+
+        // 如果没有已存在的service页面，创建新页面
+        try {
+            console.log('创建新的service页面');
             plus.webview.open('service.html', 'service', {
                 scrollIndicator: 'none',
                 scalable: false

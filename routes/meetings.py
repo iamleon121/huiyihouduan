@@ -56,44 +56,15 @@ async def create_new_meeting(meeting: schemas.MeetingCreate, db: Session = Depen
 
 
 @router.get("/", response_model=List[schemas.Meeting])
-def read_meetings(db: Session = Depends(get_db)):
-    """
-    获取会议列表
-
-    返回系统中的所有会议列表，不再支持分页。
-
-    Args:
-        db (Session): 数据库会话对象，通过依赖注入获取
-
-    Returns:
-        List[schemas.Meeting]: 会议对象列表
-    """
-    # 获取所有会议，不再使用分页参数
+def read_meetings(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """获取会议列表"""
     meetings = crud.get_meetings(db)
-    # Manually set agenda_items to empty list as get_meetings doesn't load them
-    # Or adjust the schema/query if needed
-    for meeting in meetings:
-        meeting.agenda_items = [] # Ensure the response matches the schema
     return meetings
 
 
 @router.get("/{meeting_id}", response_model=schemas.Meeting)
-def read_meeting_details(meeting_id: str, db: Session = Depends(get_db)):
-    """
-    获取单个会议的详细信息
-
-    根据会议ID返回会议的详细信息，包括所有议程项。
-
-    Args:
-        meeting_id (str): 会议ID
-        db (Session): 数据库会话对象，通过依赖注入获取
-
-    Returns:
-        schemas.Meeting: 会议详细信息对象
-
-    Raises:
-        HTTPException: 当会议不存在时，返回404错误
-    """
+def read_meeting(meeting_id: str, db: Session = Depends(get_db)):
+    """获取单个会议详情"""
     db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
     if db_meeting is None:
         raise HTTPException(status_code=404, detail="Meeting not found")
@@ -188,11 +159,23 @@ async def update_meeting_status_endpoint(meeting_id: str, status_update: schemas
     new_status = status_update.status
     if new_status is None:
         raise HTTPException(status_code=400, detail="必须提供状态字段")
-
+    
+    # 获取当前会议状态
+    current_meeting = crud.get_meeting(db, meeting_id=meeting_id)
+    if current_meeting is None:
+        raise HTTPException(status_code=404, detail="会议未找到")
+    
+    current_status = current_meeting.status
+    
     # 使用MeetingService更新会议状态
-    # 在服务层中处理识别码更新逻辑
     db_meeting = await MeetingService.update_meeting(db=db, meeting_id=meeting_id, meeting_data=status_update)
-
+    
+    # 如果状态从其他状态变为"进行中"，更新会议状态token
+    if new_status == "进行中" and current_status != "进行中":
+        print(f"[状态变更] 会议 {meeting_id} 状态从 {current_status} 变为 {new_status}，更新状态token")
+        # 更新会议变更状态识别码
+        crud.update_meeting_change_status_token(db)
+    
     return db_meeting
 
 
