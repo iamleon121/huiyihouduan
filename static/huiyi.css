@@ -1679,3 +1679,32 @@ html, body {
     50% { opacity: 1; }
     100% { opacity: 0.7; }
 }
+
+/* 自定义日期时间选择器样式 */
+.enhanced-datetime {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 1em;
+    width: 100%;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.enhanced-datetime:hover {
+    border-color: var(--primary-color-light);
+}
+
+.enhanced-datetime:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.25);
+    outline: none;
+}
+
+/* 确保原生日期选择器在移动设备上有足够的大小 */
+@media (max-width: 768px) {
+    .enhanced-datetime {
+        font-size: 16px; /* 防止iOS上的缩放 */
+        padding: 10px 12px;
+    }
+}

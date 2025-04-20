@@ -10,6 +10,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 初始化日期时间选择器
+    function initDateTimePickers() {
+        // 获取所有日期时间输入框
+        const dateTimeInputs = document.querySelectorAll('input[type="datetime-local"]');
+
+        // 为每个输入框添加增强功能
+        dateTimeInputs.forEach(input => {
+            // 添加样式类
+            input.classList.add('enhanced-datetime');
+
+            // 添加点击事件，打开原生日期选择器
+            input.addEventListener('click', function() {
+                // 在移动设备上，点击输入框会自动打开日期选择器
+                // 在桌面设备上，我们需要手动触发点击事件
+                if (!/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                    this.showPicker();
+                }
+            });
+        });
+    }
+
     // 页面初始加载
     initMeetingPage();
 
@@ -19,6 +40,9 @@ document.addEventListener('DOMContentLoaded', () => {
         resetAllFormButtonStates();
 
         fetchMeetings();
+
+        // 初始化日期时间选择器
+        initDateTimePickers();
 
         // 添加会议按钮事件绑定
         const addMeetingBtn = document.getElementById('add-meeting-btn');
@@ -416,6 +440,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // 切换视图
         meetingListView.style.display = 'none';
         meetingEditView.style.display = 'block';
+
+        // 重新初始化日期选择器
+        setTimeout(() => {
+            initDateTimePickers();
+        }, 100); // 等待DOM更新
     }
 
     // 返回列表视图

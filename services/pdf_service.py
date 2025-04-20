@@ -340,7 +340,8 @@ class PDFService:
         # 导入异步工具
         from services.async_utils import AsyncUtils
 
-        print(f"[PDF转JPG] 开始转换为长图: {pdf_path}")
+        # 移除调试信息
+        # print(f"[PDF转JPG] 开始转换为长图: {pdf_path}")
 
         try:
             # 使用线程池确保输出目录存在
@@ -426,11 +427,13 @@ class PDFService:
 
             merged_path = await create_and_save_merged_image()
 
-            print(f"[PDF转JPG] 转换完成: {pdf_path} -> 合并为长图 {merged_path}")
+            # 移除调试信息
+            # print(f"[PDF转JPG] 转换完成: {pdf_path} -> 合并为长图 {merged_path}")
             return merged_path
 
         except Exception as e:
-            print(f"[PDF转JPG] 转换失败: {pdf_path}, 错误: {str(e)}")
+            # 移除调试信息
+            # print(f"[PDF转JPG] 转换失败: {pdf_path}, 错误: {str(e)}")
             import traceback
             print(traceback.format_exc())
             return None
@@ -453,7 +456,8 @@ class PDFService:
             from services.async_utils import AsyncUtils
             return AsyncUtils.run_sync(PDFService.convert_pdf_to_jpg_for_pad, pdf_path, output_dir, dpi)
         except Exception as e:
-            print(f"[PDF转JPG同步调用] 出错: {str(e)}")
+            # 移除调试信息
+            # print(f"[PDF转JPG同步调用] 出错: {str(e)}")
             import traceback
             print(traceback.format_exc())
             return None
