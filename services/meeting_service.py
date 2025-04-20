@@ -235,8 +235,22 @@ class MeetingService:
             # 为PDF文件创廾JPG文件
             jpg_subdir = os.path.join(jpg_dir, unique_id)
             os.makedirs(jpg_subdir, exist_ok=True)
-            # 使用异步方式调用PDF转JPG功能
-            await PDFService.convert_pdf_to_jpg_for_pad(file_path, jpg_subdir)
+
+            # 检查是否已经有JPG文件
+            jpg_exists = False
+            if os.path.exists(jpg_subdir):
+                for jpg_file in os.listdir(jpg_subdir):
+                    if jpg_file.lower().endswith(".jpg"):
+                        jpg_exists = True
+                        print(f"JPG文件已存在，跳过转JPG: {jpg_subdir}/{jpg_file}")
+                        break
+
+            # 只有当JPG文件不存在时才进行转换
+            if not jpg_exists:
+                print(f"开始转换PDF到JPG: {file_path} -> {jpg_subdir}")
+                # 使用异步方式调用PDF转JPG功能
+                await PDFService.convert_pdf_to_jpg_for_pad(file_path, jpg_subdir)
+                print(f"PDF转JPG完成: {file_path}")
 
             # 添加文件信息
             file_info = {
@@ -626,10 +640,25 @@ class MeetingService:
                             pdf_uuid = pdf_filename.split("_")[0] if "_" in pdf_filename else ""
                             jpg_subdir = os.path.join(jpg_dir, pdf_uuid)
                             os.makedirs(jpg_subdir, exist_ok=True)
+
                             # 先检查PDF文件是否存在
                             if os.path.exists(new_path):
-                                # 使用异步方式调用PDF转JPG功能
-                                await PDFService.convert_pdf_to_jpg_for_pad(new_path, jpg_subdir)
+                                # 检查是否已经有JPG文件
+                                jpg_exists = False
+                                if os.path.exists(jpg_subdir):
+                                    # 检查目录中是否有JPG文件
+                                    for file in os.listdir(jpg_subdir):
+                                        if file.lower().endswith(".jpg"):
+                                            jpg_exists = True
+                                            print(f"JPG文件已存在，跳过转JPG: {jpg_subdir}/{file}")
+                                            break
+
+                                # 只有当JPG文件不存在时才进行转换
+                                if not jpg_exists:
+                                    print(f"开始转换PDF到JPG: {new_path} -> {jpg_subdir}")
+                                    # 使用异步方式调用PDF转JPG功能
+                                    await PDFService.convert_pdf_to_jpg_for_pad(new_path, jpg_subdir)
+                                    print(f"PDF转JPG完成: {new_path}")
                             else:
                                 print(f"PDF文件不存在，跳过转JPG: {new_path}")
 
@@ -788,7 +817,42 @@ class MeetingService:
             # 导入异步工具
             from services.async_utils import AsyncUtils
 
-            # 首先检查是否有JPG文件
+            # 首先检查所有PDF文件，确保它们都有对应的JPG文件
+            pdf_files = []
+            for root, dirs, files in os.walk(meeting_dir):
+                for file in files:
+                    if file.lower().endswith(".pdf"):
+                        pdf_files.append(os.path.join(root, file))
+
+            print(f"找到 {len(pdf_files)} 个PDF文件")
+
+            # 如果有PDF文件，确保它们都有对应的JPG文件
+            if pdf_files:
+                for pdf_path in pdf_files:
+                    # 从UUID_filename.pdf格式中提取UUID部分
+                    pdf_dir = os.path.dirname(pdf_path)
+                    pdf_filename = os.path.basename(pdf_path)
+                    pdf_uuid = pdf_filename.split("_")[0] if "_" in pdf_filename else ""
+
+                    # 构建JPG目录路径
+                    jpg_dir = os.path.join(pdf_dir, "jpgs", pdf_uuid)
+                    os.makedirs(jpg_dir, exist_ok=True)
+
+                    # 检查是否已经有JPG文件
+                    jpg_exists = False
+                    if os.path.exists(jpg_dir):
+                        for jpg_file in os.listdir(jpg_dir):
+                            if jpg_file.lower().endswith(".jpg"):
+                                jpg_exists = True
+                                print(f"JPG文件已存在: {jpg_dir}/{jpg_file}")
+                                break
+
+                    # 如果没有JPG文件，生成新的
+                    if not jpg_exists:
+                        print(f"生成PDF对应的JPG文件: {pdf_path} -> {jpg_dir}")
+                        await PDFService.convert_pdf_to_jpg_for_pad(pdf_path, jpg_dir)
+
+            # 现在收集所有JPG文件
             jpg_files = []
             for root, dirs, files in os.walk(meeting_dir):
                 for file in files:
@@ -966,10 +1030,25 @@ class MeetingService:
                             pdf_uuid = pdf_filename.split("_")[0] if "_" in pdf_filename else ""
                             jpg_subdir = os.path.join(jpg_dir, pdf_uuid)
                             os.makedirs(jpg_subdir, exist_ok=True)
+
                             # 先检查PDF文件是否存在
                             if os.path.exists(new_path):
-                                # 使用异步方式调用PDF转JPG功能
-                                await PDFService.convert_pdf_to_jpg_for_pad(new_path, jpg_subdir)
+                                # 检查是否已经有JPG文件
+                                jpg_exists = False
+                                if os.path.exists(jpg_subdir):
+                                    # 检查目录中是否有JPG文件
+                                    for file in os.listdir(jpg_subdir):
+                                        if file.lower().endswith(".jpg"):
+                                            jpg_exists = True
+                                            print(f"JPG文件已存在，跳过转JPG: {jpg_subdir}/{file}")
+                                            break
+
+                                # 只有当JPG文件不存在时才进行转换
+                                if not jpg_exists:
+                                    print(f"开始转换PDF到JPG: {new_path} -> {jpg_subdir}")
+                                    # 使用异步方式调用PDF转JPG功能
+                                    await PDFService.convert_pdf_to_jpg_for_pad(new_path, jpg_subdir)
+                                    print(f"PDF转JPG完成: {new_path}")
                             else:
                                 print(f"PDF文件不存在，跳过转JPG: {new_path}")
 
