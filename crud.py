@@ -119,6 +119,15 @@ def create_meeting(db: Session, meeting: schemas.MeetingCreate):
     if duplicate_titles:
         raise ValueError(f"同一会议下存在重复的议程项标题: {', '.join(set(duplicate_titles))}")
 
+    # 检查每个议程项是否至少包含一个文件
+    empty_file_items = []
+    for item in meeting.part:
+        if not item.files or len(item.files) == 0:
+            empty_file_items.append(item.title or f"议程项 {len(empty_file_items) + 1}")
+
+    if empty_file_items:
+        raise ValueError(f"以下议程项没有文件: {', '.join(empty_file_items)}")
+
     for position, item_data in enumerate(meeting.part, start=1):
         db_item = models.AgendaItem(
             title=item_data.title,
@@ -168,6 +177,16 @@ def update_meeting(db: Session, meeting_id: str, meeting_update: schemas.Meeting
             duplicate_titles = [title for title in titles if titles.count(title) > 1]
             if duplicate_titles:
                 raise ValueError(f"同一会议下存在重复的议程项标题: {', '.join(set(duplicate_titles))}")
+
+            # 检查每个议程项是否至少包含一个文件
+            empty_file_items = []
+            for i, item in enumerate(agenda_items_data):
+                files = item.get('files', [])
+                if not files or len(files) == 0:
+                    empty_file_items.append(item.get('title') or f"议程项 {i + 1}")
+
+            if empty_file_items:
+                raise ValueError(f"以下议程项没有文件: {', '.join(empty_file_items)}")
 
             # Create new agenda items from the provided data
             for position, item_data_dict in enumerate(agenda_items_data, start=1):

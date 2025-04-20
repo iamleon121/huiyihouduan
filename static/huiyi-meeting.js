@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     })
                     .catch(error => {
                         console.error('Error restarting meeting:', error);
-                        alert(`重新开始会议失败: ${error.message}`);
+                        showToast(`重新开始会议失败: ${error.message}`, 'error');
                     });
                 } else {
                     console.log(`取消重新开始会议: ${meetingName}`);
@@ -263,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     })
                     .catch(error => {
                         console.error('Error deleting meeting:', error);
-                        alert(`删除会议失败: ${error.message}`);
+                        showToast(`删除会议失败: ${error.message}`, 'error');
                     });
                 }
             });
@@ -295,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     openEditView(meetingData);
                 } catch (error) {
                     console.error('Error fetching meeting details for edit:', error);
-                    alert(`加载会议详情失败: ${error.message}`);
+                    showToast(`加载会议详情失败: ${error.message}`, 'error');
                 }
             });
         });
@@ -440,6 +440,52 @@ document.addEventListener('DOMContentLoaded', () => {
         meetingListView.style.display = 'block';
     }
 
+    // 检查议程项标题是否重复
+    function checkAgendaTitleDuplicate(titleInput) {
+        const title = titleInput.value.trim();
+        if (!title) return false; // 空标题不检查
+
+        const agendaItemsContainer = document.getElementById('agendaItemsContainer');
+        const allTitleInputs = agendaItemsContainer.querySelectorAll('input[name$="[title]"]');
+        let duplicateFound = false;
+
+        // 计算标题出现的次数
+        let titleCount = 0;
+        allTitleInputs.forEach(input => {
+            if (input !== titleInput && input.value.trim() === title) {
+                titleCount++;
+            }
+        });
+
+        // 如果标题出现超过一次，则表示重复
+        if (titleCount > 0) {
+            duplicateFound = true;
+            // 添加错误样式
+            titleInput.classList.add('duplicate-title');
+            // 添加错误提示
+            let errorMsg = titleInput.nextElementSibling;
+            if (!errorMsg || !errorMsg.classList.contains('title-error-msg')) {
+                errorMsg = document.createElement('div');
+                errorMsg.className = 'title-error-msg';
+                errorMsg.style.color = 'red';
+                errorMsg.style.fontSize = '0.85em';
+                errorMsg.style.marginTop = '5px';
+                titleInput.parentNode.insertBefore(errorMsg, titleInput.nextSibling);
+            }
+            errorMsg.textContent = `错误: 议程项标题 "${title}" 已存在，请使用不同的标题`;
+        } else {
+            // 移除错误样式
+            titleInput.classList.remove('duplicate-title');
+            // 移除错误提示
+            const errorMsg = titleInput.nextElementSibling;
+            if (errorMsg && errorMsg.classList.contains('title-error-msg')) {
+                errorMsg.remove();
+            }
+        }
+
+        return duplicateFound;
+    }
+
     // 添加议程项
     function addAgendaItem(itemData = null, index = null) {
         const agendaItemsContainer = document.getElementById('agendaItemsContainer');
@@ -488,10 +534,56 @@ document.addEventListener('DOMContentLoaded', () => {
         if (removeButton) {
             removeButton.addEventListener('click', function() {
                 const index = parseInt(this.dataset.index);
-                if (!isNaN(index)) {
-                    agendaItemsContainer.querySelector(`.agenda-item[data-index="${index}"]`).remove();
+                if (isNaN(index)) return;
+
+                const agendaItem = agendaItemsContainer.querySelector(`.agenda-item[data-index="${index}"]`);
+                if (!agendaItem) return;
+
+                // 检查议程项是否包含文件
+                const hasExistingFiles = agendaItem.querySelectorAll('input[name^="agenda["][name$="][existing_files][]"]').length > 0;
+                const hasTempFiles = agendaItem.querySelectorAll('input[name^="agenda["][name$="][temp_files][]"]').length > 0;
+                const hasFiles = hasExistingFiles || hasTempFiles;
+
+                // 获取议程项标题
+                const titleInput = agendaItem.querySelector(`input[name="agenda[${index}][title]"]`);
+                const title = titleInput ? titleInput.value.trim() : `议程 ${index + 1}`;
+
+                // 如果有文件，显示确认对话框
+                if (hasFiles) {
+                    if (confirm(`议程项 "${title}" 包含文件，移除该议程项将同时移除相关文件。确定要移除吗？`)) {
+                        agendaItem.remove();
+                        showToast(`已移除议程项 "${title}"，相关文件将在保存后被删除`, 'info');
+                    }
+                } else {
+                    // 没有文件，也显示确认对话框，但提示不同
+                    if (confirm(`确定要移除议程项 "${title}" 吗？`)) {
+                        agendaItem.remove();
+                        showToast(`已移除议程项 "${title}"`, 'info');
+                    }
                 }
             });
+        }
+
+        // 添加标题输入框的事件监听器，用于实时验证
+        const titleInput = newItem.querySelector(`#agendaTitle_${itemIndex}`);
+        if (titleInput) {
+            // 添加样式
+            titleInput.style.borderColor = titleInput.value.trim() ? '' : '#ced4da';
+
+            // 添加事件监听器
+            titleInput.addEventListener('input', function() {
+                checkAgendaTitleDuplicate(this);
+            });
+
+            // 失去焦点时也进行验证
+            titleInput.addEventListener('blur', function() {
+                checkAgendaTitleDuplicate(this);
+            });
+
+            // 初始验证
+            if (titleInput.value.trim()) {
+                checkAgendaTitleDuplicate(titleInput);
+            }
         }
 
         // 添加文件上传相关事件监听器
@@ -603,7 +695,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (uploadFilesBtn) {
             uploadFilesBtn.addEventListener('click', async function() {
                 if (pendingFiles.length === 0) {
-                    alert('没有待上传的文件');
+                    showToast('没有待上传的文件', 'warning');
                     return;
                 }
 
@@ -700,11 +792,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateFileQueue();
 
                     // 显示成功消息
-                    alert(`成功上传 ${result.uploaded_files.length} 个文件`);
+                    showToast(`成功上传 ${result.uploaded_files.length} 个文件`, 'success');
 
                 } catch (error) {
                     console.error('文件上传错误:', error);
-                    alert(`文件上传失败: ${error.message}`);
+                    showToast(`文件上传失败: ${error.message}`, 'error');
 
                     // 移除进度条
                     fileItems.forEach(item => {
@@ -730,18 +822,99 @@ document.addEventListener('DOMContentLoaded', () => {
         // 检查同一会议下是否有重复的议程项标题
         let agendaElements = form.querySelectorAll('.agenda-item');
         const titles = [];
+        let hasDuplicates = false;
+        let duplicateTitles = [];
+        let emptyFileAgendaItems = [];
+
+        // 首先清除所有现有的错误提示
+        form.querySelectorAll('.title-error-msg').forEach(msg => msg.remove());
+        form.querySelectorAll('.duplicate-title').forEach(input => input.classList.remove('duplicate-title'));
+        form.querySelectorAll('.no-files-error').forEach(div => div.remove());
+
+        // 收集所有标题和检查文件
         agendaElements.forEach(element => {
             const index = element.dataset.index;
-            const title = element.querySelector(`input[name="agenda[${index}][title]"]`).value.trim();
+            const titleInput = element.querySelector(`input[name="agenda[${index}][title]"]`);
+            const title = titleInput.value.trim();
+
+            // 检查该议程项是否有文件
+            const existingFilesInputs = element.querySelectorAll('input[name^="agenda["][name$="][existing_files][]"]');
+            const tempFilesInputs = element.querySelectorAll('input[name^="agenda["][name$="][temp_files][]"]');
+            const hasFiles = existingFilesInputs.length > 0 || tempFilesInputs.length > 0;
+
+            // 如果没有文件，添加到空文件议程项列表
+            if (!hasFiles) {
+                emptyFileAgendaItems.push({
+                    index,
+                    title: title || `议程项 ${parseInt(index) + 1}`,
+                    element
+                });
+            }
+
             if (title) {
-                titles.push(title);
+                titles.push({
+                    title: title,
+                    input: titleInput
+                });
             }
         });
 
         // 检查重复标题
-        const duplicateTitles = titles.filter((title, index) => titles.indexOf(title) !== index);
+        const titleTexts = titles.map(t => t.title);
+        duplicateTitles = titleTexts.filter((title, index) => titleTexts.indexOf(title) !== index);
+
+        // 如果有重复标题，显示错误
         if (duplicateTitles.length > 0) {
-            alert(`同一会议下存在重复的议程项标题: ${[...new Set(duplicateTitles)].join(', ')}`);
+            // 标记重复的标题输入框
+            titles.forEach(item => {
+                if (duplicateTitles.includes(item.title)) {
+                    // 调用验证函数标记重复项
+                    checkAgendaTitleDuplicate(item.input);
+                    hasDuplicates = true;
+                }
+            });
+
+            // 显示错误提示
+            showToast(`同一会议下存在重复的议程项标题: ${[...new Set(duplicateTitles)].join(', ')}`, 'error');
+
+            // 滚动到第一个重复的输入框
+            const firstDuplicateInput = form.querySelector('.duplicate-title');
+            if (firstDuplicateInput) {
+                firstDuplicateInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstDuplicateInput.focus();
+            }
+
+            return;
+        }
+
+        // 如果有没有文件的议程项，显示错误
+        if (emptyFileAgendaItems.length > 0) {
+            // 标记没有文件的议程项
+            emptyFileAgendaItems.forEach(item => {
+                const fileUploadArea = item.element.querySelector('.file-upload-area');
+                if (fileUploadArea) {
+                    // 添加错误提示
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'no-files-error';
+                    errorMsg.style.color = '#dc3545';
+                    errorMsg.style.fontWeight = 'bold';
+                    errorMsg.style.marginTop = '10px';
+                    errorMsg.style.padding = '10px';
+                    errorMsg.style.border = '1px solid #dc3545';
+                    errorMsg.style.borderRadius = '4px';
+                    errorMsg.style.backgroundColor = 'rgba(220, 53, 69, 0.1)';
+                    errorMsg.innerHTML = `<i class="fas fa-exclamation-triangle"></i> 错误: 议程项必须包含至少一个文件`;
+                    fileUploadArea.appendChild(errorMsg);
+                }
+            });
+
+            // 显示错误提示
+            const emptyItemTitles = emptyFileAgendaItems.map(item => `"${item.title}"`).join(', ');
+            showToast(`以下议程项没有文件: ${emptyItemTitles}`, 'error');
+
+            // 滚动到第一个没有文件的议程项
+            emptyFileAgendaItems[0].element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
             return;
         }
 
@@ -926,7 +1099,7 @@ document.addEventListener('DOMContentLoaded', () => {
             submitButton.disabled = false;
             submitButton.innerHTML = originalButtonText;
             saveStatusMessage.innerHTML = `<span style="color:red;">❌ 操作失败: ${error.message}</span>`;
-            alert(`操作失败: ${error.message}`);
+            showToast(`操作失败: ${error.message}`, 'error');
 
             // 3秒后自动移除错误消息
             setTimeout(() => {
@@ -1026,10 +1199,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 获取文件信息
                     const fileUrl = this.dataset.fileUrl;
                     const fileId = this.dataset.fileId || '';
-                    const filePath = this.dataset.filePath || '';
+
+                    // 获取文件名
+                    const fileName = this.closest('.uploaded-file-item').querySelector('.file-name').textContent;
 
                     // 确认是否要删除文件
-                    if (!confirm(`确定要从会议中移除此文件吗？文件将被解绑并移动到临时文件夹。`)) {
+                    if (!confirm(`确定要从会议中移除文件 "${fileName}" 吗？文件将被解绑并移动到临时文件夹。`)) {
                         return;
                     }
 
@@ -1050,10 +1225,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                             const result = await response.json();
                             console.log('文件解绑成功:', result);
+                            showToast(`文件 "${fileName}" 已成功解绑`, 'success');
                         }
                     } catch (error) {
                         console.error('文件解绑失败:', error);
-                        alert(`文件解绑失败: ${error.message}`);
+                        showToast(`文件解绑失败: ${error.message}`, 'error');
                     }
 
                     // 移除隐藏输入字段
@@ -1186,6 +1362,61 @@ document.addEventListener('DOMContentLoaded', () => {
         if (totalCountSpan) {
             totalCountSpan.textContent = `共 ${count} 条`;
         }
+    }
+
+        // 显示浮动提示
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toast-container');
+
+        // 创建新的提示元素
+        const toast = document.createElement('div');
+        toast.className = `toast ${type} hidden`;
+
+        // 根据类型设置图标
+        let icon = '';
+        switch(type) {
+            case 'success':
+                icon = '✓';
+                break;
+            case 'error':
+                icon = '✗';
+                break;
+            case 'warning':
+                icon = '⚠';
+                break;
+            default:
+                icon = 'ℹ';
+        }
+
+        // 设置提示内容
+        toast.innerHTML = `
+            <span class="toast-icon">${icon}</span>
+            <span class="toast-message">${message}</span>
+        `;
+
+        // 添加到容器
+        toastContainer.appendChild(toast);
+
+        // 强制浏览器重绘
+        toast.offsetHeight;
+
+        // 显示提示
+        setTimeout(() => {
+            toast.classList.remove('hidden');
+        }, 10);
+
+        // 8秒后自动移除
+        setTimeout(() => {
+            toast.classList.add('hidden');
+
+            // 等待过渡结束后移除元素
+            toast.addEventListener('transitionend', function handler() {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+                toast.removeEventListener('transitionend', handler);
+            });
+        }, 8000);
     }
 
     // 重置所有表单按钮状态
