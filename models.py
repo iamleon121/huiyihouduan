@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, JSON, Boolean
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, JSON, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -32,15 +32,22 @@ class Meeting(Base):
 class AgendaItem(Base):
     __tablename__ = "agenda_items"
 
-    id = Column(Integer, primary_key=True, index=True)
+    # 使用复合主键：会议ID和位置索引
+    meeting_id = Column(String, ForeignKey("meetings.id"), primary_key=True)
+    position = Column(Integer, primary_key=True)  # 议程项在会议中的位置
+
     title = Column(String, index=True)
+
+    # 添加唯一约束，确保同一会议下议程项标题唯一
+    __table_args__ = (
+        UniqueConstraint('meeting_id', 'title', name='uix_meeting_agenda_title'),
+    )
     # Store file and page lists as JSON strings
     # For more complex queries or relationships, consider separate tables
     files = Column(JSON, nullable=True)
     reporter = Column(String, nullable=True)  # 添加报告人字段
     duration_minutes = Column(Integer, nullable=True)  # 添加时长字段（分钟）
     pages = Column(JSON, nullable=True)
-    meeting_id = Column(String, ForeignKey("meetings.id"))
 
     meeting = relationship("Meeting", back_populates="agenda_items")
 

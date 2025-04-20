@@ -113,12 +113,21 @@ def create_meeting(db: Session, meeting: schemas.MeetingCreate):
     db.flush() # Flush to ensure meeting exists before adding items if needed, or commit later
 
     # Create associated AgendaItem objects
-    for item_data in meeting.part:
+    # 首先检查同一会议下是否有重复的议程项标题
+    titles = [item.title for item in meeting.part]
+    duplicate_titles = [title for title in titles if titles.count(title) > 1]
+    if duplicate_titles:
+        raise ValueError(f"同一会议下存在重复的议程项标题: {', '.join(set(duplicate_titles))}")
+
+    for position, item_data in enumerate(meeting.part, start=1):
         db_item = models.AgendaItem(
             title=item_data.title,
             files=item_data.files,
             pages=item_data.pages,
-            meeting_id=db_meeting.id
+            meeting_id=db_meeting.id,
+            position=position,
+            reporter=item_data.reporter,
+            duration_minutes=item_data.duration_minutes
         )
         db.add(db_item)
 
@@ -154,8 +163,14 @@ def update_meeting(db: Session, meeting_id: str, meeting_update: schemas.Meeting
             db.query(models.AgendaItem).filter(models.AgendaItem.meeting_id == meeting_id).delete()
             db.flush() # Ensure deletes happen before adds in this transaction
 
+            # 首先检查同一会议下是否有重复的议程项标题
+            titles = [item.get('title') for item in agenda_items_data]
+            duplicate_titles = [title for title in titles if titles.count(title) > 1]
+            if duplicate_titles:
+                raise ValueError(f"同一会议下存在重复的议程项标题: {', '.join(set(duplicate_titles))}")
+
             # Create new agenda items from the provided data
-            for item_data_dict in agenda_items_data:
+            for position, item_data_dict in enumerate(agenda_items_data, start=1):
                 # Convert dict back to Pydantic model for potential validation/defaults
                 item_data = schemas.AgendaItemCreate(**item_data_dict)
                 db_item = models.AgendaItem(
@@ -164,7 +179,8 @@ def update_meeting(db: Session, meeting_id: str, meeting_update: schemas.Meeting
                     duration_minutes=item_data.duration_minutes,
                     files=item_data.files,
                     pages=item_data.pages,
-                    meeting_id=meeting_id # Associate with the current meeting
+                    meeting_id=meeting_id, # Associate with the current meeting
+                    position=position # Set the position based on the order in the list
                 )
                 db.add(db_item)
 

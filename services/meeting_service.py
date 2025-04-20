@@ -44,12 +44,16 @@ class MeetingService:
     @staticmethod
     async def create_meeting(db: Session, meeting_data: Dict[str, Any]):
         """创建新会议"""
-        # 处理临时文件
-        await MeetingService.process_temp_files_in_meeting(meeting_data)
+        try:
+            # 处理临时文件
+            await MeetingService.process_temp_files_in_meeting(meeting_data)
 
-        # 创建会议
-        db_meeting = crud.create_meeting(db=db, meeting=meeting_data)
-        return db_meeting
+            # 创建会议
+            db_meeting = crud.create_meeting(db=db, meeting=meeting_data)
+            return db_meeting
+        except ValueError as e:
+            # 处理标题重复错误
+            raise ValueError(f"创建会议失败: {str(e)}")
 
     @staticmethod
     async def update_meeting(db: Session, meeting_id: str, meeting_data: Dict[str, Any]):
@@ -67,22 +71,32 @@ class MeetingService:
         ).all()
         print(f"当前会议有 {len(current_agenda_items)} 个议程项")
 
-        # 获取更新后的议程项ID列表
-        new_agenda_item_ids = []
+        # 获取当前议程项的位置列表
+        current_positions = [item.position for item in current_agenda_items]
+        print(f"当前议程项位置列表: {current_positions}")
+
+        # 获取更新后的议程项位置列表
+        new_positions = []
         if hasattr(meeting_data, 'part') and meeting_data.part:
-            for item in meeting_data.part:
-                if hasattr(item, 'id') and item.id:
-                    new_agenda_item_ids.append(item.id)
-        print(f"更新后会议将有 {len(new_agenda_item_ids)} 个议程项")
+            for i, item in enumerate(meeting_data.part, start=1):
+                new_positions.append(i)  # 使用列表中的位置作为新的位置
+        print(f"更新后会议将有 {len(new_positions)} 个议程项")
 
         # 找出被移除的议程项
-        removed_agenda_items = [item for item in current_agenda_items if item.id not in new_agenda_item_ids]
-        print(f"有 {len(removed_agenda_items)} 个议程项被移除")
+        # 注意：由于我们使用位置而不是ID，所以这里的逻辑需要调整
+        # 我们假设如果新的议程项数量少于当前的议程项数量，则表示有议程项被移除
+        # 我们将删除超出新数量的议程项
+        if len(new_positions) < len(current_positions):
+            # 按位置排序当前议程项
+            current_agenda_items.sort(key=lambda x: x.position)
+            # 超出新数量的议程项被认为是被移除的
+            removed_agenda_items = current_agenda_items[len(new_positions):]
+            print(f"有 {len(removed_agenda_items)} 个议程项被移除")
 
-        # 处理被移除的议程项文件夹
-        for item in removed_agenda_items:
-            print(f"处理被移除的议程项: ID={item.id}, 标题={item.title}")
-            await MeetingService.delete_agenda_item_folder(meeting_id, item.id)
+            # 处理被移除的议程项文件夹
+            for item in removed_agenda_items:
+                print(f"处理被移除的议程项: 位置={item.position}, 标题={item.title}")
+                await MeetingService.delete_agenda_item_folder(meeting_id, item.position)
 
         # 处理临时文件
         if hasattr(meeting_data, 'part') and meeting_data.part:
@@ -93,12 +107,16 @@ class MeetingService:
 
         # 更新会议
         print(f"更新会议数据库记录")
-        db_meeting = crud.update_meeting(db=db, meeting_id=meeting_id, meeting_update=meeting_data)
-        if db_meeting is None:
-            raise HTTPException(status_code=404, detail="会议更新失败")
+        try:
+            db_meeting = crud.update_meeting(db=db, meeting_id=meeting_id, meeting_update=meeting_data)
+            if db_meeting is None:
+                raise HTTPException(status_code=404, detail="会议更新失败")
 
-        print(f"会议 {meeting_id} 更新成功")
-        return db_meeting
+            print(f"会议 {meeting_id} 更新成功")
+            return db_meeting
+        except ValueError as e:
+            # 处理标题重复错误
+            raise ValueError(f"更新会议失败: {str(e)}")
 
     @staticmethod
     def update_meeting_status(db: Session, meeting_id: str, status: str):
@@ -163,7 +181,7 @@ class MeetingService:
         return True
 
     @staticmethod
-    async def upload_meeting_files(db: Session, meeting_id: str, agenda_item_id: int, files: List[Any]):
+    async def upload_meeting_files(db: Session, meeting_id: str, position: int, files: List[Any]):
         """上传会议文件"""
         # 检查会议是否存在
         db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
@@ -172,7 +190,7 @@ class MeetingService:
 
         # 检查议程项是否存在
         db_agenda_item = db.query(models.AgendaItem).filter(
-            models.AgendaItem.id == agenda_item_id,
+            models.AgendaItem.position == position,
             models.AgendaItem.meeting_id == meeting_id
         ).first()
 
@@ -184,7 +202,7 @@ class MeetingService:
         os.makedirs(meeting_dir, exist_ok=True)
 
         # 创建议程项目录
-        agenda_dir = os.path.join(meeting_dir, f"agenda_{agenda_item_id}")
+        agenda_dir = os.path.join(meeting_dir, f"agenda_{position}")
         os.makedirs(agenda_dir, exist_ok=True)
 
         # 创廾JPG文件存储目录
@@ -229,10 +247,10 @@ class MeetingService:
                 "name": file.filename,
                 "path": file_path,
                 "size": os.path.getsize(file_path),
-                "url": f"/uploads/{meeting_id}/agenda_{agenda_item_id}/{filename}",
+                "url": f"/uploads/{meeting_id}/agenda_{position}/{filename}",
                 "display_name": file.filename,
                 "meeting_id": meeting_id,
-                "agenda_folder": f"agenda_{agenda_item_id}"
+                "agenda_folder": f"agenda_{position}"
             }
             uploaded_files.append(file_info)
 
@@ -276,8 +294,8 @@ class MeetingService:
 
         # 遍历会议的所有议程项
         for agenda_item in db_meeting.agenda_items:
-            agenda_item_id = agenda_item.id
-            agenda_dir = os.path.join(meeting_dir, f"agenda_{agenda_item_id}")
+            position = agenda_item.position
+            agenda_dir = os.path.join(meeting_dir, f"agenda_{position}")
             jpg_dir = os.path.join(agenda_dir, "jpgs")
 
             # 使用线程池检查议程项目录是否存在
@@ -325,7 +343,7 @@ class MeetingService:
                         jpg_paths = []
                         for jpg_file in os.listdir(pdf_jpg_dir):
                             if jpg_file.lower().endswith(".jpg"):
-                                jpg_path = f"/uploads/{meeting_id}/agenda_{agenda_item_id}/jpgs/{pdf_id}/{jpg_file}"
+                                jpg_path = f"/uploads/{meeting_id}/agenda_{position}/jpgs/{pdf_id}/{jpg_file}"
                                 jpg_paths.append(jpg_path)
                         return jpg_paths
                     return await AsyncUtils.run_in_threadpool(_get_jpg_files)
@@ -336,14 +354,14 @@ class MeetingService:
                 if jpg_files:
                     agenda_files.append({
                         "pdf_id": pdf_id,
-                        "pdf_file": f"/uploads/{meeting_id}/agenda_{agenda_item_id}/{pdf_file}",
+                        "pdf_file": f"/uploads/{meeting_id}/agenda_{position}/{pdf_file}",
                         "jpg_files": jpg_files
                     })
 
             # 添加议程项信息
             if agenda_files:
                 agenda_info = {
-                    "id": agenda_item_id,
+                    "position": position,
                     "title": agenda_item.title,
                     "files": agenda_files
                 }
@@ -384,12 +402,12 @@ class MeetingService:
 
         # 遍历会议的所有议程项
         for agenda_item in db_meeting.agenda_items:
-            agenda_item_id = agenda_item.id
-            agenda_dir = os.path.join(meeting_dir, f"agenda_{agenda_item_id}")
+            position = agenda_item.position
+            agenda_dir = os.path.join(meeting_dir, f"agenda_{position}")
 
             # 准备议程项信息
             agenda_info = {
-                "id": agenda_item_id,
+                "position": position,
                 "title": agenda_item.title,
                 "content": agenda_item.content,
                 "files": []
@@ -422,7 +440,7 @@ class MeetingService:
                         "path": file_path,
                         "size": file_size,
                         "formatted_size": format_file_size(file_size),
-                        "url": f"/uploads/{meeting_id}/agenda_{agenda_item_id}/{file}",
+                        "url": f"/uploads/{meeting_id}/agenda_{position}/{file}",
                         "type": "pdf"
                     }
 
@@ -539,7 +557,9 @@ class MeetingService:
                 print(f"保留 {len(non_temp_files)} 个非临时文件")
 
                 # 创建议程项目录
-                agenda_folder_name = f"agenda_{agenda_index+1}"
+                # 使用位置作为文件夹名称
+                position = agenda_index + 1
+                agenda_folder_name = f"agenda_{position}"
                 agenda_dir = os.path.join(meeting_dir, agenda_folder_name)
                 os.makedirs(agenda_dir, exist_ok=True)
                 print(f"创建议程项目录: {agenda_dir}")
@@ -641,14 +661,27 @@ class MeetingService:
 
         Args:
             meeting_id: 会议ID
-            agenda_item_id: 议程项ID
+            agenda_item_id: 议程项位置
         """
+        # 获取数据库会话
+        from database import get_db
+        db = next(get_db())
         try:
             # 导入异步工具
             from services.async_utils import AsyncUtils
 
             # 构建议程项文件夹路径
-            agenda_dir = os.path.join(UPLOAD_DIR, meeting_id, f"agenda_{agenda_item_id}")
+            # 获取议程项的位置
+            agenda_item = db.query(models.AgendaItem).filter(
+                models.AgendaItem.meeting_id == meeting_id,
+                models.AgendaItem.position == agenda_item_id
+            ).first()
+
+            if agenda_item:
+                agenda_dir = os.path.join(UPLOAD_DIR, meeting_id, f"agenda_{agenda_item.position}")
+            else:
+                # 如果找不到议程项，尝试直接使用ID
+                agenda_dir = os.path.join(UPLOAD_DIR, meeting_id, f"agenda_{agenda_item_id}")
 
             # 检查文件夹是否存在
             dir_exists = await AsyncUtils.run_in_threadpool(lambda: os.path.exists(agenda_dir))
@@ -858,11 +891,9 @@ class MeetingService:
                     continue
 
                 # 创建议程项目录
-                # 如果议程项有ID，使用ID，否则使用索引
-                if hasattr(agenda_item, 'id') and agenda_item.id:
-                    agenda_folder_name = f"agenda_{agenda_item.id}"
-                else:
-                    agenda_folder_name = f"agenda_{agenda_index+1}"
+                # 使用位置作为文件夹名称
+                position = agenda_index + 1
+                agenda_folder_name = f"agenda_{position}"
                 agenda_dir = os.path.join(meeting_dir, agenda_folder_name)
                 os.makedirs(agenda_dir, exist_ok=True)
                 print(f"创建议程项目录: {agenda_dir}")

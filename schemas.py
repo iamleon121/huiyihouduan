@@ -37,6 +37,7 @@ class User(UserBase):
 # --- Agenda Item Schemas ---
 class AgendaItemBase(BaseModel):
     title: str
+    position: Optional[int] = None  # 议程项在会议中的位置
     files: Optional[List[Any]] = None  # 允许任何类型的列表元素，包括字符串和字典
     pages: Optional[List[str]] = None
     reporter: Optional[str] = None
@@ -49,8 +50,8 @@ class AgendaItemUpdate(AgendaItemBase):
     title: Optional[str] = None
 
 class AgendaItem(AgendaItemBase):
-    id: int
     meeting_id: str
+    position: int
 
     class Config:
         from_attributes = True

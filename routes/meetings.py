@@ -46,13 +46,17 @@ async def create_new_meeting(meeting: schemas.MeetingCreate, db: Session = Depen
     if db_meeting:
         raise HTTPException(status_code=400, detail="Meeting ID already registered")
 
-    # 使用MeetingService创建会议
-    db_meeting = await MeetingService.create_meeting(db=db, meeting_data=meeting)
+    try:
+        # 使用MeetingService创建会议
+        db_meeting = await MeetingService.create_meeting(db=db, meeting_data=meeting)
 
-    # 不再更新会议变更识别码
-    # 只有状态变为"进行中"时才会更新识别码
+        # 不再更新会议变更识别码
+        # 只有状态变为"进行中"时才会更新识别码
 
-    return db_meeting
+        return db_meeting
+    except ValueError as e:
+        # 处理标题重复错误
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/", response_model=List[schemas.Meeting])
@@ -74,15 +78,19 @@ def read_meeting(meeting_id: str, db: Session = Depends(get_db)):
 @router.put("/{meeting_id}", response_model=schemas.Meeting)
 async def update_existing_meeting(meeting_id: str, meeting: schemas.MeetingUpdate, db: Session = Depends(get_db)):
     """更新会议信息，包括其议程项（采用删除旧项，添加新项的策略）"""
-    # 使用MeetingService更新会议
-    db_meeting = await MeetingService.update_meeting(db=db, meeting_id=meeting_id, meeting_data=meeting)
+    try:
+        # 使用MeetingService更新会议
+        db_meeting = await MeetingService.update_meeting(db=db, meeting_id=meeting_id, meeting_data=meeting)
 
-    # 不再更新会议变更识别码
-    # 只有状态变为"进行中"时才会更新识别码
+        # 不再更新会议变更识别码
+        # 只有状态变为"进行中"时才会更新识别码
 
-    # Need to reload agenda items if the response model expects them
-    db.refresh(db_meeting, attribute_names=['agenda_items'])
-    return db_meeting
+        # Need to reload agenda items if the response model expects them
+        db.refresh(db_meeting, attribute_names=['agenda_items'])
+        return db_meeting
+    except ValueError as e:
+        # 处理标题重复错误
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/{meeting_id}", status_code=204) # Use 204 No Content for successful deletion
@@ -215,7 +223,7 @@ def test_update_status_token(db: Session = Depends(get_db)):
 @router.post("/{meeting_id}/upload")
 async def upload_meeting_files(
     meeting_id: str,
-    agenda_item_id: int,
+    position: int,
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db)
 ):
@@ -225,7 +233,7 @@ async def upload_meeting_files(
     自动转换：PDF文件会自动转换为JPG格式，用于无线平板显示
     """
     # 使用MeetingService上传会议文件
-    result = await MeetingService.upload_meeting_files(db=db, meeting_id=meeting_id, agenda_item_id=agenda_item_id, files=files)
+    result = await MeetingService.upload_meeting_files(db=db, meeting_id=meeting_id, position=position, files=files)
     return result
 
 

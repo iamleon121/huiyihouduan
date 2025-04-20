@@ -447,7 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newItemHtml = `
             <div class="agenda-item" data-index="${itemIndex}">
                 <h4>议程 ${itemIndex + 1}</h4>
-                <input type="hidden" name="agenda[${itemIndex}][id]" value="${itemData?.id || ''}" />
+                <input type="hidden" name="agenda[${itemIndex}][position]" value="${itemIndex + 1}" />
 
                 <label for="agendaTitle_${itemIndex}">标题:</label>
                 <input type="text" id="agendaTitle_${itemIndex}" name="agenda[${itemIndex}][title]" value="${itemData?.title || ''}" required />
@@ -727,6 +727,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData(form);
         const meetingId = formData.get('id');
 
+        // 检查同一会议下是否有重复的议程项标题
+        let agendaElements = form.querySelectorAll('.agenda-item');
+        const titles = [];
+        agendaElements.forEach(element => {
+            const index = element.dataset.index;
+            const title = element.querySelector(`input[name="agenda[${index}][title]"]`).value.trim();
+            if (title) {
+                titles.push(title);
+            }
+        });
+
+        // 检查重复标题
+        const duplicateTitles = titles.filter((title, index) => titles.indexOf(title) !== index);
+        if (duplicateTitles.length > 0) {
+            alert(`同一会议下存在重复的议程项标题: ${[...new Set(duplicateTitles)].join(', ')}`);
+            return;
+        }
+
         // 获取并禁用保存按钮
         const submitButton = form.querySelector('button[type="submit"]');
         const originalButtonText = submitButton.innerHTML;
@@ -751,12 +769,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // 收集议程项信息
-        const agendaElements = form.querySelectorAll('.agenda-item');
+        agendaElements = form.querySelectorAll('.agenda-item');
         const agendaItems = [];
 
         agendaElements.forEach(element => {
             const index = element.dataset.index;
-            const agendaItemId = element.querySelector(`input[name="agenda[${index}][id]"]`).value;
+            const position = parseInt(index) + 1;
             const agendaItemTitle = element.querySelector(`input[name="agenda[${index}][title]"]`).value;
 
             // 收集已上传的临时文件信息
@@ -789,7 +807,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const allFiles = [...tempFiles, ...existingFiles];
 
             agendaItems.push({
-                id: agendaItemId || null, // 如果没有ID，使用null，让后端生成
+                position: position, // 使用位置作为议程项的标识
                 title: agendaItemTitle,
                 files: allFiles, // 将所有文件信息传给后端
                 pages: []
@@ -854,7 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     saveStatusMessage.innerHTML = `正在上传议程项 "${agendaItem.title}" 的文件...`;
 
                     // 添加上传请求到promises数组
-                    const uploadPromise = fetch(`/api/v1/meetings/${savedMeeting.id}/upload?agenda_item_id=${agendaItem.id}`, {
+                    const uploadPromise = fetch(`/api/v1/meetings/${savedMeeting.id}/upload?position=${index+1}`, {
                         method: 'POST',
                         body: fileFormData
                     })
@@ -865,7 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         return response.json();
                     })
                     .then(result => {
-                        console.log(`议程项 ${agendaItem.id} 的文件上传成功:`, result);
+                        console.log(`议程项 ${agendaItem.position} 的文件上传成功:`, result);
                         return result;
                     });
 
@@ -1119,7 +1137,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let agendaItemsHtml = '';
             if (meeting.agenda_items && meeting.agenda_items.length > 0) {
                 agendaItemsHtml = '<h3>会议议程</h3><ul>';
-                meeting.agenda_items.forEach((item, index) => {
+                meeting.agenda_items.forEach((item) => {
                     let filesHtml = '';
                     if (item.files && item.files.length > 0) {
                         filesHtml = '<p><strong>相关文件:</strong></p><ul class="file-list">';
@@ -1131,7 +1149,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     agendaItemsHtml += `
                         <li class="agenda-detail">
-                            <h4>议程 ${index + 1}: ${item.title || '无标题'}</h4>
+                            <h4>议程 ${item.position}: ${item.title || '无标题'}</h4>
                             ${filesHtml}
                         </li>
                     `;
