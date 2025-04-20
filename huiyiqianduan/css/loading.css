@@ -1,0 +1,256 @@
+/* loading.css - 专门为loading页面提供的样式 */
+
+/* 基础样式 */
+.loading-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+}
+
+/* 标题样式 */
+.loading-title {
+    font-size: 28px;
+    color: #FFFFFF;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    margin-bottom: 30px;
+}
+
+/* 加载文本样式 */
+.loading-text {
+    font-size: 18px;
+    color: #FFFFFF;
+    font-weight: bold;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+    margin-top: 20px;
+    text-align: center;
+    max-width: 80%;
+}
+
+/* 错误文本样式 */
+.error-text {
+    font-size: 16px;
+    color: #FF6B6B;
+    font-weight: bold;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+    margin-top: 10px;
+    display: none;
+    text-align: center;
+    max-width: 80%;
+}
+
+/* 按钮容器 */
+.button-container {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    z-index: 10000;
+}
+
+/* 按钮基础样式 */
+.loading-button {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    display: none;
+    border: none;
+    outline: none;
+}
+
+/* 返回按钮样式 */
+.return-button {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.return-button:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* 关闭按钮样式 */
+.close-button {
+    background-color: #f44336;
+    color: white;
+}
+
+.close-button:hover {
+    background-color: #d32f2f;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* 重试按钮样式 */
+.retry-button {
+    background-color: #2196F3;
+    color: white;
+}
+
+.retry-button:hover {
+    background-color: #0b7dda;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* 现代化加载动画 */
+.loading-spinner {
+    width: 80px;
+    height: 80px;
+    position: relative;
+}
+
+.loading-spinner:before,
+.loading-spinner:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 5px solid transparent;
+    border-top-color: #4CAF50;
+}
+
+.loading-spinner:before {
+    z-index: 10;
+    animation: spin 1s infinite linear;
+}
+
+.loading-spinner:after {
+    border: 5px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 进度条容器 */
+.progress-container {
+    width: 300px;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    margin-top: 20px;
+    overflow: hidden;
+}
+
+/* 进度条 */
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background-color: #4CAF50;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+/* 动画定义 */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 淡入动画 */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 淡出动画 */
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* 应用淡入动画 */
+.fade-in {
+    animation: fadeIn 0.5s ease forwards;
+}
+
+/* 应用淡出动画 */
+.fade-out {
+    animation: fadeOut 0.5s ease forwards;
+}
+
+/* 脉冲动画 */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* 应用脉冲动画到加载文本 */
+.pulse {
+    animation: pulse 2s infinite ease-in-out;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .loading-title {
+        font-size: 24px;
+    }
+    
+    .loading-text {
+        font-size: 16px;
+    }
+    
+    .progress-container {
+        width: 250px;
+    }
+    
+    .loading-spinner {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .button-container {
+        bottom: 20px;
+    }
+    
+    .loading-button {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .loading-title {
+        font-size: 20px;
+    }
+    
+    .loading-text {
+        font-size: 14px;
+    }
+    
+    .progress-container {
+        width: 200px;
+    }
+    
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .button-container {
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .loading-button {
+        width: 150px;
+        text-align: center;
+    }
+}
