@@ -976,6 +976,25 @@ class MeetingService:
                 # 更新议程项的文件列表 - 合并非临时文件和处理后的临时文件
                 agenda_item.files = non_temp_files + processed_files
 
+                # 检查并删除原来的文件夹（如果与当前文件夹不同）
+                # 收集所有需要检查的原始文件夹
+                old_folders = set()
+                for file_item in temp_files:
+                    if 'agenda_folder' in file_item and file_item['agenda_folder'] != agenda_folder_name:
+                        old_folders.add(file_item['agenda_folder'])
+
+                # 检查并删除空文件夹
+                for folder_name in old_folders:
+                    old_folder = os.path.join(meeting_dir, folder_name)
+                    if os.path.exists(old_folder) and os.path.isdir(old_folder):
+                        # 检查文件夹是否为空
+                        if not os.listdir(old_folder):
+                            try:
+                                shutil.rmtree(old_folder)
+                                print(f"删除空文件夹: {old_folder}")
+                            except Exception as e:
+                                print(f"删除空文件夹失败: {e}")
+
         except Exception as e:
             print(f"\n\n处理临时文件时发生全局错误: {e}")
             import traceback
