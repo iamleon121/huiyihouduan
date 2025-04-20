@@ -6,27 +6,9 @@
     <title>会议系统</title>
     <link rel="stylesheet" href="css/main.css">
     <script src="js/init.js"></script>
+    <!-- 备用跳转机制已移除 - 于2025年4月21日移除 -->
     <script type="text/javascript">
-        // 添加备用跳转机制，确保即使其他方式失败也能跳转
-        window.onload = function() {
-            // 5秒后如果还在init页面，尝试直接跳转
-            setTimeout(function() {
-                // 检查是否仍然在init页面
-                if (document.querySelector('.loading-text')) {
-                    console.log('备用跳转机制触发，直接跳转到service页面');
-                    try {
-                        if (typeof plus !== 'undefined') {
-                            plus.webview.open('service.html', 'service');
-                        } else {
-                            window.location.href = 'service.html';
-                        }
-                    } catch (e) {
-                        console.error('备用跳转失败:', e);
-                        window.location.href = 'service.html';
-                    }
-                }
-            }, 5000);
-        };
+        console.log('初始化页面加载，备用跳转机制已移除');
     </script>
 </head>
 <body>

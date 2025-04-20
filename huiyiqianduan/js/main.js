@@ -42,6 +42,17 @@ document.addEventListener('plusready', function() {
     currentWebview.id = 'main';
     console.log('已设置当前页面ID为: main');
 
+    // 添加页面关闭事件监听
+    currentWebview.addEventListener('close', function() {
+        console.log('main页面即将关闭，通知service模块');
+        // 获取service页面
+        const serviceView = plus.webview.getWebviewById('service');
+        if (serviceView) {
+            // 在service页面中执行监测页面关闭的方法
+            serviceView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.monitorPageClosing(); }');
+        }
+    });
+
     // 打印所有页面信息，用于调试
     const webviews = plus.webview.all();
     console.log('当前所有页面:', webviews.map(w => w.id || 'unknown').join(', '));

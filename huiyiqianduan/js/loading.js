@@ -264,6 +264,18 @@ document.addEventListener('plusready', function plusReadyHandler() {
         console.log('loading页面单例检查完成，无需清理');
     }
 
+    // 添加页面关闭事件监听
+    const currentWebview = plus.webview.currentWebview();
+    currentWebview.addEventListener('close', function() {
+        console.log('loading页面即将关闭，通知service模块');
+        // 获取service页面
+        const serviceView = plus.webview.getWebviewById('service');
+        if (serviceView) {
+            // 在service页面中执行监测页面关闭的方法
+            serviceView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.monitorPageClosing(); }');
+        }
+    });
+
     if (!initializePlus()) {
         console.error('plus初始化失败');
         return;

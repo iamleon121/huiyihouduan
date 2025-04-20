@@ -7,6 +7,57 @@
     <link rel="stylesheet" href="css/main.css">
     <script type="text/javascript" src="js/page-manager.js"></script>
     <script type="text/javascript" src="js/service.js"></script>
+    <script type="text/javascript">
+        // 添加备用跳转机制，仅在其他方式失败时触发
+        window.onload = function() {
+            console.log('服务页面加载完成，设置备用跳转机制');
+
+            // 创建一个变量来跟踪是否已经打开了main页面
+            window.mainPageOpened = false;
+
+            // 检查是否已经有main页面
+            if (typeof plus !== 'undefined') {
+                try {
+                    const existingMain = plus.webview.getWebviewById('main');
+                    if (existingMain) {
+                        window.mainPageOpened = true;
+                        console.log('服务页面加载时发现已存在的main页面');
+                    }
+                } catch (e) {
+                    console.error('检查main页面存在时出错:', e);
+                }
+            }
+
+            // 5秒后如果还在service页面且没有main页面，才触发备用跳转
+            setTimeout(function() {
+                // 检查是否仍然在service页面且没有main页面
+                if (document.querySelector('.loading-text') && !window.mainPageOpened) {
+                    console.log('备用跳转机制触发，直接跳转到main页面');
+                    try {
+                        if (typeof plus !== 'undefined') {
+                            // 再次检查main页面是否已经存在
+                            const existingMain = plus.webview.getWebviewById('main');
+                            if (existingMain) {
+                                console.log('备用跳转机制发现已存在的main页面，显示它');
+                                existingMain.show();
+                            } else {
+                                console.log('备用跳转机制打开新的main页面');
+                                plus.webview.open('main.html', 'main');
+                            }
+                        } else {
+                            console.log('备用跳转机制使用浏览器原生方式跳转');
+                            window.location.href = 'main.html';
+                        }
+                    } catch (e) {
+                        console.error('备用跳转失败:', e);
+                        window.location.href = 'main.html';
+                    }
+                } else {
+                    console.log('已经有main页面或不在service页面，无需备用跳转');
+                }
+            }, 5000); // 增加到5秒，给其他机制更多时间
+        };
+    </script>
 </head>
 <body oncontextmenu="return false">
     <div class="logo">

@@ -64,6 +64,35 @@ const MeetingService = {
         // 立即开始获取会议状态
         console.log('初始化时获取会议状态');
         this.getMeetingStatus(); // 使用原来的方法名
+
+        // 立即检查并打开main页面，无论网络状态如何
+        console.log('初始化时检查并打开main页面 - 立即执行');
+
+        // 检查是否已经标记了main页面已打开
+        if (window.mainPageOpened) {
+            console.log('初始化时发现main页面已经标记为打开，跳过打开操作');
+            return;
+        }
+
+        // 检查main页面是否已经存在
+        try {
+            const existingMain = plus.webview.getWebviewById('main');
+            if (existingMain) {
+                console.log('初始化时发现已存在的main页面，显示它');
+                existingMain.show();
+                window.mainPageOpened = true;
+                return;
+            }
+        } catch (e) {
+            console.error('初始化时检查main页面存在时出错:', e);
+        }
+
+        // 直接打开main页面
+        console.log('初始化时直接打开main页面');
+        this.openMainPage();
+
+        // 标记main页面已打开
+        window.mainPageOpened = true;
     },
 
     // 从本地存储加载配置
@@ -406,6 +435,9 @@ const MeetingService = {
             // 检查并管理main页面，确保只有一个main页面存在
             this.checkAndManageMainPage();
 
+            // 监测页面关闭情况，确保main或loading页面至少有一个存在
+            this.monitorPageClosing();
+
             // 检查并管理其他页面，确保它们也是单例
             if (typeof checkAndManageOptionPage === 'function') {
                 checkAndManageOptionPage(false); // 保留第一个页面
@@ -573,10 +605,7 @@ const MeetingService = {
             // 如果main页面和loading页面都不存在，自动打开main页面
             if (mainPages.length === 0 && loadingPages.length === 0) {
                 console.log('检测到main页面和loading页面都不存在，自动打开main页面');
-                plus.webview.open('main.html', 'main', {
-                    scrollIndicator: 'none',
-                    scalable: false
-                });
+                this.openMainPage();
                 return null; // 返回null，因为新页面还没有完全创建好
             }
 
@@ -584,6 +613,87 @@ const MeetingService = {
         } catch (error) {
             console.error('检查main页面时出错:', error);
             return null;
+        }
+    },
+
+    // 打开main页面的方法
+    openMainPage: function() {
+        console.log('打开main页面 - 开始');
+        try {
+            // 首先检查是否已经标记了main页面已打开
+            if (window.mainPageOpened) {
+                console.log('main页面已经标记为打开，检查是否存在');
+                const existingMain = plus.webview.getWebviewById('main');
+                if (existingMain) {
+                    console.log('发现已存在的main页面，显示它');
+                    existingMain.show();
+                    return;
+                } else {
+                    console.log('main页面已标记为打开但实际不存在，重置标记');
+                    window.mainPageOpened = false;
+                }
+            }
+
+            // 检查main页面是否已经存在
+            const existingMain = plus.webview.getWebviewById('main');
+            if (existingMain) {
+                console.log('发现已存在的main页面，显示它');
+                existingMain.show();
+                window.mainPageOpened = true;
+                return;
+            }
+
+            console.log('尝试打开新的main页面');
+            // 使用最简单的方式打开main页面
+            plus.webview.open('main.html', 'main', {}, function(w) {
+                // 成功回调
+                console.log('main页面打开成功:', w ? w.id : 'unknown');
+                window.mainPageOpened = true;
+            }, function(e) {
+                // 失败回调
+                console.error('main页面打开失败:', e.message);
+                // 尝试使用更简单的方式打开
+                console.log('尝试使用更简单的方式打开main页面');
+                try {
+                    plus.webview.open('main.html');
+                    window.mainPageOpened = true;
+                } catch (innerError) {
+                    console.error('使用简单方式打开main页面失败:', innerError);
+                    // 尝试使用浏览器原生方式跳转
+                    window.location.href = 'main.html';
+                }
+            });
+        } catch (error) {
+            console.error('打开main页面时出错:', error);
+            // 尝试使用浏览器原生方式跳转
+            console.log('尝试使用浏览器原生方式跳转到main页面');
+            window.location.href = 'main.html';
+        }
+    },
+
+    // 监测页面关闭情况
+    monitorPageClosing: function() {
+        try {
+            // 获取所有已打开的页面
+            const allWebviews = plus.webview.all();
+
+            // 过滤出所有main页面和loading页面
+            const mainPages = allWebviews.filter(webview => webview.id === 'main');
+            const loadingPages = allWebviews.filter(webview => webview.id === 'loading');
+
+            // 如果main页面不存在，重置标记
+            if (mainPages.length === 0 && window.mainPageOpened) {
+                console.log('main页面已标记为打开但实际不存在，重置标记');
+                window.mainPageOpened = false;
+            }
+
+            // 如果main页面和loading页面都不存在，自动打开main页面
+            if (mainPages.length === 0 && loadingPages.length === 0) {
+                console.log('监测到main页面和loading页面都不存在，自动打开main页面');
+                this.openMainPage();
+            }
+        } catch (error) {
+            console.error('监测页面关闭情况时出错:', error);
         }
     }
 };
@@ -606,6 +716,15 @@ function checkAndManageServiceInstance() {
         // 过滤出所有service页面
         const servicePages = allWebviews.filter(webview => webview.id === 'service');
 
+        // 检查是否有main页面
+        const mainPages = allWebviews.filter(webview => webview.id === 'main');
+        const hasMainPage = mainPages.length > 0;
+
+        // 如果有main页面，标记已打开
+        if (hasMainPage && typeof window !== 'undefined') {
+            window.mainPageOpened = true;
+        }
+
         // 如果有多个service页面，只保留当前的，关闭其他的
         if (servicePages.length > 1) {
             console.warn(`发现${servicePages.length}个service页面，关闭多余页面`);
@@ -614,7 +733,7 @@ function checkAndManageServiceInstance() {
             for (let i = 0; i < servicePages.length; i++) {
                 if (servicePages[i].id === 'service' && servicePages[i] !== currentWebview) {
                     console.log(`关闭多余service页面: ${servicePages[i].id}`);
-                    servicePages[i].close();
+                    servicePages[i].close('none'); // 使用'none'动画效果，避免影响main页面
                 }
             }
 
@@ -658,9 +777,47 @@ document.addEventListener('plusready', function() {
         console.error('读取标题文字设置失败:', error);
     }
 
-    // 不再处理数据初始化事件，该功能已移至loading模块
-
+    // 初始化MeetingService
     MeetingService.init();
+
+    // 额外的保障措施，仅在其他方式失败时触发
+    setTimeout(function() {
+        // 如果已经标记了main页面已打开，则跳过
+        if (window.mainPageOpened) {
+            console.log('plusready事件中发现main页面已经标记为打开，跳过检查');
+            return;
+        }
+
+        console.log('plusready事件中检查main和loading页面状态');
+        // 获取所有已打开的页面
+        const allWebviews = plus.webview.all();
+
+        // 过滤出所有main页面和loading页面
+        const mainPages = allWebviews.filter(webview => webview.id === 'main');
+        const loadingPages = allWebviews.filter(webview => webview.id === 'loading');
+
+        // 如果有main页面，标记已打开
+        if (mainPages.length > 0) {
+            window.mainPageOpened = true;
+            console.log('plusready事件中发现已存在的main页面，标记为已打开');
+            return;
+        }
+
+        // 如果main页面和loading页面都不存在，自动打开main页面
+        if (mainPages.length === 0 && loadingPages.length === 0) {
+            console.log('plusready事件中检测到main页面和loading页面都不存在，自动打开main页面');
+            // 直接打开main页面，不通过MeetingService，以防其初始化失败
+            plus.webview.open('main.html', 'main', {
+                scrollIndicator: 'none',
+                scalable: false
+            });
+            // 标记main页面已打开
+            window.mainPageOpened = true;
+        } else if (loadingPages.length > 0) {
+            console.log('plusready事件中只发现loading页面，确保显示');
+            loadingPages[0].show();
+        }
+    }, 3000); // 增加到3秒，给init函数更多时间
 });
 
 // 导出服务对象
@@ -676,9 +833,17 @@ window.gotoMain = function() {
         mainPage.show();
     } else {
         console.log('main页面不存在，创建新页面');
-        plus.webview.open('main.html', 'main', {
-            scrollIndicator: 'none',
-            scalable: false
-        });
+        MeetingService.openMainPage();
     }
 };
+
+// 添加页面关闭事件监听
+window.addEventListener('unload', function() {
+    console.log('页面即将关闭，检查main和loading页面状态');
+    // 延迟执行，确保页面关闭后再检查
+    setTimeout(function() {
+        if (typeof MeetingService !== 'undefined' && MeetingService.monitorPageClosing) {
+            MeetingService.monitorPageClosing();
+        }
+    }, 500);
+});
