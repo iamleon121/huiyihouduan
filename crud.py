@@ -101,6 +101,10 @@ def get_meetings(db: Session):
 
 def create_meeting(db: Session, meeting: schemas.MeetingCreate):
     """创建新会议"""
+    # 检查会议是否至少有一个议程项
+    if not meeting.part or len(meeting.part) == 0:
+        raise ValueError("会议必须至少包含一个议程项")
+
     # Create Meeting object first
     db_meeting = models.Meeting(
         id=meeting.id,
@@ -168,6 +172,10 @@ def update_meeting(db: Session, meeting_id: str, meeting_update: schemas.Meeting
 
         # 2. Handle agenda items update if provided
         if agenda_items_data is not None: # 检查part字段是否存在于请求中
+            # 检查会议是否至少有一个议程项
+            if not agenda_items_data or len(agenda_items_data) == 0:
+                raise ValueError("会议必须至少包含一个议程项")
+
             # Delete existing agenda items for this meeting
             db.query(models.AgendaItem).filter(models.AgendaItem.meeting_id == meeting_id).delete()
             db.flush() # Ensure deletes happen before adds in this transaction

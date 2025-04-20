@@ -887,6 +887,42 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // 检查会议是否至少有一个议程项
+        if (agendaElements.length === 0) {
+            showToast('错误: 会议必须至少包含一个议程项', 'error');
+
+            // 添加一个错误提示到议程项容器
+            const agendaItemsContainer = document.getElementById('agendaItemsContainer');
+            if (agendaItemsContainer) {
+                const errorMsg = document.createElement('div');
+                errorMsg.className = 'no-agenda-items-error';
+                errorMsg.style.color = '#dc3545';
+                errorMsg.style.fontWeight = 'bold';
+                errorMsg.style.marginTop = '20px';
+                errorMsg.style.padding = '15px';
+                errorMsg.style.border = '2px solid #dc3545';
+                errorMsg.style.borderRadius = '4px';
+                errorMsg.style.backgroundColor = 'rgba(220, 53, 69, 0.1)';
+                errorMsg.style.textAlign = 'center';
+                errorMsg.style.fontSize = '1.2em';
+                errorMsg.innerHTML = `<i class="fas fa-exclamation-circle"></i> 错误: 会议必须至少包含一个议程项<br><button id="addAgendaItemBtn" class="btn btn-primary mt-3"><i class="fas fa-plus"></i> 添加议程项</button>`;
+                agendaItemsContainer.appendChild(errorMsg);
+
+                // 为按钮添加事件监听器
+                setTimeout(() => {
+                    const addBtn = document.getElementById('addAgendaItemBtn');
+                    if (addBtn) {
+                        addBtn.addEventListener('click', function() {
+                            addAgendaItem();
+                            errorMsg.remove();
+                        });
+                    }
+                }, 0);
+            }
+
+            return;
+        }
+
         // 如果有没有文件的议程项，显示错误
         if (emptyFileAgendaItems.length > 0) {
             // 标记没有文件的议程项

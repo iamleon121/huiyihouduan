@@ -175,12 +175,32 @@ async def update_meeting_status_endpoint(meeting_id: str, status_update: schemas
 
     current_status = current_meeting.status
 
-    # 使用MeetingService更新会议状态
-    db_meeting = await MeetingService.update_meeting(db=db, meeting_id=meeting_id, meeting_data=status_update)
+    # 仅更新会议状态，不处理议程项
+    # 不使用 MeetingService.update_meeting 方法，因为它会处理议程项
+    # 直接使用 crud.update_meeting 方法更新状态
+    db_meeting = crud.update_meeting(db=db, meeting_id=meeting_id, meeting_update=status_update)
 
     # 如果状态从其他状态变为"进行中"，先生成ZIP包，然后再更新会议状态token
     if new_status == "进行中" and current_status != "进行中":
-        print(f"[状态变更] 会议 {meeting_id} 状态从 {current_status} 变为 {new_status}，先生成ZIP包")
+        print(f"[状态变更] 会议 {meeting_id} 状态从 {current_status} 变为 {new_status}，先检查议程项")
+
+        # 检查会议是否有议程项
+        if not current_meeting.agenda_items or len(current_meeting.agenda_items) == 0:
+            raise HTTPException(status_code=400, detail="会议没有议程项，无法开始会议")
+
+        # 检查每个议程项是否有文件
+        empty_file_items = []
+        for item in current_meeting.agenda_items:
+            if not item.files or len(item.files) == 0:
+                empty_file_items.append(item.title or f"议程项 {item.position}")
+
+        if empty_file_items:
+            raise HTTPException(
+                status_code=400,
+                detail=f"以下议程项没有文件，无法开始会议: {', '.join(empty_file_items)}"
+            )
+
+        print(f"[状态变更] 会议 {meeting_id} 检查通过，开始生成ZIP包")
 
         # 预生成会议文件包
         success = await MeetingService.generate_meeting_package(db, meeting_id)
