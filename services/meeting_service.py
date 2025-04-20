@@ -61,6 +61,29 @@ class MeetingService:
         if db_meeting is None:
             raise HTTPException(status_code=404, detail="会议未找到")
 
+        # 获取当前会议的议程项列表（更新前）
+        current_agenda_items = db.query(models.AgendaItem).filter(
+            models.AgendaItem.meeting_id == meeting_id
+        ).all()
+        print(f"当前会议有 {len(current_agenda_items)} 个议程项")
+
+        # 获取更新后的议程项ID列表
+        new_agenda_item_ids = []
+        if hasattr(meeting_data, 'part') and meeting_data.part:
+            for item in meeting_data.part:
+                if hasattr(item, 'id') and item.id:
+                    new_agenda_item_ids.append(item.id)
+        print(f"更新后会议将有 {len(new_agenda_item_ids)} 个议程项")
+
+        # 找出被移除的议程项
+        removed_agenda_items = [item for item in current_agenda_items if item.id not in new_agenda_item_ids]
+        print(f"有 {len(removed_agenda_items)} 个议程项被移除")
+
+        # 处理被移除的议程项文件夹
+        for item in removed_agenda_items:
+            print(f"处理被移除的议程项: ID={item.id}, 标题={item.title}")
+            await MeetingService.delete_agenda_item_folder(meeting_id, item.id)
+
         # 处理临时文件
         if hasattr(meeting_data, 'part') and meeting_data.part:
             print(f"处理会议编辑中的临时文件，共 {len(meeting_data.part)} 个议程项")
@@ -505,9 +528,6 @@ class MeetingService:
                         else:
                             # 保留非临时文件
                             non_temp_files.append(f)
-                            # 如果是字典且有name字段，添加到现有文件映射中用于去重
-                            if isinstance(f, dict) and 'name' in f:
-                                existing_files[f['name']] = f
                     except Exception as e:
                         print(f"处理文件信息时出错: {e}, 文件类型: {type(f)}")
 
@@ -528,23 +548,7 @@ class MeetingService:
                 jpg_dir = os.path.join(agenda_dir, "jpgs")
                 os.makedirs(jpg_dir, exist_ok=True)
 
-                # 检查目录中已有的文件
-                for filename in os.listdir(agenda_dir):
-                    if filename.endswith(".pdf") and "_" in filename:
-                        # 提取原始文件名（去除UUID前缀）
-                        original_name = "_".join(filename.split("_")[1:])
-                        if original_name not in existing_files:
-                            file_path = os.path.join(agenda_dir, filename)
-                            file_size = os.path.getsize(file_path)
-                            existing_files[original_name] = {
-                                "name": original_name,
-                                "path": file_path,
-                                "size": file_size,
-                                "url": f"/uploads/{meeting_data.id}/{agenda_folder_name}/{filename}",
-                                "display_name": original_name,  # 添加显示名称，不包含UUID前缀
-                                "meeting_id": meeting_data.id,  # 添加会议ID关联
-                                "agenda_folder": agenda_folder_name  # 添加议程文件夹关联
-                            }
+                # 不再检查目录中已有的文件，允许相同文件再次上传
 
                 # 处理每个临时文件
                 processed_files = []
@@ -552,27 +556,8 @@ class MeetingService:
                     try:
                         print(f"\n处理文件: {file_info.get('name', 'unknown')}")
 
-                        # 检查文件是否已存在（通过文件名去重）
+                        # 获取文件名（不再检查文件是否已存在）
                         file_name = file_info.get('name')
-                        if file_name in existing_files:
-                            print(f"文件已存在: {file_name}，复用现有文件")
-                            existing_file = existing_files[file_name]
-                            processed_files.append(existing_file)
-
-                            # 检查是否已经生成过JPG文件
-                            pdf_path = existing_file.get("path")
-                            pdf_filename = os.path.basename(pdf_path)
-                            # 从UUID_filename.pdf格式中提取UUID部分
-                            pdf_uuid = pdf_filename.split("_")[0] if "_" in pdf_filename else ""
-                            jpg_subdir = os.path.join(jpg_dir, pdf_uuid)
-
-                            # 如果JPG子目录不存在，则需要转换
-                            if not os.path.exists(jpg_subdir) and pdf_path and os.path.exists(pdf_path):
-                                print(f"为已存在的PDF生成JPG文件: {pdf_path}")
-                                os.makedirs(jpg_subdir, exist_ok=True)
-                                # 使用异步方式调用PDF转JPG功能
-                                await PDFService.convert_pdf_to_jpg_for_pad(pdf_path, jpg_subdir)
-                            continue
 
                         # 获取临时文件路径
                         temp_path = file_info.get('path')
@@ -591,16 +576,21 @@ class MeetingService:
                         new_path = os.path.join(agenda_dir, filename)
                         print(f"新文件路径: {new_path}")
 
-                        # 复制文件而不是移动，以避免权限问题
-                        shutil.copy2(temp_path, new_path)
-                        print("文件复制成功")
+                        # 检查源文件和目标文件是否相同，避免SameFileError
+                        is_same_file = os.path.normpath(temp_path) == os.path.normpath(new_path)
+                        if is_same_file:
+                            print(f"源文件和目标文件相同，跳过复制: {temp_path}")
+                        else:
+                            # 复制文件而不是移动，以避免权限问题
+                            shutil.copy2(temp_path, new_path)
+                            print("文件复制成功")
 
-                        # 尝试删除原文件，如果失败也不影响继续
-                        try:
-                            os.remove(temp_path)
-                            print("原文件删除成功")
-                        except Exception as e:
-                            print(f"删除原文件失败: {e}")
+                            # 只有当源文件和目标文件不同时，才尝试删除原文件
+                            try:
+                                os.remove(temp_path)
+                                print("原文件删除成功")
+                            except Exception as e:
+                                print(f"删除原文件失败: {e}")
 
                         # 更新文件信息
                         file_info['path'] = new_path
@@ -620,8 +610,12 @@ class MeetingService:
                             pdf_uuid = pdf_filename.split("_")[0] if "_" in pdf_filename else ""
                             jpg_subdir = os.path.join(jpg_dir, pdf_uuid)
                             os.makedirs(jpg_subdir, exist_ok=True)
-                            # 使用异步方式调用PDF转JPG功能
-                            await PDFService.convert_pdf_to_jpg_for_pad(new_path, jpg_subdir)
+                            # 先检查PDF文件是否存在
+                            if os.path.exists(new_path):
+                                # 使用异步方式调用PDF转JPG功能
+                                await PDFService.convert_pdf_to_jpg_for_pad(new_path, jpg_subdir)
+                            else:
+                                print(f"PDF文件不存在，跳过转JPG: {new_path}")
 
                     except Exception as e:
                         print(f"处理临时文件时出错: {e}")
@@ -639,6 +633,38 @@ class MeetingService:
             traceback.print_exc()
             # 不抛出异常，允许程序继续执行
             # 即使文件处理失败，也应该允许会议信息保存
+
+    @staticmethod
+    async def delete_agenda_item_folder(meeting_id: str, agenda_item_id: int):
+        """删除议程项对应的文件夹及其中的所有文件
+        在编辑会议时，如果议程项被移除，调用此方法删除对应的文件夹
+
+        Args:
+            meeting_id: 会议ID
+            agenda_item_id: 议程项ID
+        """
+        try:
+            # 导入异步工具
+            from services.async_utils import AsyncUtils
+
+            # 构建议程项文件夹路径
+            agenda_dir = os.path.join(UPLOAD_DIR, meeting_id, f"agenda_{agenda_item_id}")
+
+            # 检查文件夹是否存在
+            dir_exists = await AsyncUtils.run_in_threadpool(lambda: os.path.exists(agenda_dir))
+            if not dir_exists:
+                print(f"议程项 {agenda_item_id} 的文件夹不存在: {agenda_dir}")
+                return
+
+            # 删除文件夹及其内容
+            print(f"删除议程项 {agenda_item_id} 的文件夹: {agenda_dir}")
+            await AsyncUtils.run_in_threadpool(lambda: shutil.rmtree(agenda_dir, ignore_errors=True))
+            print(f"成功删除议程项 {agenda_item_id} 的文件夹")
+
+        except Exception as e:
+            print(f"删除议程项 {agenda_item_id} 的文件夹时出错: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
     @staticmethod
     async def delete_meeting_package(db: Session, meeting_id: str) -> bool:
@@ -820,9 +846,6 @@ class MeetingService:
                             temp_files.append(f)
                         else:
                             non_temp_files.append(f)
-                            # 如果是字典且有name字段，添加到现有文件映射中用于去重
-                            if isinstance(f, dict) and 'name' in f:
-                                existing_files[f['name']] = f
                     except Exception as e:
                         print(f"处理文件信息时出错: {e}, 文件类型: {type(f)}")
 
@@ -848,23 +871,7 @@ class MeetingService:
                 jpg_dir = os.path.join(agenda_dir, "jpgs")
                 os.makedirs(jpg_dir, exist_ok=True)
 
-                # 检查目录中已有的文件
-                for filename in os.listdir(agenda_dir):
-                    if filename.endswith(".pdf") and "_" in filename:
-                        # 提取原始文件名（去除UUID前缀）
-                        original_name = "_".join(filename.split("_")[1:])
-                        if original_name not in existing_files:
-                            file_path = os.path.join(agenda_dir, filename)
-                            file_size = os.path.getsize(file_path)
-                            existing_files[original_name] = {
-                                "name": original_name,
-                                "path": file_path,
-                                "size": file_size,
-                                "url": f"/uploads/{meeting_id}/{agenda_folder_name}/{filename}",
-                                "display_name": original_name,  # 添加显示名称，不包含UUID前缀
-                                "meeting_id": meeting_id,  # 添加会议ID关联
-                                "agenda_folder": agenda_folder_name  # 添加议程文件夹关联
-                            }
+                # 不再检查目录中已有的文件，允许相同文件再次上传
 
                 # 处理每个临时文件
                 processed_files = []
@@ -872,27 +879,8 @@ class MeetingService:
                     try:
                         print(f"\n处理文件: {file_info.get('name', 'unknown')}")
 
-                        # 检查文件是否已存在（通过文件名去重）
+                        # 获取文件名（不再检查文件是否已存在）
                         file_name = file_info.get('name')
-                        if file_name in existing_files:
-                            print(f"文件已存在: {file_name}，复用现有文件")
-                            existing_file = existing_files[file_name]
-                            processed_files.append(existing_file)
-
-                            # 检查是否已经生成过JPG文件
-                            pdf_path = existing_file.get("path")
-                            pdf_filename = os.path.basename(pdf_path)
-                            # 从UUID_filename.pdf格式中提取UUID部分
-                            pdf_uuid = pdf_filename.split("_")[0] if "_" in pdf_filename else ""
-                            jpg_subdir = os.path.join(jpg_dir, pdf_uuid)
-
-                            # 如果JPG子目录不存在，则需要转换
-                            if not os.path.exists(jpg_subdir) and pdf_path and os.path.exists(pdf_path):
-                                print(f"为已存在的PDF生成JPG文件: {pdf_path}")
-                                os.makedirs(jpg_subdir, exist_ok=True)
-                                # 使用异步方式调用PDF转JPG功能
-                                await PDFService.convert_pdf_to_jpg_for_pad(pdf_path, jpg_subdir)
-                            continue
 
                         # 获取临时文件路径
                         temp_path = file_info.get('path')
@@ -911,16 +899,21 @@ class MeetingService:
                         new_path = os.path.join(agenda_dir, filename)
                         print(f"新文件路径: {new_path}")
 
-                        # 复制文件而不是移动，以避免权限问题
-                        shutil.copy2(temp_path, new_path)
-                        print("文件复制成功")
+                        # 检查源文件和目标文件是否相同，避免SameFileError
+                        is_same_file = os.path.normpath(temp_path) == os.path.normpath(new_path)
+                        if is_same_file:
+                            print(f"源文件和目标文件相同，跳过复制: {temp_path}")
+                        else:
+                            # 复制文件而不是移动，以避免权限问题
+                            shutil.copy2(temp_path, new_path)
+                            print("文件复制成功")
 
-                        # 尝试删除原文件，如果失败也不影响继续
-                        try:
-                            os.remove(temp_path)
-                            print("原文件删除成功")
-                        except Exception as e:
-                            print(f"删除原文件失败: {e}")
+                            # 只有当源文件和目标文件不同时，才尝试删除原文件
+                            try:
+                                os.remove(temp_path)
+                                print("原文件删除成功")
+                            except Exception as e:
+                                print(f"删除原文件失败: {e}")
 
                         # 更新文件信息
                         file_info['path'] = new_path
@@ -940,8 +933,12 @@ class MeetingService:
                             pdf_uuid = pdf_filename.split("_")[0] if "_" in pdf_filename else ""
                             jpg_subdir = os.path.join(jpg_dir, pdf_uuid)
                             os.makedirs(jpg_subdir, exist_ok=True)
-                            # 使用异步方式调用PDF转JPG功能
-                            await PDFService.convert_pdf_to_jpg_for_pad(new_path, jpg_subdir)
+                            # 先检查PDF文件是否存在
+                            if os.path.exists(new_path):
+                                # 使用异步方式调用PDF转JPG功能
+                                await PDFService.convert_pdf_to_jpg_for_pad(new_path, jpg_subdir)
+                            else:
+                                print(f"PDF文件不存在，跳过转JPG: {new_path}")
 
                     except Exception as e:
                         print(f"处理临时文件时出错: {e}")

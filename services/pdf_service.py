@@ -247,7 +247,6 @@ class PDFService:
     async def upload_temp_files(files: List[UploadFile]) -> Dict[str, Any]:
         """
         上传临时文件，不关联到特定会议或议程项
-        文件去重：检查文件名是否已存在，如果存在则复用已有文件而不是创建新文件
         使用异步IO和线程池处理文件操作，避免阻塞事件循环。
 
         Args:
@@ -264,24 +263,8 @@ class PDFService:
 
         uploaded_files = []
 
-        # 使用线程池获取现有临时文件列表，用于去重
-        async def get_existing_files():
-            def _get_existing_files():
-                result = {}
-                for filename in os.listdir(TEMP_DIR):
-                    if filename.endswith(".pdf"):
-                        # 提取原始文件名（去除UUID前缀）
-                        original_name = "_".join(filename.split("_")[1:]) if "_" in filename else filename
-                        result[original_name] = {
-                            "full_path": os.path.join(TEMP_DIR, filename),
-                            "filename": filename,
-                            "uuid": filename.split("_")[0] if "_" in filename else ""
-                        }
-                return result
-            return await AsyncUtils.run_in_threadpool(_get_existing_files)
-
-        existing_files = await get_existing_files()
-        print(f"现有临时文件: {len(existing_files)}个")
+        # 不再检查现有临时文件，允许相同文件再次上传
+        print("有临时文件: 0个")
 
         try:
             # 并行处理所有文件上传
@@ -291,59 +274,35 @@ class PDFService:
                     await file.close()
                     return None  # 跳过非PDF文件
 
-                # 检查文件是否已存在
-                if file.filename in existing_files:
-                    print(f"文件已存在: {file.filename}，复用现有文件")
-                    existing_file = existing_files[file.filename]
-                    file_path = existing_file["full_path"]
-                    file_uuid = existing_file["uuid"]
-                    safe_filename = existing_file["filename"]
+                # 不再检查文件是否已存在，允许相同文件再次上传
+                # 生成唯一文件名
+                file_uuid = str(uuid.uuid4())
+                safe_filename = f"{file_uuid}_{file.filename}"
+                file_path = os.path.join(TEMP_DIR, safe_filename)
 
-                    # 使用线程池获取文件大小
-                    file_size = await AsyncUtils.run_in_threadpool(lambda: os.path.getsize(file_path))
+                # 读取文件内容
+                content = await file.read()
 
-                    # 关闭文件
-                    await file.close()
+                # 使用线程池异步写入文件
+                await AsyncUtils.run_in_threadpool(
+                    lambda: open(file_path, "wb").write(content)
+                )
 
-                    # 添加到上传文件列表（复用现有文件）
-                    return {
-                        "name": file.filename,
-                        "path": file_path,
-                        "size": file_size,
-                        "url": f"/uploads/temp/{safe_filename}",
-                        "display_name": file.filename,  # 使用原始文件名作为显示名称
-                        "temp_id": file_uuid,  # 使用现有文件的UUID
-                        "reused": True  # 标记为复用的文件
-                    }
-                else:
-                    # 生成唯一文件名
-                    file_uuid = str(uuid.uuid4())
-                    safe_filename = f"{file_uuid}_{file.filename}"
-                    file_path = os.path.join(TEMP_DIR, safe_filename)
+                # 使用线程池获取文件大小
+                file_size = await AsyncUtils.run_in_threadpool(lambda: os.path.getsize(file_path))
 
-                    # 读取文件内容
-                    content = await file.read()
+                # 关闭文件
+                await file.close()
 
-                    # 使用线程池异步写入文件
-                    await AsyncUtils.run_in_threadpool(
-                        lambda: open(file_path, "wb").write(content)
-                    )
-
-                    # 使用线程池获取文件大小
-                    file_size = await AsyncUtils.run_in_threadpool(lambda: os.path.getsize(file_path))
-
-                    # 关闭文件
-                    await file.close()
-
-                    # 添加到上传文件列表
-                    return {
-                        "name": file.filename,
-                        "path": file_path,
-                        "size": file_size,
-                        "url": f"/uploads/temp/{safe_filename}",
-                        "display_name": file.filename,  # 使用原始文件名作为显示名称
-                        "temp_id": file_uuid  # 临时ID，用于后续关联
-                    }
+                # 添加到上传文件列表
+                return {
+                    "name": file.filename,
+                    "path": file_path,
+                    "size": file_size,
+                    "url": f"/uploads/temp/{safe_filename}",
+                    "display_name": file.filename,  # 使用原始文件名作为显示名称
+                    "temp_id": file_uuid  # 临时ID，用于后续关联
+                }
 
             # 并行处理所有文件，但限制并发数量为4
             tasks = [process_file(file) for file in files]
