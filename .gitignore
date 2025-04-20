@@ -51,8 +51,21 @@ develop-eggs/
 .DS_Store
 Thumbs.db
 
-# 上传文件目录（排除huiyiqianduan目录中的文件）
-/uploads/
+# 上传文件目录
+# 根据要求，我们需要跟踪uploads文件夹
+# /uploads/
+
+# 但我们仍然忽略uploads文件夹中的一些大文件
+/uploads/**/*.pdf
+/uploads/**/*.jpg
+/uploads/**/*.jpeg
+/uploads/**/*.png
+/uploads/**/*.zip
+
+# 确保文件夹结构被跟踪
+!/uploads/
+!/uploads/**/
+!/uploads/.gitkeep
 
 # 大文件（排除huiyiqianduan目录中的文件）
 /*.pdf
