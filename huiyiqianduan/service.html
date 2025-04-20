@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>无纸化会议系统初始化</title>
+    <link rel="stylesheet" href="css/main.css">
+    <script type="text/javascript" src="js/service.js"></script>
+</head>
+<body oncontextmenu="return false">
+    <div class="logo">
+        <img src="img/huiyi-logo.png" alt="会议系统Logo">
+        <span class="logo-text"></span>
+    </div>
+
+    <!-- 加载动画容器 -->
+    <div class="loading-container" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; flex-direction: column;">
+        <!-- 加载动画 -->
+        <div class="loading-spinner" style="width: 50px; height: 50px; border: 5px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+        <!-- 加载提示文本 -->
+        <div class="loading-text" style="font-size: 24px; color: #FFFFFF; font-weight: bold; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);">系统正在加载中</div>
+    </div>
+
+    <!-- 加载动画的CSS -->
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</body>
+</html>

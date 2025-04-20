@@ -1,0 +1,1011 @@
+net常见问题我要提意见
+XMLHttpRequest模块管理网络请求，与标准HTML中的XMLHttpRequest用途一致，差别在于前者可以进行跨域访问。通过plus.net可获取网络请求管理对象。
+
+对象：
+XMLHttpRequest: 跨域网络请求对象
+ProgressEvent: HTTP请求进度事件
+回调方法：
+XhrStateChangeCallback: 网络请求状态变化的回调函数
+XhrProgressEventCallback: 网络请求进度事件的回调函数
+权限：
+5+功能模块（permissions）
+
+
+{
+// ...
+"permissions":{
+	// ...
+	"XMLHttpRequest": {
+		"description": "跨域网络连接"
+	}
+}
+}
+			
+XMLHttpRequest
+跨域网络请求对象
+
+构造：
+XMLHttpRequest(): 创建一个XMLHttpRequest 对象，对象创建时不触发任何时间和网络请求，需和open，send方法配合使用。
+属性：
+readyState: HTTP 请求的状态
+response: 请求从服务器接收到的响应数据
+responseText: 请求从服务器接收到的响应数据（字符串数据）
+responseType: 请求响应数据response的类型
+responseXML: 请求响应的Document对象
+status: 服务器返回的状态码
+statusText: 服务器返回的状态描述
+timeout: 请求服务器的超时时间，单位为毫秒（ms）
+withCredentials: 是否支持跨域请求
+方法：
+abort: 取消当前响应，关闭连接并且结束任何未决的网络活动
+getAllResponseHeaders: 获取HTTP响应头部信息
+getResponseHeader: 获取指定的HTTP响应头部的值
+open: 初始化HTTP/HTTPS请求参数，但是并不发送请求
+overrideMimeType: 重写服务器返回的MIME类型
+send: 发送HTTP请求
+setRequestHeader: 指定一个HTTP请求的Header
+事件：
+onreadystatechange: 网络请求状态发生变化事件
+onloadstart: 网络请求开始事件
+onprogress: 网络请求传输数据事件
+onabort: 网络请求取消事件
+onerror: 网络请求错误事件
+onload: 网络请求成功事件
+ontimeout: 网络请求超时事件
+onloadend: 网络请求结束事件
+XMLHttpRequest()
+创建一个XMLHttpRequest 对象，对象创建时不触发任何时间和网络请求，需和open，send方法配合使用。
+
+
+var xhr = new plus.net.XMLHttpRequest();
+						
+参数：
+无
+
+返回值：
+XMLHttpRequest :
+示例：
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<script type="text/javascript">
+document.addEventListener('plusready', function(){
+var xhr = new plus.net.XMLHttpRequest();
+xhr.onreadystatechange = function () {
+	switch ( xhr.readyState ) {
+		case 0:
+			alert( "xhr请求已初始化" );
+		break;
+		case 1:
+			alert( "xhr请求已打开" );
+		break;
+		case 2:
+			alert( "xhr请求已发送" );
+		break;
+		case 3:
+			alert( "xhr请求已响应");
+			break;
+		case 4:
+			if ( xhr.status == 200 ) {
+				alert( "xhr请求成功："+xhr.responseText );
+			} else {
+				alert( "xhr请求失败："+xhr.readyState );
+			}
+			break;
+		default :
+			break;
+	}
+}
+xhr.open( "GET", "http://www.baidu.com/" );
+xhr.send();
+}, false );
+		</script>
+	</head>
+	<body onload="onload();">
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+readyState
+HTTP 请求的状态
+
+说明：
+Number 类型
+
+当XMLHttpRequest 初次创建时，这个属性的值从 0 开始，直到接收到完整的 HTTP 响应，这个值增加到 4。 5 个状态中每一个都有一个相关联的非正式的名称，下表列出了状态、名称和含义： 0 - Uninitialized，未初始化状态。XMLHttpRequest对象已创建或已被abort()方法重置。 1 - Open，open()方法已调用，但是send()方法未调用。请求还没有被发送。 2 - Sent，send()方法已调用，HTTP/HTTPS 请求已发送到服务器，但未接收到响应。 3 - Receiving，所有响应头部都已经接收到，响应体开始接收但未完成。 4 Loaded，HTTP响应已经完全接收。
+
+response
+请求从服务器接收到的响应数据
+
+说明：
+String 类型 只读属性
+
+如果没有从服务器接收到数据，则为null； 否则根据responseType类型决定： 如果responseType设置为空字符串或"text"，则返回空字符串； 如果responseType设置为"document"，则返回Document对象； 如果responseType设置为"json"，则返回JSON对象； 若服务器返回的数据与设置的responseType类型不区配，则返回null。
+
+responseText
+请求从服务器接收到的响应数据（字符串数据）
+
+说明：
+String 类型
+
+如果还没有接收到数据的话，此属性值为空字符串； 如果readyState小于3，此属性值为空字符串； 如果readyState为3，此属性值返回目前已经接收的HTTP响应部分数据值； 如果readyState为4，此属性值保存了完整的HTTP响应数据体。 如果HTTP请求返回的数据头中包含了Content-Type值中指定字符编码，就使用该编码，否则，使用UTF-8字符集。
+
+responseType
+请求响应数据response的类型
+
+说明：
+String 类型
+
+默认值为空字符串，即reponse为String，类型可设置："document"表示Document对象，"json"表示JSON对象，"text"表示字符串。 此值必须在调用send方法之前设置，否则设置的值不生效，仍使用之前设置的值。
+
+responseXML
+请求响应的Document对象
+
+说明：
+String 类型
+
+对请求的响应，解析为 XML 并作为 Document 对象返回。 如果请求未成功，或响应的数据无法被解析为XML，则返回null。
+
+status
+服务器返回的状态码
+
+说明：
+Number 类型
+
+服务器返回的HTTP状态代码，如200表示成功，而404表示"Not Found"错误； 当readyState小于3的时候此属性值为0。
+
+statusText
+服务器返回的状态描述
+
+说明：
+String 类型
+
+此属性值用名称而不是数字指定了请求的HTTP的状态代码。 也就是说，当状态为200的时候它是"OK"；当状态为404的时候它是"Not Found"。 和status属性类似，当readyState小于3的时候此属性值为空字符串。
+
+timeout
+请求服务器的超时时间，单位为毫秒（ms）
+
+说明：
+Number 类型
+
+数值类型，单位为ms，其默认值为120秒。 超时时间为服务器响应请求的时间（不是Http请求完成的总时间），如果设置为0则表示永远不超时。 必须在请求发起前设置，否则当前请求将不生效，在当前请求完成后重新发起新请求时生效。
+
+withCredentials
+是否支持跨域请求
+
+说明：
+Boolean 类型 只读属性
+
+此对象创建的HTTP请求都支持跨域，所以永远返回true。
+
+abort
+取消当前响应，关闭连接并且结束任何未决的网络活动
+
+
+void xhr.abort();
+						
+说明：
+此方法把XMLHttpRequest对象重置为readyState为0的状态，并且取消所有未决的网络活动。 调用此方法后将停止触发XMLHttpRequest对象的所有事件。 例如，如果请求用了太长时间，而且响应不再必要的时候，可以调用这个方法。
+
+参数：
+无
+
+返回值：
+void : 无
+示例：
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+		<script type="text/javascript">
+var xhr=null;
+function testXHR(){
+	if(xhr){
+		return;
+	}
+	xhr=new plus.net.XMLHttpRequest();
+	xhr.onreadystatechange=function(){
+		console.log("onreadystatechange: "+xhr.readyState);
+	}
+	xhr.open( "GET", "http://www.dcloud.io/" );
+	xhr.send();
+}
+function abortXHR(){
+	if(xhr){
+		xhr.abort();
+		xhr=null;
+	}
+}
+		</script>
+	</head>
+	<body>
+		<button onclick="testXHR()">XMLHttpRequest</button><br/>
+		<button onclick="abortXHR()">Abort</button>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+getAllResponseHeaders
+获取HTTP响应头部信息
+
+
+String xhr.getAllResponseHeaders();
+						
+说明：
+把HTTP响应头部作为未解析的字符串返回。 如果readyState小于3，这个方法返回null。 否则，它返回服务器发送的所有 HTTP 响应的头部。头部作为单个的字符串返回，一行一个头部。每行用换行符"\r\n"隔开。
+
+参数：
+无
+
+返回值：
+String : HTTP 响应头
+示例：
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+		<script type="text/javascript">
+var xhr=null;
+function testXHR(){
+	if(xhr){
+		return;
+	}
+	xhr=new plus.net.XMLHttpRequest();
+	xhr.onreadystatechange=function(){
+		console.log("onreadystatechange: "+xhr.readyState);
+	}
+	xhr.open( "GET", "http://www.dcloud.io/" );
+	xhr.send();
+}
+// 获取所有HTTP响应头部信息
+function allResponseHeader(){
+	if(xhr){
+		console.log(xhr.getAllResponseHeaders());
+	}
+}
+		</script>
+	</head>
+	<body>
+		<button onclick="testXHR()">XMLHttpRequest</button><br/>
+		<button onclick="allResponseHeader()">getAllResponseHeaders</button>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+getResponseHeader
+获取指定的HTTP响应头部的值
+
+
+String xhr.getResponseHeader( headerName );
+						
+说明：
+其参数是要返回的 HTTP 响应头部的名称。可以使用任何大小写来制定这个头部名字，和响应头部的比较是不区分大小写的。 该方法的返回值是指定的 HTTP 响应头部的值，如果没有接收到这个头部或者readyState小于3则为空字符串。 如果接收到多个有指定名称的头部，这个头部的值被连接起来并返回，使用逗号和空格分隔开各个头部的值。
+
+参数：
+headerName: ( String ) 可选 HTTP响应头数据名称
+返回值：
+String : HTTP响应头数据值
+示例：
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+		<script type="text/javascript">
+var xhr=null;
+function testXHR(){
+	if(xhr){
+		return;
+	}
+	xhr=new plus.net.XMLHttpRequest();
+	xhr.onreadystatechange=function(){
+		console.log("onreadystatechange: "+xhr.readyState);
+	}
+	xhr.open( "GET", "http://www.dcloud.io/" );
+	xhr.send();
+}
+// 获取所有HTTP响应Content-Type信息
+function getResponseHeader(){
+	if(xhr){
+		console.log(xhr.getResponseHeader("Content-Type"));
+	}
+}
+		</script>
+	</head>
+	<body>
+		<button onclick="testXHR()">XMLHttpRequest</button><br/>
+		<button onclick="getResponseHeader()">getResponseHeader</button>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+open
+初始化HTTP/HTTPS请求参数，但是并不发送请求
+
+
+void xhr.open( method, url, username, password );
+						
+说明：
+初始化请求参数以供 send() 方法稍后使用。它把readyState设置为1，删除之前指定的所有请求头部，以及之前接收的所有响应头部，并且把responseText、responseXML、status 以及 statusText 参数设置为它们的默认值。 当readyState为0的时候（当XMLHttpRequest对象刚创建或者abort()方法调用后）以及当readyState为4时（已经接收响应时），调用这个方法是安全的。 当针对任何其他状态调用的时候，open()方法的行为是未指定的（可能出现异常现象）。 除了保存供send()方法使用的请求参数，以及重置 XMLHttpRequest 对象以便复用，open()方法没有其他的行为。 要特别注意，调用此方法时，不会创建到服务器的网络连接。
+
+参数：
+method: ( String ) 必选 请求URL的HTTP协议方法
+值可以为"GET"、"POST"。
+
+url: ( String ) 必选 请求URL地址
+username: ( String ) 可选 请求URL所需的授权提供认证资格用户名
+password: ( String ) 可选 请求URL所需的授权提供认证资格密码
+返回值：
+void : 无
+示例：
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+		<script type="text/javascript">
+var xhr=null;
+function testXHR(){
+	if(xhr){
+		return;
+	}
+	xhr=new plus.net.XMLHttpRequest();
+	xhr.onreadystatechange=function(){
+		console.log("onreadystatechange: "+xhr.readyState);
+	}
+	// 初始化HTTP请求
+	xhr.open( "GET", "http://www.dcloud.io/" );
+	xhr.send();
+}
+		</script>
+	</head>
+	<body>
+		<button onclick="testXHR()">XMLHttpRequest</button><br/>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+overrideMimeType
+重写服务器返回的MIME类型
+
+
+void xhr.overrideMimeType( mime );
+						
+说明：
+此方法覆盖HTTP请求返回数据头"Content-Type"字段值中包含的IMIE类型，如果设置的MIME类型无效则继续使用"Content-Type"字段值中包含的IMIE类型。 如果MIME类型中指定了字符集类型（charset），则需按照指定的字符集类型对接收到的数据体（respose）进行处理，否则默认为UTF-8字符集。 注意：此方法需在send方法前调用。
+
+参数：
+mime: ( String ) 必选 要指定的MIME类型
+返回值：
+void : 无
+示例：
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+		<script type="text/javascript">
+var xhr=null;
+function testXHR(){
+	if(xhr){
+		return;
+	}
+	xhr=new plus.net.XMLHttpRequest();
+	xhr.onreadystatechange=function(){
+		console.log("onreadystatechange: "+xhr.readyState);
+	}
+	// 初始化HTTP请求
+	xhr.open( "GET", "http://www.dcloud.io/" );
+	xhr.overrideMimeType( "text/plain; charset=utf-8" );		// 将返回的数据当做UTF-8字符集的纯文本类型处理
+	xhr.send();
+}
+		</script>
+	</head>
+	<body>
+		<button onclick="testXHR()">XMLHttpRequest</button><br/>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+send
+发送HTTP请求
+
+
+void send( body );
+						
+说明：
+此方法触发HTTP请求发送，如果之前没有调用open()，即readyState不是1，send()抛出一个异常。否则，将发送HTTP请求，该请求由以下几部分组成： 之前调用open()时指定的HTTP方法、URL； 之前调用setRequestHeader()时指定的请求头部（如果有的话）； 传递给这个方法的body参数。 一旦请求发送了，send()把readyState设置为2，并触发onreadystatechange事件； 如果服务器响应带有一个HTTP重定向，send()方法在后台线程自动遵从重定向； 当所有的HTTP响应头部已经接收，send()或后台线程把readyState设置为3并触发onreadystatechange事件； 如果响应较长，send()或后台线程可能在状态3中触发多次onreadystatechange事件； 最后，当响应完成，send()或后台线程把readyState设置为4，并最后一次触发onreadystatechange事件。
+
+参数：
+body: ( String ) 可选 请求HTTP提交的数据内容
+当open方法中设置的method参数为POST时必需传入body值。
+
+返回值：
+void : 无
+示例：
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+		<script type="text/javascript">
+var xhr=null;
+function testXHR(){
+	if(xhr){
+		return;
+	}
+	xhr=new plus.net.XMLHttpRequest();
+	xhr.onreadystatechange=function(){
+		console.log("onreadystatechange: "+xhr.readyState);
+	}
+	xhr.open( "POST", "http://demo.dcloud.net.cn/test/xhr/post.php" );
+	var data={name:'HBuilder',version:'0.1.0'};
+	// 发送HTTP请求
+	xhr.send(JSON.stringify(data));
+}
+		</script>
+	</head>
+	<body>
+		<button onclick="testXHR()">XMLHttpRequest</button><br/>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+setRequestHeader
+指定一个HTTP请求的Header
+
+
+void setRequestHeader( headerName, headerValue );
+						
+说明：
+Http的Header应该包含在通过后续send()调用而发起的请求中。 此方法只有当readyState为1的时候才能调用，即在调用open()之后，且在调用send()之前。
+
+参数：
+headerName: ( String ) 必选 HTTP Header名称
+headerValue: ( String ) 必选 HTTP Header值
+返回值：
+void : 无
+平台支持：
+Android - 2.2+ (支持) :
+不支持设置“User-Agent”、“Cookie”的值。
+
+iOS - 5.1+ (支持) :
+不支持设置“User-Agent”的值。
+
+示例：
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+		<script type="text/javascript">
+var xhr=null;
+function testXHR(){
+	if(xhr){
+		return;
+	}
+	xhr=new plus.net.XMLHttpRequest();
+	xhr.onreadystatechange=function(){
+		console.log("onreadystatechange: "+xhr.readyState);
+	}
+	xhr.open( "POST", "http://demo.dcloud.net.cn/test/xhr/post.php" );
+	var data={name:'HBuilder',version:'0.1.0'};
+	xhr.setRequestHeader('Content-Type','application/json');
+	// 发送HTTP请求
+	xhr.send(JSON.stringify(data));
+}
+		</script>
+	</head>
+	<body>
+		<button onclick="testXHR()">XMLHttpRequest</button><br/>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+onreadystatechange
+网络请求状态发生变化事件
+
+
+xhr.onreadystatechange = function(){
+	// 判断xhr状态
+};
+						
+说明：
+XhrStateChangeCallback 类型
+
+网络请求状态发生变化时触发，通常在函数中判断对象的state属性值来获取当前请求的状态。
+
+示例：
+
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+    	<script type="text/javascript">
+var url="http://demo.dcloud.net.cn/test/xhr/event.html";
+var xhr=null;
+
+function xhrEvent(){
+	xhr = new XMLHttpRequest();
+	xhr.onreadystatechange = function () {
+		console.log("onreadystatechange: "+xhr.readyState);
+	}
+	xhr.open( "GET", url );
+	xhr.send();
+}
+    	</script>
+	</head>
+	<body>
+		<button onclick="xhrEvent()">XMLHttpRequest</button><br/>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+onloadstart
+网络请求开始事件
+
+
+xhr.onloadstart = function(){
+	// xhr请求开始事件处理
+};
+						
+说明：
+XhrProgressEventCallback 类型
+
+通常在调用send方法开始发起HTTP请求时触发。
+
+示例：
+
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+    	<script type="text/javascript">
+var url="http://demo.dcloud.net.cn/test/xhr/json.php";
+var xhr=null;
+function xhrEvent(){
+	xhr = new plus.net.XMLHttpRequest();
+	xhr.onloadstart=function(e){
+		var str="lengthComputable="+e.lengthComputable+"loaded="+e.loaded+";total="+e.total;
+		console.log("onloadstart: "+str);
+	}
+	xhr.open( "GET", url );
+	xhr.send();
+}
+    	</script>
+	</head>
+	<body>
+		<button onclick="xhrEvent()">XMLHttpRequest</button><br/>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+onprogress
+网络请求传输数据事件
+
+
+xhr.onprogress= function(){
+	// xhr数据传输开始事件处理
+};
+						
+说明：
+XhrProgressEventCallback 类型
+
+在HTTP请求链接已经建立，开始传输数据时触发，数据传输的过程中可能多次触发，此事件与onreadystatechange事件触发状态3类似。
+
+示例：
+
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+    	<script type="text/javascript">
+var url="http://demo.dcloud.net.cn/test/video/nocrygirl.mp4";//访问一个大文件，以便多次触发onprogress事件
+var xhr=null;
+function xhrEvent(){
+	xhr = new plus.net.XMLHttpRequest();
+	xhr.onprogress=function(e){
+		var str="lengthComputable="+e.lengthComputable+"loaded="+e.loaded+";total="+e.total;
+		console.log("onprogress: "+str);
+	}
+	xhr.open( "GET", url );
+	xhr.send();
+}
+    	</script>
+	</head>
+	<body>
+		<button onclick="xhrEvent()">XMLHttpRequest</button><br/>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+onabort
+网络请求取消事件
+
+
+xhr.onabort = function(){
+	// xhr请求被取消事件处理
+};
+						
+说明：
+XhrProgressEventCallback 类型
+
+通常在调用abort方法取消HTTP请求时触发。 此事件在onreadystatechange事件触发状态4事件之后。
+
+示例：
+
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+    	<script type="text/javascript">
+var url="http://demo.dcloud.net.cn/test/video/nocrygirl.mp4";//访问一个大文件，以便操作触发onabort事件
+var xhr=null;
+function xhrEvent(){
+	xhr = new plus.net.XMLHttpRequest();
+	xhr.onabort=function(e){
+		var str="lengthComputable="+e.lengthComputable+"loaded="+e.loaded+";total="+e.total;
+		console.log("onabort: "+str);
+	}
+	xhr.open( "GET", url );
+	xhr.send();
+}
+function xhrAbort() {
+	if ( xhr ) {
+		xhr.abort();
+		xhr = null;
+	}
+}
+    	</script>
+	</head>
+	<body>
+		<button onclick="xhrEvent()">XMLHttpRequest</button><br/>
+		<button onclick="xhrAbort()">Abort</button>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+onerror
+网络请求错误事件
+
+
+xhr.onerror = function(){
+	// xhr请求出错事件处理
+};
+						
+说明：
+XhrProgressEventCallback 类型
+
+通常在HTTP/HTTPS请求发生错误时触发，如无法连接到服务器等各种错误都触发此事件。 此事件在onreadystatechange事件触发状态4事件之后。
+
+示例：
+
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+    	<script type="text/javascript">
+var url="http://demo.dcloud.net.cn/test/xhr/error.html";//访问无效的网络地址处罚onerror事件
+var xhr=null;
+function xhrEvent(){
+	xhr = new plus.net.XMLHttpRequest();
+	xhr.onerror=function(e){
+		var str="lengthComputable="+e.lengthComputable+"loaded="+e.loaded+";total="+e.total;
+		console.log("onerror: "+str);
+	}
+	xhr.open( "GET", url );
+	xhr.send();
+}
+    	</script>
+	</head>
+	<body>
+		<button onclick="xhrEvent()">XMLHttpRequest</button><br/>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+onload
+网络请求成功事件
+
+
+xhr.onload = function(){
+	// xhr请求成功事件处理
+};
+						
+说明：
+XhrProgressEventCallback 类型
+
+通常在HTTP/HTTPS请求成功完成时触发，如果HTTP/HTTPS请求发生错误则不触发此事件。 此事件在onreadystatechange事件触发状态4事件之后。
+
+示例：
+
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+    	<script type="text/javascript">
+var url="http://demo.dcloud.net.cn/test/xhr/json.php";
+var xhr=null;
+function xhrEvent(){
+	xhr = new plus.net.XMLHttpRequest();
+	xhr.onload=function(e){
+		var str="lengthComputable="+e.lengthComputable+"loaded="+e.loaded+";total="+e.total;
+		console.log("onload: "+str);
+	}
+	xhr.open( "GET", url );
+	xhr.send();
+}
+    	</script>
+	</head>
+	<body>
+		<button onclick="xhrEvent()">XMLHttpRequest</button><br/>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+ontimeout
+网络请求超时事件
+
+
+xhr.ontimeout = function(){
+	// xhr请求超时事件处理
+};
+						
+说明：
+XhrProgressEventCallback 类型
+
+通常在HTTP/HTTPS请求超时时触发，此时不会触发onerror事件。 此事件在onreadystatechange事件触发状态4事件之后。
+
+示例：
+
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+    	<script type="text/javascript">
+var url="http://demo.dcloud.net.cn/test/xhr/json.php";
+var xhr=null;
+function xhrEvent(){
+	xhr = new plus.net.XMLHttpRequest();
+	xhr.ontimeout=function(e){
+		var str="lengthComputable="+e.lengthComputable+"loaded="+e.loaded+";total="+e.total;
+		console.log("ontimeout: "+str);
+	}
+	xhr.timeout=1;  // 设置极小的超时时间用于处罚ontimeout事件
+	xhr.open( "GET", url );
+	xhr.send();
+}
+    	</script>
+	</head>
+	<body>
+		<button onclick="xhrEvent()">XMLHttpRequest</button><br/>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+onloadend
+网络请求结束事件
+
+
+xhr.onloadend = function(){
+	// xhr请求结束事件处理
+};
+						
+说明：
+XhrProgressEventCallback 类型
+
+通常在HTTP/HTTPS请求结束时触发，不管是HTTP请求失败、成功、或超时之后都会触发此事件。 此事件在onreadystatechange事件触发状态4事件之后。
+
+示例：
+
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+    	<script type="text/javascript">
+var url="http://demo.dcloud.net.cn/test/xhr/json.php";
+var xhr=null;
+function xhrEvent(){
+	xhr = new plus.net.XMLHttpRequest();
+	xhr.onloadend=function(e){
+		var str="lengthComputable="+e.lengthComputable+"loaded="+e.loaded+";total="+e.total;
+		console.log("onloadend: "+str);
+	}
+	xhr.open( "GET", url );
+	xhr.send();
+}
+    	</script>
+	</head>
+	<body>
+		<button onclick="xhrEvent()">XMLHttpRequest</button><br/>
+	</body>
+</html>
+						
+uni-app使用plus注意事项
+
+ProgressEvent
+HTTP请求进度事件
+
+
+interface ProgressEvent : Event {
+    readonly attribute XMLHttpRequest target;
+    readonly attribute Boolean lengthComputable;
+    readonly attribute Number loaded;
+    readonly attribute Number total;
+};
+				
+属性：
+target: (XMLHttpRequest 类型 )事件的目标对象
+通知HTTP请求进度事件的XMLHttpRequest对象。
+
+lengthComputable: (Number 类型 )进度信息是否可计算
+HTTP请求进度信息是否有效，如果HTTP请求头中包含Content-Length头信息则为true，否则为false。
+
+loaded: (XMLHttpRequest 类型 )当前已经接收到的数据长度
+HTTP请求接收到的数据长度，单位为字节。
+
+total: (XMLHttpRequest 类型 )总数据长度
+HTTP请求返回的总数据长度，单位为字节。 如果无法获取则设置为0。
+
+XhrStateChangeCallback
+网络请求状态变化的回调函数
+
+
+void onSuccess() {
+	// State changed code.
+}
+				
+参数：
+无
+
+返回值：
+void : 无
+示例：
+
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+    	<script type="text/javascript">
+var url="http://demo.dcloud.net.cn/test/xhr/json.php";
+var xhr=null;
+function xhrEvent(){
+	xhr = new plus.net.XMLHttpRequest();
+	xhr.onreadystatechange = function () {
+		console.log("onreadystatechange: "+xhr.readyState);
+	}
+	xhr.open( "GET", url );
+	xhr.send();
+}
+    	</script>
+	</head>
+	<body>
+		<button onclick="xhrEvent()">XMLHttpRequest</button><br/>
+	</body>
+</html>
+				
+uni-app使用plus注意事项
+
+XhrProgressEventCallback
+网络请求进度事件的回调函数
+
+
+void onProgressEvent( ProgressEvent event ) {
+	// Progress changed code.
+}
+				
+参数：
+event: ( ProgressEvent ) 必选 HTTP请求进度事件
+返回值：
+void : 无
+示例：
+
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+		<meta name="HandheldFriendly" content="true"/>
+		<meta name="MobileOptimized" content="320"/>
+		<title>XMLHttpRequest</title>
+    	<script type="text/javascript">
+var url="http://demo.dcloud.net.cn/test/xhr/json.php";
+var xhr=null;
+function xhrEvent(){
+	xhr = new plus.net.XMLHttpRequest();
+	xhr.onloadend=function(e){
+		var str="lengthComputable="+e.lengthComputable+"loaded="+e.loaded+";total="+e.total;
+		console.log("onloadend: "+str);
+	}
+	xhr.open( "GET", url );
+	xhr.send();
+}
+    	</script>
+	</head>
+	<body>
+		<button onclick="xhrEvent()">XMLHttpRequest</button><br/>
+	</body>
+</html>

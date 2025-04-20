@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>读取中</title>
+    <link rel="stylesheet" href="css/w3.css">
+    <link rel="stylesheet" href="css/main.css">
+    <style>
+        .loading-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .loading-text {
+            font-size: 32px;
+            color: #FFFFFF;
+            font-weight: bold;
+            text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+    <script src="js/loading.js"></script>
+</head>
+<body oncontextmenu="return false">
+    <div class="logo">
+        <img src="img/huiyi-logo.png" alt="会议系统Logo">
+        <span class="logo-text">中国人民政治协商会议阜新市委员会</span>
+    </div>
+    <div class="loading-container">
+        <div class="loading-text">读取中</div>
+    </div>
+    <!-- Button Container -->
+    <div style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 1001;">
+        <div class="return-button" style="display: none; background-color: #4CAF50; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 18px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" onclick="returnToMain()">返回主页面</div>
+        <div class="close-button" style="background-color: #f44336; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 18px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" onclick="closeCurrentPage()">关闭</div>
+    </div>
+
+    <script>
+        function closeCurrentPage() {
+            if (typeof plus !== 'undefined' && plus.webview) {
+                console.log('关闭当前页面');
+                const currentWebview = plus.webview.currentWebview();
+                currentWebview.close();
+            } else {
+                console.error('plus环境未就绪或不支持webview，无法关闭页面');
+                // 可以在非plus环境下提供备选方案，例如 window.close()，但这通常只对由脚本打开的窗口有效
+                // window.close();
+            }
+        }
+
+        // 确保在loading.js显示返回按钮时，关闭按钮也一并显示
+        // (或者根据需要调整关闭按钮的初始显隐状态)
+        // 如果希望关闭按钮始终可见，可以移除下面的showReturnButton修改
+        const originalShowReturnButton = window.showReturnButton;
+        window.showReturnButton = function() {
+            if (originalShowReturnButton) {
+                originalShowReturnButton(); // 调用原始函数显示返回按钮
+            }
+            const closeButton = document.querySelector('.close-button');
+            if (closeButton) {
+                closeButton.style.display = 'block'; // 同时显示关闭按钮
+                console.log('关闭按钮已显示');
+            }
+        };
+
+        // 如果希望关闭按钮一开始就显示，可以在DOMContentLoaded中设置
+        document.addEventListener('DOMContentLoaded', function() {
+             const closeButton = document.querySelector('.close-button');
+             if (closeButton) {
+                 // closeButton.style.display = 'block'; // 取消注释此行使关闭按钮初始可见
+             }
+        });
+    </script>
+</body>
+</html>
