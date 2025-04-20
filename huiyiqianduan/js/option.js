@@ -5,6 +5,7 @@ const OptionService = {
     // 默认设置
     defaultSettings: {
         server: '192.168.110.10',
+        port: '8000',
         intertime: '10',
         titleText: '政协阜新市委员会' // 默认标题文字
     },
@@ -75,6 +76,7 @@ const OptionService = {
         try {
             // 从UI获取设置值
             const serverUrlInput = document.getElementById('server-url');
+            const serverPortInput = document.getElementById('server-port');
             const updateIntervalInput = document.getElementById('update-interval');
             const titleTextInput = document.getElementById('title-text');
 
@@ -85,12 +87,21 @@ const OptionService = {
 
             // 验证输入
             const server = serverUrlInput.value.trim();
+            const port = serverPortInput ? serverPortInput.value.trim() : this.defaultSettings.port;
             const intertime = updateIntervalInput.value.trim();
             const titleText = titleTextInput ? titleTextInput.value.trim() : this.defaultSettings.titleText;
 
             if (!server) {
                 alert('请输入有效的服务器地址');
                 return false;
+            }
+
+            if (port) {
+                const portNum = parseInt(port);
+                if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+                    alert('请输入有效的端口号（1-65535）');
+                    return false;
+                }
             }
 
             const updateInterval = parseInt(intertime);
@@ -102,6 +113,7 @@ const OptionService = {
             // 更新当前设置
             this.currentSettings = {
                 server: server,
+                port: port,
                 intertime: intertime,
                 titleText: titleText
             };
@@ -120,7 +132,7 @@ const OptionService = {
 
             // 通知用户，使用更长的延迟确保更新操作完成
             setTimeout(() => {
-                alert('设置已保存，标题文字已更新为: ' + this.getTitleText());
+                alert('设置已保存');
             }, 500);
 
             return true;
@@ -134,11 +146,16 @@ const OptionService = {
     // 更新设置UI
     updateSettingsUI: function() {
         const serverUrlInput = document.getElementById('server-url');
+        const serverPortInput = document.getElementById('server-port');
         const updateIntervalInput = document.getElementById('update-interval');
         const titleTextInput = document.getElementById('title-text');
 
         if (serverUrlInput && this.currentSettings.server) {
             serverUrlInput.value = this.currentSettings.server;
+        }
+
+        if (serverPortInput && this.currentSettings.port) {
+            serverPortInput.value = this.currentSettings.port;
         }
 
         if (updateIntervalInput && this.currentSettings.intertime) {
@@ -197,7 +214,7 @@ const OptionService = {
         try {
             // 获取标题文字
             const titleText = this.getTitleText();
-            console.log('准备更新标题文字为:', titleText);
+            // 不输出标题文字更新提示
 
             // 尝试获取所有页面
             const webviews = plus.webview.all();
@@ -219,7 +236,7 @@ const OptionService = {
 
             if (mainPage) {
                 // 如果找到页面，强制更新标题文字
-                console.log('找到页面，开始更新标题文字');
+                // 不输出标题文字更新提示
 
                 // 使用更简单的方式更新标题文字
                 mainPage.evalJS(
@@ -227,7 +244,7 @@ const OptionService = {
                     "    var logoText = document.querySelector('.logo-text');\n" +
                     "    if (logoText) {\n" +
                     "        logoText.innerText = '" + titleText + "';\n" +
-                    "        console.log('\u6807\u9898\u6587\u5b57\u5df2\u66f4\u65b0\u4e3a: " + titleText + "');\n" +
+                    "        // 不输出标题文字更新提示\n" +
                     "    } else {\n" +
                     "        console.error('\u627e\u4e0d\u5230logo-text\u5143\u7d20');\n" +
                     "    }\n" +
@@ -239,7 +256,7 @@ const OptionService = {
                 // 强制刷新页面
                 mainPage.reload(true);
 
-                console.log('已强制更新并刷新main页面');
+                // 不输出标题文字更新提示
             } else {
                 console.log('无法找到任何可用页面，无法更新标题文字');
             }
@@ -256,6 +273,11 @@ const OptionService = {
     // 获取服务器地址
     getServerUrl: function() {
         return (this.currentSettings && this.currentSettings.server) || this.defaultSettings.server;
+    },
+
+    // 获取服务器端口
+    getServerPort: function() {
+        return (this.currentSettings && this.currentSettings.port) || this.defaultSettings.port;
     },
 
     // 获取更新间隔（秒）

@@ -8,6 +8,10 @@ const MeetingService = {
     dataFetchTimer: null,
     isDataFetchEnabled: true,
 
+    // 状态相关变量
+    isStatusFetching: false,
+    statusTimer: null, // 状态获取定时器
+
     // 服务器配置
     serverBaseUrl: 'http://123.56.40.178', // 默认服务器基础URL
     meetingDataUrl: 'http://123.56.40.178/data.json', // 默认会议数据接口
@@ -55,7 +59,8 @@ const MeetingService = {
         });
 
         // 立即开始获取会议状态
-        this.getMeetingStatus();
+        console.log('初始化时获取会议状态');
+        this.getMeetingStatus(); // 使用原来的方法名
 
         // 立即开始数据获取
         this.getJsonData();
@@ -329,50 +334,55 @@ const MeetingService = {
 
     // 设置数据获取定时器
     setupDataFetchTimer: function() {
+        // 清除现有的定时器
         if (this.dataFetchTimer) {
             clearInterval(this.dataFetchTimer);
             this.dataFetchTimer = null;
         }
 
+        if (this.statusTimer) {
+            clearInterval(this.statusTimer);
+            this.statusTimer = null;
+        }
+
         console.log('设置数据获取定时器，间隔:', this.updateInterval, '毫秒');
 
-        // 创建一个计数器，用于控制状态获取的频率
-        let statusCounter = 0;
+        // 使用两个独立的定时器，一个用于状态获取，一个用于数据获取
+        // 状态获取定时器 - 严格按照配置的间隔时间
+        this.statusTimer = setInterval(() => {
+            if (!this.isDataFetchEnabled) {
+                return; // 如果数据获取被禁用，直接返回
+            }
 
+            // 只在没有正在进行的状态获取时才获取状态
+            if (!this.isStatusFetching) {
+                console.log('定时器触发，获取会议状态，间隔:', this.updateInterval, '毫秒');
+                this.getMeetingStatus(); // 使用原来的方法名
+            }
+        }, this.updateInterval); // 严格使用配置的间隔时间
+
+        // 数据获取定时器 - 也使用配置的间隔时间，但可以设置为更长
         this.dataFetchTimer = setInterval(() => {
             if (!this.isDataFetchEnabled) {
                 return; // 如果数据获取被禁用，直接返回
             }
 
-            // 每次定时器触发时增加计数器
-            statusCounter++;
-
-            // 每次定时器触发时获取会议状态
-            // 状态获取不受isDataFetching影响，确保状态可以独立获取
-            if (!this.isStatusFetching) {
-                this.getMeetingStatus();
-            }
-
-            // 每三次状态获取才获取一次完整数据
-            // 这样可以减少对服务器的负担，同时确保状态可以快速响应
-            if (statusCounter >= 3) {
-                statusCounter = 0; // 重置计数器
-
-                if (!this.isDataFetching) {
-                    try {
-                        const storedData = plus.storage.getItem('meetingData');
-                        if (storedData) {
-                            console.log('定时检测时本地存储的数据内容:', storedData);
-                        }
-                    } catch (error) {
-                        console.error('读取本地存储数据失败：', error);
+            // 只在没有正在进行的数据获取时才获取数据
+            if (!this.isDataFetching) {
+                try {
+                    const storedData = plus.storage.getItem('meetingData');
+                    if (storedData) {
+                        console.log('定时检测时本地存储的数据内容:', storedData);
                     }
-                    this.getJsonData();
-                } else {
-                    console.log('已有数据获取任务正在进行，跳过本次定时检测');
+                } catch (error) {
+                    console.error('读取本地存储数据失败：', error);
                 }
+                console.log('定时器触发，获取会议数据，间隔:', this.updateInterval, '毫秒');
+                this.getJsonData();
+            } else {
+                console.log('已有数据获取任务正在进行，跳过本次定时检测');
             }
-        }, this.updateInterval / 3); // 将定时器间隔缩短为原来的1/3，以便更频繁地检查状态
+        }, this.updateInterval); // 严格使用配置的间隔时间
     },
 
     // 获取当前会议数据
@@ -382,12 +392,35 @@ const MeetingService = {
 
     // 暂停数据检测
     pauseDataFetch: function() {
+        console.log('暂停数据和状态获取');
         this.isDataFetchEnabled = false;
+
+        // 可以选择完全暂停定时器，以节省资源
+        /*
+        if (this.dataFetchTimer) {
+            clearInterval(this.dataFetchTimer);
+            this.dataFetchTimer = null;
+        }
+
+        if (this.statusTimer) {
+            clearInterval(this.statusTimer);
+            this.statusTimer = null;
+        }
+        */
     },
 
     // 恢复数据检测
     resumeDataFetch: function() {
+        console.log('恢复数据和状态获取');
         this.isDataFetchEnabled = true;
+
+        // 如果定时器被清除，重新设置
+        if (!this.dataFetchTimer || !this.statusTimer) {
+            this.setupDataFetchTimer();
+        }
+
+        // 立即获取数据和状态
+        this.getMeetingStatus(); // 使用原来的方法名
         this.getJsonData();
     },
 
@@ -429,7 +462,7 @@ document.addEventListener('plusready', function() {
             const parsedSettings = JSON.parse(storedSettings);
             if (parsedSettings && parsedSettings.option && parsedSettings.option.titleText) {
                 const titleText = parsedSettings.option.titleText;
-                console.log('从设置中读取的标题文字:', titleText);
+                // 不输出标题文字相关提示
 
                 // 更新页面上的标题文字
                 const logoTextElement = document.querySelector('.logo-text');

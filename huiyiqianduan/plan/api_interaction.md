@@ -249,6 +249,8 @@ JPG图片二进制数据，Content-Type为image/jpeg。
 
 获取会议状态变更标识，用于检测会议状态是否有变化。
 
+**状态**：已实现
+
 **请求**
 
 ```
@@ -269,6 +271,37 @@ GET /api/v1/meetings/status/token
     ]
   },
   "status": "success"
+}
+```
+
+**客户端实现**
+
+```javascript
+// 获取会议状态信息
+fetchMeetingStatus: function() {
+    // 检查是否正在获取状态
+    if (this.isStatusFetching) {
+        return;
+    }
+
+    this.isStatusFetching = true;
+    console.log('开始获取会议状态，URL:', this.meetingStatusUrl);
+
+    try {
+        const xhr = new plus.net.XMLHttpRequest();
+        xhr.timeout = 5000;
+        xhr.onload = () => {
+            if (xhr.status === 200) {
+                this.parseStatusData(xhr.responseText);
+            } else {
+                this.handleStatusError('获取状态失败', { status: xhr.status });
+            }
+        };
+        xhr.open('GET', this.meetingStatusUrl);
+        xhr.send();
+    } catch (error) {
+        this.handleStatusError('创建状态请求失败', error);
+    }
 }
 ```
 
@@ -309,6 +342,8 @@ GET /api/v1/files/updates?since={timestamp}
 
 ## 错误处理
 
+**状态**：已实现错误处理机制
+
 ### 错误码定义
 
 | 错误码 | 描述 | HTTP状态码 |
@@ -319,6 +354,24 @@ GET /api/v1/files/updates?since={timestamp}
 | INVALID_REQUEST | 请求参数无效 | 400 |
 | SERVER_ERROR | 服务器内部错误 | 500 |
 | NETWORK_ERROR | 网络错误 | 503 |
+
+**客户端实现**
+
+```javascript
+// 状态错误处理
+handleStatusError: function(message, error = null) {
+    console.error('状态错误:', message, error);
+    this.triggerEvent('statusError', { error: message, details: error });
+    this.isStatusFetching = false;
+
+    // 如果还没有触发过statusInit事件，则触发一个默认的
+    if (!this.statusToken) {
+        const defaultStatus = {token: "initial", status: "not_started", error: true};
+        this.statusToken = defaultStatus.token;
+        this.triggerEvent('statusInit', defaultStatus);
+    }
+}
+```
 
 ### 错误响应示例
 
@@ -379,4 +432,4 @@ GET /api/v1/files/updates?since={timestamp}
 }
 ```
 
-更新日期：2025年04月20日
+更新日期：2025年04月21日

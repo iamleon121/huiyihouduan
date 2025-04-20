@@ -7,13 +7,13 @@ function updateTitleText() {
             const parsedSettings = JSON.parse(storedSettings);
             if (parsedSettings && parsedSettings.option && parsedSettings.option.titleText) {
                 const titleText = parsedSettings.option.titleText;
-                console.log('从设置中读取的标题文字:', titleText);
+                // 不输出标题文字相关提示
 
                 // 更新页面上的标题文字
                 const logoTextElement = document.querySelector('.logo-text');
                 if (logoTextElement) {
                     logoTextElement.textContent = titleText;
-                    console.log('标题文字已更新为:', titleText);
+                    // 不输出标题文字相关提示
 
                     // 强制刷新样式以确保更新生效
                     logoTextElement.style.display = 'none';

@@ -1,4 +1,6 @@
-// 更新加载状态文本
+// init.js - 无纸化会议系统初始化控制器
+
+// 更新加载文本
 function updateLoadingText(text) {
     const loadingText = document.querySelector('.loading-text');
     if (loadingText) {
@@ -8,10 +10,18 @@ function updateLoadingText(text) {
 
 // 显示错误信息
 function showError(message) {
-    updateLoadingText(message);
-    const spinner = document.querySelector('.loading-spinner');
-    if (spinner) {
-        spinner.style.borderTopColor = '#ff4444';
+    const errorText = document.querySelector('.error-text');
+    if (errorText) {
+        errorText.textContent = message;
+        errorText.style.display = 'block';
+    }
+}
+
+// 隐藏错误信息
+function hideError() {
+    const errorText = document.querySelector('.error-text');
+    if (errorText) {
+        errorText.style.display = 'none';
     }
 }
 
@@ -27,7 +37,7 @@ document.addEventListener('plusready', function() {
             const parsedSettings = JSON.parse(storedSettings);
             if (parsedSettings && parsedSettings.option && parsedSettings.option.titleText) {
                 const titleText = parsedSettings.option.titleText;
-                console.log('从设置中读取的标题文字:', titleText);
+                // 不输出标题文字相关提示
 
                 // 更新页面上的标题文字
                 const logoTextElement = document.querySelector('.logo-text');
@@ -40,12 +50,21 @@ document.addEventListener('plusready', function() {
         console.error('读取标题文字设置失败:', error);
     }
 
+    // 检查本地存储是否存在
     function checkLocalStorage() {
         try {
+            console.log('开始检查本地存储...');
             // 检查meetingData是否存在
-            const storageData = plus.storage.getItem('meetingData');
+            const meetingData = plus.storage.getItem('meetingData');
+            console.log('meetingData存储状态:', meetingData ? '存在' : '不存在');
+
+            // 检查meetingStatus是否存在
+            const statusData = plus.storage.getItem('meetingStatus');
+            console.log('meetingStatus存储状态:', statusData ? '存在' : '不存在');
+
             // 检查option是否存在
             const optionData = plus.storage.getItem('option');
+            console.log('option存储状态:', optionData ? '存在' : '不存在');
 
             // 如果option不存在，创建默认option数据
             if (!optionData) {
@@ -54,11 +73,14 @@ document.addEventListener('plusready', function() {
                 createOptionStorage();
             }
 
-            if (storageData) {
+            // 检查会议数据和状态数据是否存在
+            if (meetingData && statusData) {
+                console.log('会议数据和状态数据均存在，直接跳转到service页面');
                 updateLoadingText('正在加载应用...');
                 // 如果本地存储存在，直接跳转到service页面
                 navigateToService();
             } else {
+                console.log('会议数据或状态数据不存在，创建默认数据');
                 // 如果本地存储不存在，直接创建默认数据
                 updateLoadingText('正在初始化系统数据...');
                 createLocalStorage();
@@ -74,9 +96,14 @@ document.addEventListener('plusready', function() {
     // 创建本地存储
     function createLocalStorage() {
         try {
-            // 直接创建默认数据 {"id":"1"}
+            // 直接创建默认会议数据 {"id":"1"}
             plus.storage.setItem('meetingData', JSON.stringify({id: "1"}));
-            console.log('已创建默认本地存储数据');
+            console.log('已创建默认会议数据');
+
+            // 创建默认会议状态数据
+            plus.storage.setItem('meetingStatus', JSON.stringify({token: "initial", status: "not_started"}));
+            console.log('已创建默认会议状态数据');
+
             updateLoadingText('数据初始化完成，正在启动应用...');
             navigateToService();
         } catch (e) {
@@ -97,6 +124,7 @@ document.addEventListener('plusready', function() {
             const defaultOption = {
                 option: {
                     server: '192.168.110.10',
+                    port: '8000',
                     intertime: '10',
                     titleText: '政协阜新市委员会' // 默认标题文字
                 }
@@ -118,10 +146,25 @@ document.addEventListener('plusready', function() {
 
     // 跳转到service页面
     function navigateToService() {
-        plus.webview.open('service.html', 'service', {
-            scrollIndicator: 'none',
-            scalable: false
-        });
+        console.log('准备跳转到service页面...');
+        try {
+            plus.webview.open('service.html', 'service', {
+                scrollIndicator: 'none',
+                scalable: false
+            }, function(w) {
+                // 成功回调
+                console.log('service页面打开成功:', w ? w.id : 'unknown');
+            }, function(e) {
+                // 失败回调
+                console.error('service页面打开失败:', e.message);
+                // 尝试使用更简单的方式打开
+                plus.webview.open('service.html');
+            });
+        } catch (error) {
+            console.error('跳转到service页面时出错:', error);
+            // 尝试使用浏览器原生方式跳转
+            window.location.href = 'service.html';
+        }
     }
 
     // 启动检查
