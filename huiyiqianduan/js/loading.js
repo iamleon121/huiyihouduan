@@ -596,18 +596,26 @@ function fetchMeetingById(meetingId) {
 
     LoadingService.addEventListener('extractComplete', function(data) {
         console.log('解压完成:', data.meetingId);
-        updateLoadingText('文件解压完成，准备完成数据更新...');
+        updateLoadingText('文件解压完成，准备返回主页面...');
         stopProgressAnimation();
-        setProgress(90);
-        startProgressAnimation(90, 100, 2000); // 从90%到100%，持续2秒
+        setProgress(100);
+
+        // 自动返回主页面
+        setTimeout(function() {
+            returnToMain();
+        }, 1000); // 等待1秒后自动返回主页面
     });
 
     LoadingService.addEventListener('extractError', function(data) {
         console.error('解压失败:', data);
-        updateLoadingText('文件解压失败，继续处理...');
-        // 不中断整体流程，继续处理
+        updateLoadingText('文件解压失败，准备返回主页面...');
         stopProgressAnimation();
-        setProgress(90);
+        setProgress(100);
+
+        // 即使解压失败也自动返回主页面
+        setTimeout(function() {
+            returnToMain();
+        }, 1000); // 等待1秒后自动返回主页面
     });
 
     // 触发数据获取

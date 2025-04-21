@@ -516,8 +516,8 @@ const LoadingService = {
             // 确保目标文件夹存在
             this.ensureDirectoryExists(meetingFolderPath)
                 .then(() => {
-                    // 检查并清理旧的会议文件夹
-                    return this.cleanupOldMeetingFolders(meetingFolderPath, 'meeting_' + meetingId);
+                    // 先清空整个meeting_files文件夹，删除所有子文件夹
+                    return this.cleanAllMeetingFolders(meetingFolderPath);
                 })
                 .then(() => {
                     // 确保解压目标文件夹存在
@@ -723,6 +723,56 @@ const LoadingService = {
                 // 即使出错，也继续执行
                 resolve();
             }
+        });
+    },
+
+    // 清空所有会议文件夹
+    cleanAllMeetingFolders: function(basePath) {
+        return new Promise((resolve, reject) => {
+            console.log('清空所有会议文件夹:', basePath);
+
+            plus.io.resolveLocalFileSystemURL(basePath, entry => {
+                const reader = entry.createReader();
+                reader.readEntries(entries => {
+                    // 过滤出所有文件夹
+                    const folders = entries.filter(entry => entry.isDirectory);
+
+                    console.log('找到', folders.length, '个文件夹需要删除');
+
+                    // 如果没有需要删除的文件夹，直接完成
+                    if (folders.length === 0) {
+                        resolve();
+                        return;
+                    }
+
+                    // 删除所有文件夹
+                    let deletedCount = 0;
+                    folders.forEach(folder => {
+                        console.log('删除文件夹:', folder.name);
+                        folder.removeRecursively(() => {
+                            console.log('文件夹已删除:', folder.name);
+                            deletedCount++;
+                            if (deletedCount === folders.length) {
+                                resolve();
+                            }
+                        }, error => {
+                            console.error('删除文件夹失败:', folder.name, error);
+                            deletedCount++;
+                            if (deletedCount === folders.length) {
+                                resolve();
+                            }
+                        });
+                    });
+                }, error => {
+                    console.error('读取目录失败:', error);
+                    // 即使读取失败，也继续执行
+                    resolve();
+                });
+            }, error => {
+                console.error('解析基础路径失败:', error);
+                // 即使解析失败，也继续执行
+                resolve();
+            });
         });
     },
 

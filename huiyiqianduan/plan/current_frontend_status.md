@@ -176,7 +176,7 @@ saveSettings: function() {
 
         const settingsString = JSON.stringify(optionData);
         plus.storage.setItem('option', settingsString);
-        
+
         // 立即更新main页面的标题文字
         this.updateMainPageTitle();
 
@@ -215,7 +215,109 @@ saveSettings: function() {
 
 ## 最近改进
 
-### 1. 添加会议状态本地存储
+### 1. 增强loading页面功能
+
+重新设计了loading页面，移除了底部按钮，并增加了自动下载和解压会议文件的功能：
+
+```javascript
+// 自动返回主页面
+LoadingService.addEventListener('extractComplete', function(data) {
+    console.log('解压完成:', data.meetingId);
+    updateLoadingText('文件解压完成，准备返回主页面...');
+    stopProgressAnimation();
+    setProgress(100);
+
+    // 自动返回主页面
+    setTimeout(function() {
+        returnToMain();
+    }, 1000); // 等待1秒后自动返回主页面
+});
+```
+
+### 2. 实现会议文件自动下载和解压
+
+添加了会议文件自动下载和解压功能，使用plus.io和plus.zip模块处理文件：
+
+```javascript
+// 下载并解压会议ZIP压缩包
+downloadAndExtractMeetingPackage: function(meetingId) {
+    return new Promise((resolve, reject) => {
+        console.log('开始下载会议ZIP压缩包, ID:', meetingId);
+
+        // 触发下载开始事件
+        this.triggerEvent('downloadStart', { meetingId: meetingId });
+
+        // 构建下载URL
+        const downloadUrl = this.meetingPackageUrl + meetingId + '/download-package';
+        console.log('下载URL:', downloadUrl);
+
+        // 确保下载文件夹存在
+        this.ensureDirectoryExists('_doc/download/')
+            .then(() => {
+                // 创建下载任务
+                const dtask = plus.downloader.createDownload(downloadUrl, {
+                    filename: '_doc/download/meeting_' + meetingId + '.zip',
+                    timeout: 30, // 超时时间，单位为秒
+                    retry: 3 // 重试次数
+                }, (d, status) => {
+                    // 下载完成后的处理...
+                });
+
+                // 监听下载进度
+                dtask.addEventListener('statechanged', (task, status) => {
+                    // 下载进度处理...
+                });
+
+                // 开始下载任务
+                dtask.start();
+            });
+    });
+}
+```
+
+### 3. 优化文件管理
+
+实现了本地文件管理功能，确保只保留最新的会议文件，避免占用过多存储空间：
+
+```javascript
+// 清空所有会议文件夹
+cleanAllMeetingFolders: function(basePath) {
+    return new Promise((resolve, reject) => {
+        console.log('清空所有会议文件夹:', basePath);
+
+        plus.io.resolveLocalFileSystemURL(basePath, entry => {
+            const reader = entry.createReader();
+            reader.readEntries(entries => {
+                // 过滤出所有文件夹
+                const folders = entries.filter(entry => entry.isDirectory);
+
+                console.log('找到', folders.length, '个文件夹需要删除');
+
+                // 删除所有文件夹
+                let deletedCount = 0;
+                folders.forEach(folder => {
+                    console.log('删除文件夹:', folder.name);
+                    folder.removeRecursively(() => {
+                        console.log('文件夹已删除:', folder.name);
+                        deletedCount++;
+                        if (deletedCount === folders.length) {
+                            resolve();
+                        }
+                    }, error => {
+                        console.error('删除文件夹失败:', folder.name, error);
+                        deletedCount++;
+                        if (deletedCount === folders.length) {
+                            resolve();
+                        }
+                    });
+                });
+            });
+        });
+    });
+}
+```
+
+### 4. 添加会议状态本地存储
 
 为了支持会议状态的监控和同步，我们添加了会议状态的本地存储：
 
@@ -224,7 +326,7 @@ saveSettings: function() {
 plus.storage.setItem('meetingStatus', JSON.stringify({token: "initial", status: "not_started"}));
 ```
 
-### 2. 优化状态轮询机制
+### 5. 优化状态轮询机制
 
 修改了service.js中的状态轮询机制，使其严格按照配置中设定的间隔时间执行：
 
@@ -243,7 +345,7 @@ this.statusTimer = setInterval(() => {
 }, this.updateInterval); // 严格使用配置的间隔时间
 ```
 
-### 3. 添加端口号设置
+### 6. 添加端口号设置
 
 在设置页面添加了服务器端口号设置，默认值为8000：
 
@@ -254,7 +356,7 @@ this.statusTimer = setInterval(() => {
 </div>
 ```
 
-### 4. 改进页面跳转机制
+### 7. 改进页面跳转机制
 
 添加了备用跳转机制，确保即使在网络错误或其他问题的情况下，应用也能从init页面跳转到service页面：
 
@@ -281,7 +383,7 @@ window.onload = function() {
 };
 ```
 
-### 5. 修复UI层叠问题
+### 8. 修复UI层叠问题
 
 修复了option页面中设置弹出框被会议标题文字遮挡的问题：
 
@@ -316,4 +418,4 @@ window.onload = function() {
 4. **增强安全性**: 实现更安全的数据传输和存储机制
 5. **性能优化**: 优化大文件处理和页面渲染性能
 
-更新日期：2025年04月21日
+更新日期：2025年04月22日

@@ -243,6 +243,156 @@ GET /api/v1/files/jpg/{file_name}?token={token}
 
 JPG图片二进制数据，Content-Type为image/jpeg。
 
+### 下载会议数据包
+
+下载指定会议的完整数据包，包含所有文件和JPG图片。
+
+**状态**：已实现
+
+**请求**
+
+```
+GET /api/v1/meetings/{meeting_id}/download-package
+```
+
+**响应**
+
+ZIP压缩包二进制数据，Content-Type为application/zip。
+
+**客户端实现**
+
+```javascript
+// 下载并解压会议ZIP压缩包
+downloadAndExtractMeetingPackage: function(meetingId) {
+    return new Promise((resolve, reject) => {
+        // 构建下载URL
+        const downloadUrl = this.meetingPackageUrl + meetingId + '/download-package';
+
+        // 创建下载任务
+        const dtask = plus.downloader.createDownload(downloadUrl, {
+            filename: '_doc/download/meeting_' + meetingId + '.zip',
+            timeout: 30, // 超时时间，单位为秒
+            retry: 3 // 重试次数
+        }, (d, status) => {
+            if (status === 200) {
+                // 下载成功，解压文件
+                this.extractZipFile(d.filename, meetingId);
+            }
+        });
+
+        // 开始下载任务
+        dtask.start();
+    });
+}
+```
+
+### 获取会议数据
+
+获取指定会议的完整数据，包含会议信息、议题项和文件信息。
+
+**状态**：已实现
+
+**请求**
+
+```
+GET /api/v1/meetings/{meeting_id}/data
+```
+
+**响应**
+
+```json
+{
+  "data": {
+    "id": "651122",
+    "title": "市政协完全大会",
+    "intro": "会议介绍",
+    "time": "2025年3月29日 9:00",
+    "status": "未开始",
+    "update_time": "2025-04-15T10:30:45Z",
+    "package_url": "https://{server_address}/api/v1/meetings/651122/download-package",
+    "part": [
+      {
+        "title": "议题一：审议资格",
+        "file": [
+          {
+            "name": "关于审议资格的通知.pdf",
+            "pages": 10,
+            "jpg": [
+              "https://{server_address}/api/v1/files/jpg/651122_关于审议资格的通知_1.jpg",
+              "https://{server_address}/api/v1/files/jpg/651122_关于审议资格的通知_2.jpg"
+            ]
+          }
+        ],
+        "reporter": "张三"
+      },
+      {
+        "title": "议题二：全体会议",
+        "file": [
+          {
+            "name": "全委会文件.pdf",
+            "pages": 1,
+            "jpg": [
+              "https://{server_address}/api/v1/files/jpg/651122_全委会文件_1.jpg"
+            ]
+          },
+          {
+            "name": "选举文件.pdf",
+            "pages": 1,
+            "jpg": [
+              "https://{server_address}/api/v1/files/jpg/651122_选举文件_1.jpg"
+            ]
+          }
+        ],
+        "reporter": "李四"
+      }
+    ]
+  },
+  "status": "success"
+}
+```
+
+**客户端实现**
+
+```javascript
+// 获取会议数据
+fetchMeetingById: function(meetingId) {
+    return new Promise((resolve, reject) => {
+        console.log('开始获取会议数据, ID:', meetingId);
+
+        // 构建请求URL
+        const url = this.meetingDataUrl + meetingId + '/data';
+        console.log('开始获取会议数据，URL:', url);
+
+        try {
+            const xhr = new plus.net.XMLHttpRequest();
+            xhr.timeout = 10000;
+            xhr.onload = () => {
+                if (xhr.status === 200) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response && response.data) {
+                            // 解析成功，处理数据
+                            this.processMeetingData(response.data, meetingId);
+                            resolve(response.data);
+                        } else {
+                            reject(new Error('响应数据格式错误'));
+                        }
+                    } catch (error) {
+                        reject(new Error('解析响应数据失败: ' + error.message));
+                    }
+                } else {
+                    reject(new Error('获取会议数据失败, 状态码: ' + xhr.status));
+                }
+            };
+            xhr.open('GET', url);
+            xhr.send();
+        } catch (error) {
+            reject(new Error('创建请求失败: ' + error.message));
+        }
+    });
+}
+```
+
 ## 状态同步API
 
 ### 获取会议状态变更标识
@@ -432,4 +582,4 @@ handleStatusError: function(message, error = null) {
 }
 ```
 
-更新日期：2025年04月21日
+更新日期：2025年04月22日
