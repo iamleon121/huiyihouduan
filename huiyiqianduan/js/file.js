@@ -281,10 +281,67 @@ document.addEventListener('plusready', function() {
     } else {
         console.log('file页面单例检查完成，无需清理');
     }
-    
+
     // 如果已经通过直接路径加载了文件，则不再执行原始查找
     if (window.fileAlreadyLoaded) {
         console.log('文件已通过完整路径加载，跳过原始查找逻辑');
+        return;
+    }
+
+    // 从 URL 参数中获取文件路径
+    let urlParams = new URLSearchParams(window.location.search);
+    let filePath = urlParams.get('path');
+
+    // 如果有直接的文件路径，优先使用该路径加载文件
+    if (filePath) {
+        console.log('从 URL 参数中获取到文件路径：', filePath);
+
+        // 获取文件名和总页数
+        const fileName = urlParams.get('file') || '';
+        const totalPages = urlParams.get('page') ? parseInt(urlParams.get('page')) : 1;
+
+        // 更新标题显示文件名
+        const headerTitle = document.querySelector('.header-title');
+        if (headerTitle) {
+            headerTitle.textContent = fileName;
+        }
+
+        // 更新总页数显示
+        document.getElementById('totalPages').textContent = totalPages;
+
+        // 生成页码选择器选项
+        const pageSelect = document.getElementById('pageSelect');
+        if (pageSelect) {
+            // 清空现有选项
+            pageSelect.innerHTML = '';
+
+            // 添加页码选项
+            for (let i = 1; i <= totalPages; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                pageSelect.appendChild(option);
+            }
+
+            // 设置当前页码为1
+            pageSelect.value = 1;
+            document.getElementById('currentPage').textContent = 1;
+        }
+
+        // 直接从指定路径加载文件
+        plus.io.resolveLocalFileSystemURL(filePath, function(fileEntry) {
+            console.log('成功解析文件路径：', filePath);
+            loadFile(fileEntry);
+            window.fileAlreadyLoaded = true;
+        }, function(error) {
+            console.error('解析文件路径失败：', error);
+            showErrorMessage('无法访问文件：' + filePath);
+
+            // 如果直接路径加载失败，尝试使用原始的递归查找方法
+            console.log('尝试使用原始的递归查找方法');
+        });
+
+        // 如果有直接路径，则不执行后续的递归查找逻辑
         return;
     }
 
@@ -293,7 +350,7 @@ document.addEventListener('plusready', function() {
         // 尝试从URL参数获取meetingId
         const urlParams = new URLSearchParams(window.location.search);
         let meetingId = urlParams.get('meeting_id');
-        
+
         // 获取文件名参数
         const fileParam = urlParams.get('file');
         // 处理文件名，提取纯文件名（去掉扩展名）
@@ -301,25 +358,25 @@ document.addEventListener('plusready', function() {
         if (filename && filename.includes('.')) {
             filename = filename.substring(0, filename.lastIndexOf('.'));
         }
-        
+
         if (!filename) {
             console.error('未获取到文件名参数');
             showErrorMessage('未指定文件名');
             return;
         }
-        
+
         // 如果URL中没有，则从本地存储获取
         if (!meetingId) {
-            const meetingData = plus.storage.getItem('meetingData') ? 
+            const meetingData = plus.storage.getItem('meetingData') ?
                 JSON.parse(plus.storage.getItem('meetingData')) : null;
             meetingId = meetingData ? (meetingData.meeting_id || meetingData.id) : null;
         }
-        
+
         if (!meetingId) {
             console.error('无法获取会议ID');
             return;
         }
-        
+
         console.log('当前会议ID：', meetingId);
         console.log('当前文件名：', filename);
 
@@ -378,7 +435,7 @@ document.addEventListener('plusready', function() {
     }, false);
 
     // 从URL获取文件名和页码参数
-    const urlParams = new URLSearchParams(window.location.search);
+    urlParams = new URLSearchParams(window.location.search);
     const fileParam = urlParams.get('file');
     const pageParam = urlParams.get('page');
     const pageNum = pageParam ? parseInt(pageParam) : 1; // 默认页码为1

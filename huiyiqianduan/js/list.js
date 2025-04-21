@@ -244,15 +244,38 @@ function updateMeetingTopics(jsonData) {
                     // 添加点击事件，只在文本内容上生效
                     textSpan.addEventListener('click', function() {
                         const fileName = fileInfo.display_name || fileInfo.name;
+                        const meetingId = jsonData.meeting_id || jsonData.id;
+                        const tempId = fileInfo.temp_id;
+                        const agendaFolder = fileInfo.agenda_folder || 'agenda_' + (index + 1);
+
                         console.log('点击文件：' + fileName + '，总页数：' + totalPages);
+                        console.log('文件详细信息：', {
+                            meetingId: meetingId,
+                            tempId: tempId,
+                            agendaFolder: agendaFolder,
+                            totalPages: totalPages
+                        });
+
+                        // 构建文件路径
+                        // 路径结构: _doc/meeting_files/meeting_{会议id}/{agenda_folder}/jpgs/{temp_id}/{temp_id}_{name}.jpg
+                        const filePath = '_doc/meeting_files/meeting_' + meetingId + '/' + agendaFolder + '/jpgs/' + tempId + '/' + tempId + '_' + fileName + '.jpg';
+                        console.log('构建的文件路径：', filePath);
+
                         if (typeof plus !== 'undefined') {
-                            // 使用plus.webview.open打开file页面，传递文件名和总页数参数
-                            plus.webview.open('file.html?file=' + encodeURIComponent(fileName) + '&page=' + totalPages, 'file', {}, '', function(e) {
+                            // 使用plus.webview.open打开file页面，传递文件路径、文件名和总页数参数
+                            plus.webview.open('file.html?file=' + encodeURIComponent(fileName) +
+                                              '&page=' + totalPages +
+                                              '&path=' + encodeURIComponent(filePath) +
+                                              '&meeting_id=' + meetingId,
+                                              'file', {}, '', function(e) {
                                 console.error('打开file页面失败：' + JSON.stringify(e));
                             });
                         } else {
                             // 在非plus环境下的后备方案，传递文件名和总页数
-                            window.location.href = 'file.html?file=' + encodeURIComponent(fileName) + '&page=' + totalPages;
+                            window.location.href = 'file.html?file=' + encodeURIComponent(fileName) +
+                                                  '&page=' + totalPages +
+                                                  '&path=' + encodeURIComponent(filePath) +
+                                                  '&meeting_id=' + meetingId;
                         }
                     });
 
