@@ -386,6 +386,11 @@ function fetchMeetingById(meetingId) {
 
                     // 显示新页面
                     newMainView.show('fade-in', 300);
+
+                    // 关闭当前loading页面
+                    const currentWebview = plus.webview.currentWebview();
+                    currentWebview.close('none');
+                    console.log('loading页面已关闭');
                 });
 
                 // 如果加载超时，也关闭旧页面并显示新页面
@@ -395,25 +400,95 @@ function fetchMeetingById(meetingId) {
                         mainView.close('none');
                         newMainView.id = 'main';
                         newMainView.show('fade-in', 300);
+
+                        // 关闭当前loading页面
+                        const currentWebview = plus.webview.currentWebview();
+                        currentWebview.close('none');
+                        console.log('loading页面已关闭（超时处理）');
                     }
                 }, 3000);
             } else {
                 console.log('main页面不存在，直接创建新页面');
-                plus.webview.open('main.html', 'main', {
+                const newMainView = plus.webview.create('main.html', 'main', {
                     scrollIndicator: 'none',
                     scalable: false
                 });
+
+                // 等待新页面加载完成
+                newMainView.addEventListener('loaded', function() {
+                    console.log('新的main页面加载完成');
+
+                    // 显示新页面
+                    newMainView.show('fade-in', 300);
+
+                    // 关闭当前loading页面
+                    const currentWebview = plus.webview.currentWebview();
+                    currentWebview.close('none');
+                    console.log('loading页面已关闭');
+                });
+
+                // 如果加载超时，也显示新页面
+                setTimeout(function() {
+                    if (plus.webview.getWebviewById('main') && !newMainView.isVisible()) {
+                        console.log('新页面加载超时，强制显示');
+                        newMainView.show('fade-in', 300);
+
+                        // 关闭当前loading页面
+                        const currentWebview = plus.webview.currentWebview();
+                        currentWebview.close('none');
+                        console.log('loading页面已关闭（超时处理）');
+                    }
+                }, 3000);
             }
         } catch (error) {
             console.error('关闭并创建新main页面时出错:', error);
             // 出错时尝试直接打开新页面
             try {
-                plus.webview.open('main.html', 'main', {
+                const newMainView = plus.webview.create('main.html', 'main', {
                     scrollIndicator: 'none',
                     scalable: false
                 });
+
+                // 等待新页面加载完成
+                newMainView.addEventListener('loaded', function() {
+                    console.log('错误恢复：新的main页面加载完成');
+
+                    // 显示新页面
+                    newMainView.show('fade-in', 300);
+
+                    // 关闭当前loading页面
+                    const currentWebview = plus.webview.currentWebview();
+                    currentWebview.close('none');
+                    console.log('错误恢复：loading页面已关闭');
+                });
+
+                // 如果加载超时，也关闭当前页面
+                setTimeout(function() {
+                    try {
+                        const currentWebview = plus.webview.currentWebview();
+                        if (currentWebview) {
+                            console.log('错误恢复：超时关闭loading页面');
+                            currentWebview.close('none');
+                        }
+                    } catch (closeError) {
+                        console.error('错误恢复：关闭loading页面失败:', closeError);
+                    }
+                }, 5000);
             } catch (e) {
                 console.error('尝试直接打开新页面也失败:', e);
+
+                // 即使打开新页面失败，也尝试关闭loading页面
+                try {
+                    setTimeout(function() {
+                        const currentWebview = plus.webview.currentWebview();
+                        if (currentWebview) {
+                            console.log('最后尝试关闭loading页面');
+                            currentWebview.close('none');
+                        }
+                    }, 3000);
+                } catch (closeError) {
+                    console.error('最后尝试关闭loading页面失败:', closeError);
+                }
             }
         }
     };

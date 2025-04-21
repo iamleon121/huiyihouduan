@@ -42,6 +42,14 @@ document.addEventListener('plusready', function() {
     currentWebview.id = 'main';
     console.log('已设置当前页面ID为: main');
 
+    // 检查并管理main页面，确保只有一个实例
+    const cleaned = checkAndManageMainPage(true); // 保留当前页面
+    if (cleaned) {
+        console.log('main页面单例检查完成，已清理多余实例');
+    } else {
+        console.log('main页面单例检查完成，无需清理');
+    }
+
     // 添加页面关闭事件监听
     currentWebview.addEventListener('close', function() {
         console.log('main页面即将关闭，通知service模块');
