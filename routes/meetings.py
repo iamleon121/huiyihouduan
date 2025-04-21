@@ -24,6 +24,7 @@ from utils import format_file_size, ensure_jpg_for_pdf, ensure_jpg_in_zip, conve
 
 # 导入服务层
 from services.meeting_service import MeetingService
+from services.pdf_service import PDFService
 
 # 创建路由器
 router = APIRouter(
@@ -288,15 +289,40 @@ async def get_meeting_data(meeting_id: str, db: Session = Depends(get_db)):
                 for file in agenda_item.files:
                     # 如果文件信息是字典，直接使用
                     if isinstance(file, dict):
-                        processed_files.append(file)
+                        # 确保文件包含总页数信息
+                        file_data = file.copy()  # 复制一份，避免修改原始数据
+
+                        # 如果文件是PDF且没有总页数信息，尝试获取
+                        if file_data.get('name', '').lower().endswith('.pdf') and 'total_pages' not in file_data:
+                            # 如果有文件路径，尝试获取总页数
+                            pdf_path = file_data.get('path')
+                            if pdf_path and os.path.exists(pdf_path):
+                                try:
+                                    # 使用同步方式获取PDF总页数
+                                    page_count = PDFService.get_pdf_page_count_sync(pdf_path)
+                                    if page_count is not None:
+                                        file_data['total_pages'] = page_count
+                                        print(f"获取到PDF文件总页数: {page_count}")
+                                    else:
+                                        file_data['total_pages'] = 0
+                                        print(f"无法获取PDF文件总页数: {pdf_path}")
+                                except Exception as e:
+                                    file_data['total_pages'] = 0
+                                    print(f"获取PDF文件总页数时出错: {str(e)}")
+                            else:
+                                file_data['total_pages'] = 0
+
+                        processed_files.append(file_data)
                     # 如果文件信息是字符串，创建一个字典
                     elif isinstance(file, str):
-                        processed_files.append({
+                        file_data = {
                             "name": file,
                             "path": "",
                             "size": 0,
-                            "url": ""
-                        })
+                            "url": "",
+                            "total_pages": 0  # 对于字符串类型的文件信息，默认总页数为0
+                        }
+                        processed_files.append(file_data)
                     # 其他情况，跳过
                     else:
                         print(f"跳过无效的文件信息: {file}")

@@ -463,6 +463,67 @@ class PDFService:
             return None
 
     @staticmethod
+    async def get_pdf_page_count(pdf_path: str) -> Optional[int]:
+        """
+        获取PDF文件的总页数
+        使用异步IO和线程池处理文件操作，避免阻塞事件循环。
+
+        Args:
+            pdf_path (str): PDF文件路径
+
+        Returns:
+            Optional[int]: PDF文件的总页数，如果获取失败则返回None
+        """
+        # 导入异步工具
+        from services.async_utils import AsyncUtils
+
+        try:
+            # 使用线程池检查文件是否存在和扩展名
+            check_result = await AsyncUtils.run_in_threadpool(
+                lambda: os.path.exists(pdf_path) and pdf_path.lower().endswith(".pdf")
+            )
+
+            if not check_result:
+                return None
+
+            # 使用线程池打开PDF文件并获取页数
+            async def get_page_count():
+                def _get_page_count():
+                    with fitz.open(pdf_path) as pdf_document:
+                        return len(pdf_document)
+                return await AsyncUtils.run_in_threadpool(_get_page_count)
+
+            page_count = await get_page_count()
+            return page_count
+
+        except Exception as e:
+            print(f"获取PDF页数失败: {pdf_path}, 错误: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            return None
+
+    @staticmethod
+    def get_pdf_page_count_sync(pdf_path: str) -> Optional[int]:
+        """
+        同步版本的获取PDF页数函数，使用AsyncUtils来执行异步操作。
+
+        Args:
+            pdf_path (str): PDF文件的完整路径
+
+        Returns:
+            Optional[int]: PDF文件的总页数，如果获取失败则返回None
+        """
+        try:
+            # 使用AsyncUtils来运行异步函数
+            from services.async_utils import AsyncUtils
+            return AsyncUtils.run_sync(PDFService.get_pdf_page_count, pdf_path)
+        except Exception as e:
+            print(f"同步获取PDF页数失败: {pdf_path}, 错误: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            return None
+
+    @staticmethod
     async def ensure_jpg_for_pdf(pdf_path: str, jpg_dir: str) -> Optional[str]:
         """
         确保PDF文件有对应的JPG文件，如果没有则生成。

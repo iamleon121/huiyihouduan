@@ -636,7 +636,7 @@ class MeetingService:
                         existing_files[file_name] = file_info
                         print("文件信息更新成功")
 
-                        # 为新处理的PDF文件创廾JPG文件
+                        # 为新处理的PDF文件创廾JPG文件并获取总页数
                         if file_name.lower().endswith(".pdf"):
                             # 从UUID_filename.pdf格式中提取UUID部分
                             pdf_filename = os.path.basename(new_path)
@@ -646,6 +646,16 @@ class MeetingService:
 
                             # 先检查PDF文件是否存在
                             if os.path.exists(new_path):
+                                # 获取PDF文件的总页数
+                                page_count = await PDFService.get_pdf_page_count(new_path)
+                                if page_count is not None:
+                                    print(f"PDF文件总页数: {page_count}")
+                                    # 将总页数添加到文件信息中
+                                    file_info['total_pages'] = page_count
+                                else:
+                                    print(f"无法获取PDF文件总页数: {new_path}")
+                                    file_info['total_pages'] = 0
+
                                 # 检查是否已经有JPG文件
                                 jpg_exists = False
                                 if os.path.exists(jpg_subdir):
@@ -664,6 +674,7 @@ class MeetingService:
                                     print(f"PDF转JPG完成: {new_path}")
                             else:
                                 print(f"PDF文件不存在，跳过转JPG: {new_path}")
+                                file_info['total_pages'] = 0
 
                     except Exception as e:
                         print(f"处理临时文件时出错: {e}")
@@ -1046,7 +1057,7 @@ class MeetingService:
                         existing_files[file_name] = file_info
                         print("文件信息更新成功")
 
-                        # 为新处理的PDF文件创廾JPG文件
+                        # 为新处理的PDF文件创廾JPG文件并获取总页数
                         if file_name.lower().endswith(".pdf"):
                             # 从UUID_filename.pdf格式中提取UUID部分
                             pdf_filename = os.path.basename(new_path)
@@ -1056,6 +1067,16 @@ class MeetingService:
 
                             # 先检查PDF文件是否存在
                             if os.path.exists(new_path):
+                                # 获取PDF文件的总页数
+                                page_count = await PDFService.get_pdf_page_count(new_path)
+                                if page_count is not None:
+                                    print(f"PDF文件总页数: {page_count}")
+                                    # 将总页数添加到文件信息中
+                                    file_info['total_pages'] = page_count
+                                else:
+                                    print(f"无法获取PDF文件总页数: {new_path}")
+                                    file_info['total_pages'] = 0
+
                                 # 检查是否已经有JPG文件
                                 jpg_exists = False
                                 if os.path.exists(jpg_subdir):
@@ -1074,6 +1095,7 @@ class MeetingService:
                                     print(f"PDF转JPG完成: {new_path}")
                             else:
                                 print(f"PDF文件不存在，跳过转JPG: {new_path}")
+                                file_info['total_pages'] = 0
 
                     except Exception as e:
                         print(f"处理临时文件时出错: {e}")
