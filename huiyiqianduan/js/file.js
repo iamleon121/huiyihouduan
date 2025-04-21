@@ -272,6 +272,8 @@ function goBack() {
 }
 
 document.addEventListener('plusready', function() {
+    console.log("file页面plusready事件触发");
+
     // 检查并管理file页面，确保只有一个实例
     const cleaned = checkAndManageFilePage(true); // 保留当前页面
     if (cleaned) {
@@ -279,64 +281,93 @@ document.addEventListener('plusready', function() {
     } else {
         console.log('file页面单例检查完成，无需清理');
     }
+    
+    // 如果已经通过直接路径加载了文件，则不再执行原始查找
+    if (window.fileAlreadyLoaded) {
+        console.log('文件已通过完整路径加载，跳过原始查找逻辑');
+        return;
+    }
 
-    // 检查并创建私有文档目录，同时列出目录中的文件
-    plus.io.requestFileSystem(plus.io.PRIVATE_DOC, function(fs) {
-        fs.root.getDirectory('documents', { create: true }, function(dirEntry) {
-            console.log('私有文档目录已就绪');
+    // 直接获取会议ID（从URL或本地存储）
+    try {
+        // 尝试从URL参数获取meetingId
+        const urlParams = new URLSearchParams(window.location.search);
+        let meetingId = urlParams.get('meeting_id');
+        
+        // 获取文件名参数
+        const fileParam = urlParams.get('file');
+        // 处理文件名，提取纯文件名（去掉扩展名）
+        let filename = fileParam;
+        if (filename && filename.includes('.')) {
+            filename = filename.substring(0, filename.lastIndexOf('.'));
+        }
+        
+        if (!filename) {
+            console.error('未获取到文件名参数');
+            showErrorMessage('未指定文件名');
+            return;
+        }
+        
+        // 如果URL中没有，则从本地存储获取
+        if (!meetingId) {
+            const meetingData = plus.storage.getItem('meetingData') ? 
+                JSON.parse(plus.storage.getItem('meetingData')) : null;
+            meetingId = meetingData ? (meetingData.meeting_id || meetingData.id) : null;
+        }
+        
+        if (!meetingId) {
+            console.error('无法获取会议ID');
+            return;
+        }
+        
+        console.log('当前会议ID：', meetingId);
+        console.log('当前文件名：', filename);
 
-            // 创建目录读取器
-            const directoryReader = dirEntry.createReader();
+        // 检查meeting_files目录是否存在
+        plus.io.requestFileSystem(plus.io.PRIVATE_DOC, function(fs) {
+            fs.root.getDirectory('meeting_files', { create: false }, function(meetingFilesDir) {
+                console.log('meeting_files目录存在');
 
-            // 读取目录内容
-            directoryReader.readEntries(function(entries) {
-                console.log('documents目录文件列表：');
-                const urlParams = new URLSearchParams(window.location.search);
-                // 使用file参数，与下方代码保持一致
-                const searchFilename = urlParams.get('file');
-                // 处理文件名，如果包含.pdf后缀则去除
-                let processedFilename = searchFilename;
-                if (processedFilename && processedFilename.toLowerCase().endsWith('.pdf')) {
-                    processedFilename = processedFilename.substring(0, processedFilename.length - 4);
-                }
+                // 查找会议文件夹（可能包含会议ID前缀）
+                const dirReader = meetingFilesDir.createReader();
+                dirReader.readEntries(function(entries) {
+                    console.log('在meeting_files中找到', entries.length, '个文件夹');
 
-                // 从处理后的文件名中提取纯文件名（去掉路径部分）
-                let pureFilename = processedFilename;
-                if (pureFilename && pureFilename.includes('/')) {
-                    pureFilename = pureFilename.substring(pureFilename.lastIndexOf('/') + 1);
-                }
-
-                const searchJpgFilename = pureFilename ? pureFilename + '.jpg' : null;
-
-                // 添加更明确的日志信息
-                console.log('正在查找的文件名：', searchJpgFilename || '未指定文件名');
-
-                let fileFound = false;
-                entries.forEach(function(entry) {
-                    console.log(`目录中的文件：${entry.name}, 类型：${entry.isDirectory ? '目录' : '文件'}`);
-
-                    if (searchJpgFilename && entry.name === searchJpgFilename) {
-                        fileFound = true;
-                        console.log('找到匹配的文件！');
-                    } else if (searchJpgFilename) {
-                        console.log(`文件名差异：\n期望文件名：${searchJpgFilename}\n实际文件名：${entry.name}`);
+                    // 查找包含会议ID的文件夹
+                    let meetingFolder = null;
+                    for (let i = 0; i < entries.length; i++) {
+                        const entry = entries[i];
+                        if (entry.isDirectory && entry.name.includes(meetingId)) {
+                            meetingFolder = entry;
+                            console.log('找到会议文件夹：', entry.name);
+                            break;
+                        }
                     }
-                });
 
-                if (searchJpgFilename && !fileFound) {
-                    console.log('警告：未在目录中找到要查找的文件！');
-                }
+                    if (!meetingFolder) {
+                        console.error('未找到当前会议的文件夹');
+                        showErrorMessage('未找到当前会议的文件夹');
+                        return;
+                    }
+
+                    // 递归查找文件
+                    findFileInDirectory(meetingFolder, filename + '.jpg');
+                }, function(error) {
+                    console.error('读取meeting_files目录失败：', error);
+                    showErrorMessage('读取会议文件夹失败');
+                });
             }, function(error) {
-                console.error('读取目录内容失败：', error);
+                console.error('meeting_files目录不存在：', error);
+                showErrorMessage('会议文件夹不存在');
             });
         }, function(error) {
-            console.error('创建私有文档目录失败：', error);
-            showErrorMessage('无法创建文件存储目录');
+            console.error('获取文件系统失败：', error);
+            showErrorMessage('无法访问文件系统');
         });
-    }, function(error) {
-        console.error('获取文件系统失败：', error);
-        showErrorMessage('无法访问文件系统');
-    });
+    } catch (error) {
+        console.error('解析会议数据失败：', error);
+        showErrorMessage('解析会议数据失败');
+    }
 
     // 禁止返回
     plus.key.addEventListener('backbutton', function() {
@@ -417,15 +448,15 @@ document.addEventListener('plusready', function() {
 
             console.log('当前会议ID：', meetingId);
 
-            // 检查meeting-files目录是否存在
+            // 检查meeting_files目录是否存在
             plus.io.requestFileSystem(plus.io.PRIVATE_DOC, function(fs) {
-                fs.root.getDirectory('meeting-files', { create: false }, function(meetingFilesDir) {
-                    console.log('meeting-files目录存在');
+                fs.root.getDirectory('meeting_files', { create: false }, function(meetingFilesDir) {
+                    console.log('meeting_files目录存在');
 
                     // 查找会议文件夹（可能包含会议ID前缀）
                     const dirReader = meetingFilesDir.createReader();
                     dirReader.readEntries(function(entries) {
-                        console.log('在meeting-files中找到', entries.length, '个文件夹');
+                        console.log('在meeting_files中找到', entries.length, '个文件夹');
 
                         // 查找包含会议ID的文件夹
                         let meetingFolder = null;
@@ -447,11 +478,11 @@ document.addEventListener('plusready', function() {
                         // 递归查找文件
                         findFileInDirectory(meetingFolder, filename + '.jpg');
                     }, function(error) {
-                        console.error('读取meeting-files目录失败：', error);
+                        console.error('读取meeting_files目录失败：', error);
                         showErrorMessage('读取会议文件夹失败');
                     });
                 }, function(error) {
-                    console.error('meeting-files目录不存在：', error);
+                    console.error('meeting_files目录不存在：', error);
                     showErrorMessage('会议文件夹不存在');
                 });
             }, function(error) {
@@ -677,165 +708,6 @@ function scrollToPage(pageNum) {
                 behavior: 'smooth'
             });
         }
-
-        // 添加页面分隔线的函数
-        // 添加页面分隔线的函数
-function addPageDividers() {
-    // 获取图片元素
-    const img = document.querySelector('#fileContent img');
-    if (!img || !img.complete) return;
-
-    // 移除已有的分隔线（如果有）
-    const existingDividers = document.querySelectorAll('.page-divider');
-    existingDividers.forEach(divider => divider.remove());
-
-    // 获取URL中的总页数参数
-    const urlParams = new URLSearchParams(window.location.search);
-    const pageParam = urlParams.get('page');
-    const totalPages = pageParam ? parseInt(pageParam) : 1;
-
-    if (totalPages <= 1) return; // 如果只有一页，不需要添加分隔线
-
-    // 计算每页高度
-    const imgHeight = img.offsetHeight;
-    const pageHeight = imgHeight / totalPages;
-
-    // 获取图片容器
-    const fileContent = document.getElementById('fileContent');
-
-    // 为每个页面添加分隔线（包括第一页上方和各页之间，除了最后一页之后）
-    for (let i = 0; i < totalPages; i++) {
-        const divider = document.createElement('div');
-        divider.className = 'page-divider';
-        divider.style.cssText = `
-            position: absolute;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(to right, transparent, #9c2424, transparent);
-            z-index: 100;
-            margin: 0 15px;
-        `;
-
-        // 计算分隔线位置（相对于图片顶部）
-        const dividerPosition = i * pageHeight;
-
-        // 设置分隔线位置
-        divider.style.top = `${dividerPosition + img.offsetTop}px`;
-
-        // 添加页码标签
-        const pageLabel = document.createElement('div');
-        pageLabel.className = 'page-label';
-        pageLabel.style.cssText = `
-            position: absolute;
-            right: 20px;
-            background-color: #9c2424;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 12px;
-            transform: translateY(-50%);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        `;
-        // 对于第一页上方的分隔线，显示第1页；对于其他分隔线，显示下一页的页码
-        pageLabel.textContent = `第 ${i+1} 页`;
-        divider.appendChild(pageLabel);
-
-        // 将分隔线添加到文档中
-        fileContent.appendChild(divider);
-    }
-}
-
-// 显示错误信息的函数
-function showErrorMessage(message) {
-    const fileContent = document.getElementById('fileContent');
-    fileContent.innerHTML = `
-        <div style="text-align: center; padding: 20px;">
-            <div style="color: #666; margin-bottom: 20px;">${message}</div>
-            <button onclick="goBack()" style="background-color: #ff6b00; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#ff8533'" onmouseout="this.style.backgroundColor='#ff6b00'">返回列表</button>
-        </div>
-    `;
-}
-
-// 返回函数
-function goBack() {
-    if (typeof plus !== 'undefined') {
-        console.log('返回list页面');
-        // 获取当前webview并使用动画关闭
-        var currentWebview = plus.webview.currentWebview();
-        currentWebview.close('slide-out-right');
-    } else {
-        console.log('返回上一页');
-        window.history.back();
-    }
-}
-
-// 添加页面分隔线的函数
-function addPageDividers() {
-    // 获取图片元素
-    const img = document.querySelector('#fileContent img');
-    if (!img || !img.complete) return;
-
-    // 移除已有的分隔线（如果有）
-    const existingDividers = document.querySelectorAll('.page-divider');
-    existingDividers.forEach(divider => divider.remove());
-
-    // 获取URL中的总页数参数
-    const urlParams = new URLSearchParams(window.location.search);
-    const pageParam = urlParams.get('page');
-    const totalPages = pageParam ? parseInt(pageParam) : 1;
-
-    if (totalPages <= 1) return; // 如果只有一页，不需要添加分隔线
-
-    // 计算每页高度
-    const imgHeight = img.offsetHeight;
-    const pageHeight = imgHeight / totalPages;
-
-    // 获取图片容器
-    const fileContent = document.getElementById('fileContent');
-
-    // 为每个页面添加分隔线（包括第一页上方和各页之间，除了最后一页之后）
-    for (let i = 0; i < totalPages; i++) {
-        const divider = document.createElement('div');
-        divider.className = 'page-divider';
-        divider.style.cssText = `
-            position: absolute;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(to right, transparent, #9c2424, transparent);
-            z-index: 100;
-            margin: 0 15px;
-        `;
-
-        // 计算分隔线位置（相对于图片顶部）
-        const dividerPosition = i * pageHeight;
-
-        // 设置分隔线位置
-        divider.style.top = `${dividerPosition + img.offsetTop}px`;
-
-        // 添加页码标签
-        const pageLabel = document.createElement('div');
-        pageLabel.className = 'page-label';
-        pageLabel.style.cssText = `
-            position: absolute;
-            right: 20px;
-            background-color: #9c2424;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 12px;
-            transform: translateY(-50%);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        `;
-        // 对于第一页上方的分隔线，显示第1页；对于其他分隔线，显示下一页的页码
-        pageLabel.textContent = `第 ${i+1} 页`;
-        divider.appendChild(pageLabel);
-
-        // 将分隔线添加到文档中
-        fileContent.appendChild(divider);
-    }
-}
     }
 }
 

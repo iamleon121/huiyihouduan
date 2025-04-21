@@ -568,7 +568,7 @@ function fetchMeetingById(meetingId) {
         const mappedProgress = 50 + (data.percent / 100 * 20);
         stopProgressAnimation();
         setProgress(mappedProgress);
-        updateLoadingText(`正在下载会议文件... ${data.percent}%`);
+        updateLoadingText('正在下载会议文件...');
     });
 
     LoadingService.addEventListener('downloadComplete', function(data) {
@@ -938,7 +938,8 @@ document.addEventListener('DOMContentLoaded', function() {
             stopProgressAnimation();
             setProgress(100);
             updateLoadingText('测试成功');
-            showButtons();
+            // 按钮已经被移除，不再显示
+            console.log('按钮已经被移除，不再显示');
         };
 
         // 创建测试失败按钮
@@ -954,7 +955,8 @@ document.addEventListener('DOMContentLoaded', function() {
             stopProgressAnimation();
             setProgress(20);
             showError('测试错误消息');
-            showButtons();
+            // 按钮已经被移除，不再显示
+            console.log('按钮已经被移除，不再显示');
         };
 
         // 添加按钮到容器

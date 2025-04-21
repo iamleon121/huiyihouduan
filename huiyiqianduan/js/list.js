@@ -119,6 +119,36 @@ document.addEventListener('plusready', function() {
 
     // 从本地存储读取数据并更新页面
     loadMeetingDataFromStorage();
+
+    // 获取本地存储中的会议数据并输出到调试台
+    if (typeof plus !== 'undefined' && plus.storage) {
+        try {
+            const storedData = plus.storage.getItem('meetingData');
+            if (storedData) {
+                console.log('本地存储中的会议数据:', storedData);
+                const jsonData = JSON.parse(storedData);
+                console.log('解析后的会议数据:', JSON.stringify(jsonData, null, 2));
+
+                // 输出议程项信息
+                if (jsonData.agenda_items && jsonData.agenda_items.length > 0) {
+                    console.log('议程项数量:', jsonData.agenda_items.length);
+                    jsonData.agenda_items.forEach((item, index) => {
+                        console.log(`议程项 ${index + 1}:`, item.title);
+                        if (item.files && item.files.length > 0) {
+                            console.log(`  文件数量: ${item.files.length}`);
+                            item.files.forEach((file, fileIndex) => {
+                                console.log(`  文件 ${fileIndex + 1}:`, file.name || file.display_name);
+                            });
+                        }
+                    });
+                }
+            } else {
+                console.warn('本地存储中没有会议数据');
+            }
+        } catch (error) {
+            console.error('读取本地存储数据失败：', error);
+        }
+    }
 });
 
 function updateMeetingTopics(jsonData) {
