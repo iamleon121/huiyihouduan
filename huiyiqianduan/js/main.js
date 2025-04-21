@@ -15,11 +15,10 @@ function updateTitleText() {
                     logoTextElement.textContent = titleText;
                     // 不输出标题文字相关提示
 
-                    // 强制刷新样式以确保更新生效
-                    logoTextElement.style.display = 'none';
-                    setTimeout(() => {
-                        logoTextElement.style.display = '';
-                    }, 10);
+                    // 确保标题文字始终显示
+                    logoTextElement.style.display = '';
+                    // 添加日志以跟踪标题文字更新
+                    console.log('标题文字已更新为:', titleText);
                 } else {
                     console.error('找不到logo-text元素');
                 }
@@ -90,6 +89,20 @@ document.addEventListener('plusready', function() {
 
     // 更新标题文字
     updateTitleText();
+
+    // 确保图标和标题文字显示
+    const logoElement = document.querySelector('.logo img');
+    const logoTextElement = document.querySelector('.logo-text');
+
+    if (logoElement) {
+        logoElement.style.display = '';
+        console.log('plusready事件中确保图标显示');
+    }
+
+    if (logoTextElement) {
+        logoTextElement.style.display = '';
+        console.log('plusready事件中确保标题文字显示');
+    }
 
     // 添加点击时间区域打开设置页面的功能
     // 初始化点击计数器和时间戳
@@ -200,6 +213,22 @@ function updateMeetingInfo(jsonData) {
 document.addEventListener('visibilitychange', function() {
     if (document.visibilityState === 'visible' && typeof plus !== 'undefined' && plus.storage) {
         try {
+            console.log('页面变为可见状态，更新数据和样式');
+
+            // 确保图标和标题文字显示
+            const logoElement = document.querySelector('.logo img');
+            const logoTextElement = document.querySelector('.logo-text');
+
+            if (logoElement) {
+                logoElement.style.display = '';
+                console.log('确保图标显示');
+            }
+
+            if (logoTextElement) {
+                logoTextElement.style.display = '';
+                console.log('确保标题文字显示');
+            }
+
             // 更新标题文字
             updateTitleText();
 
@@ -211,6 +240,7 @@ document.addEventListener('visibilitychange', function() {
                     const introElement = document.querySelector('.meeting-intro-text');
                     if (titleElement) titleElement.textContent = jsonData.title;
                     if (introElement) introElement.textContent = jsonData.time;
+                    console.log('更新会议标题和时间成功');
                 } else {
                     console.error('无效的会议数据');
                     plus.webview.close();
