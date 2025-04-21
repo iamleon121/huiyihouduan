@@ -50,12 +50,7 @@
         </div>
     </div>
 
-    <!-- 按钮容器 -->
-    <div class="button-container">
-        <button class="loading-button return-button" onclick="returnToMain()">返回主页面</button>
-        <button class="loading-button retry-button" onclick="retryLoading()">重试</button>
-        <button class="loading-button close-button" onclick="closeCurrentPage()">关闭</button>
-    </div>
+    <!-- 按钮容器已移除 -->
 
     <script>
         // 关闭当前页面函数
@@ -71,13 +66,11 @@
             }
         }
 
-        // 重试加载函数
+        // 重试加载函数（保留但不再使用）
         function retryLoading() {
             console.log('重试加载');
             // 隐藏错误消息
             hideError();
-            // 隐藏重试按钮
-            document.querySelector('.retry-button').style.display = 'none';
             // 重置进度条
             setProgress(0);
             // 重新开始加载过程
@@ -143,10 +136,7 @@
             // 初始化加载文本
             updateLoadingText('正在初始化系统...');
 
-            // 初始隐藏所有按钮
-            document.querySelectorAll('.loading-button').forEach(button => {
-                button.style.display = 'none';
-            });
+            // 按钮已经被移除，不需要初始化
 
             // 隐藏错误消息
             hideError();

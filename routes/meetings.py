@@ -292,10 +292,20 @@ async def get_meeting_data(meeting_id: str, db: Session = Depends(get_db)):
                         # 确保文件包含总页数信息
                         file_data = file.copy()  # 复制一份，避免修改原始数据
 
+                        # 删除path和url信息，避免暴露服务器路径
+                        if 'path' in file_data:
+                            pdf_path = file_data.pop('path')
+                        else:
+                            pdf_path = None
+
+                        # 保存url信息用于构建jpg_url，然后删除
+                        file_url = file_data.get('url', '')
+                        if 'url' in file_data:
+                            file_data.pop('url')
+
                         # 如果文件是PDF且没有总页数信息，尝试获取
                         if file_data.get('name', '').lower().endswith('.pdf') and 'total_pages' not in file_data:
                             # 如果有文件路径，尝试获取总页数
-                            pdf_path = file_data.get('path')
                             if pdf_path and os.path.exists(pdf_path):
                                 try:
                                     # 使用同步方式获取PDF总页数
@@ -312,14 +322,45 @@ async def get_meeting_data(meeting_id: str, db: Session = Depends(get_db)):
                             else:
                                 file_data['total_pages'] = 0
 
+                        # 添加JPG信息
+                        if file_data.get('name', '').lower().endswith('.pdf'):
+                            # 构建JPG路径
+                            try:
+                                # 从文件URL中提取信息
+                                if file_url and '/uploads/' in file_url:
+                                    # 例如，从URL“/uploads/123456/agenda_1/abc123_file.pdf”中提取信息
+                                    parts = file_url.split('/')
+                                    if len(parts) >= 4:
+                                        meeting_id = parts[2]
+                                        agenda_folder = parts[3]
+                                        filename = parts[4] if len(parts) > 4 else ''
+
+                                        # 从filename中提取UUID
+                                        pdf_uuid = filename.split('_')[0] if '_' in filename else ''
+
+                                        if pdf_uuid:
+                                            # 构建JPG路径
+                                            jpg_url = f"/uploads/{meeting_id}/{agenda_folder}/jpgs/{pdf_uuid}/{pdf_uuid}.jpg"
+                                            file_data['jpg_url'] = jpg_url
+                                # 如果没有URL信息，尝试从文件名中提取UUID
+                                elif 'name' in file_data:
+                                    filename = file_data['name']
+                                    pdf_uuid = filename.split('_')[0] if '_' in filename else ''
+
+                                    if pdf_uuid and meeting_id and agenda_item.position:
+                                        # 构建JPG路径
+                                        agenda_folder = f"agenda_{agenda_item.position}"
+                                        jpg_url = f"/uploads/{meeting_id}/{agenda_folder}/jpgs/{pdf_uuid}/{pdf_uuid}.jpg"
+                                        file_data['jpg_url'] = jpg_url
+                            except Exception as e:
+                                print(f"构建JPG路径时出错: {str(e)}")
+
                         processed_files.append(file_data)
                     # 如果文件信息是字符串，创建一个字典
                     elif isinstance(file, str):
                         file_data = {
                             "name": file,
-                            "path": "",
                             "size": 0,
-                            "url": "",
                             "total_pages": 0  # 对于字符串类型的文件信息，默认总页数为0
                         }
                         processed_files.append(file_data)

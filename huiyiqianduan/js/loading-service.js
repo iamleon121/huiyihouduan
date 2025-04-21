@@ -10,7 +10,7 @@ const LoadingService = {
     serverBaseUrl: 'http://192.168.110.10:8000', // 默认服务器基础URL
     meetingDataUrl: 'http://192.168.110.10:8000/data.json', // 默认会议数据接口
     activeMeetingsUrl: 'http://192.168.110.10:8000/api/v1/meetings/active/meetings', // 默认进行中会议列表接口
-    meetingPackageUrl: 'http://192.168.110.10:8000/api/v1/meetings/active/download-package/', // 默认会议压缩包下载接口
+    meetingPackageUrl: 'http://192.168.110.10:8000/api/v1/meetings/', // 会议基础路径
 
     // 事件监听器集合
     eventListeners: {},
@@ -61,10 +61,10 @@ const LoadingService = {
                         // 使用新的API路径
                         this.meetingDataUrl = this.serverBaseUrl + '/api/v1/meetings/';
                         this.activeMeetingsUrl = this.serverBaseUrl + '/api/v1/meetings/active/meetings';
-                        this.meetingPackageUrl = this.serverBaseUrl + '/api/v1/meetings/active/download-package/';
+                        this.meetingPackageUrl = this.serverBaseUrl + '/api/v1/meetings/';
                         console.log('已设置会议数据接口URL:', this.meetingDataUrl);
                         console.log('已设置进行中会议列表接口URL:', this.activeMeetingsUrl);
-                        console.log('已设置会议压缩包下载接口URL:', this.meetingPackageUrl);
+                        console.log('已设置会议基础路径:', this.meetingPackageUrl);
                     }
                 }
             } else {
@@ -351,11 +351,22 @@ const LoadingService = {
 
                             console.log('会议数据包解析成功');
 
-                            // 触发数据获取完成事件
-                            this.triggerEvent('dataFetchComplete', jsonData);
-
-                            this.isDataFetching = false;
-                            resolve(jsonData);
+                            // 下载并解压会议ZIP压缩包
+                            this.downloadAndExtractMeetingPackage(meetingId)
+                                .then(() => {
+                                    console.log('会议ZIP压缩包下载并解压成功');
+                                    // 触发数据获取完成事件
+                                    this.triggerEvent('dataFetchComplete', jsonData);
+                                    this.isDataFetching = false;
+                                    resolve(jsonData);
+                                })
+                                .catch(error => {
+                                    console.error('会议ZIP压缩包下载或解压失败:', error);
+                                    // 即使ZIP包处理失败，也继续完成数据获取流程
+                                    this.triggerEvent('dataFetchComplete', jsonData);
+                                    this.isDataFetching = false;
+                                    resolve(jsonData);
+                                });
                         } catch (error) {
                             console.error('JSON解析错误:', error);
                             this.isDataFetching = false;
@@ -394,6 +405,374 @@ const LoadingService = {
                 this.isDataFetching = false;
                 reject(error);
             }
+        });
+    },
+
+    // 下载并解压会议ZIP压缩包
+    downloadAndExtractMeetingPackage: function(meetingId) {
+        return new Promise((resolve, reject) => {
+            console.log('开始下载会议ZIP压缩包, ID:', meetingId);
+
+            // 触发下载开始事件
+            this.triggerEvent('downloadStart', { meetingId: meetingId });
+
+            // 构建下载URL
+            const downloadUrl = this.meetingPackageUrl + meetingId + '/download-package';
+            console.log('下载URL:', downloadUrl);
+
+            // 确保下载文件夹存在
+            this.ensureDirectoryExists('_doc/download/')
+                .then(() => {
+                    // 创建下载任务
+                    const dtask = plus.downloader.createDownload(downloadUrl, {
+                        filename: '_doc/download/meeting_' + meetingId + '.zip',
+                        timeout: 30, // 超时时间，单位为秒
+                        retry: 3 // 重试次数
+                    }, (d, status) => {
+                        if (status === 200) {
+                            console.log('下载成功:', d.filename);
+
+                            // 触发下载完成事件
+                            this.triggerEvent('downloadComplete', { meetingId: meetingId, filename: d.filename });
+
+                            // 触发解压开始事件
+                            this.triggerEvent('extractStart', { meetingId: meetingId, filename: d.filename });
+
+                            // 清理下载文件夹中的其他压缩包
+                            console.log('开始清理下载文件夹，保留文件:', d.filename);
+                            this.cleanupDownloadFolder(d.filename)
+                                .then(() => {
+                                    console.log('清理其他压缩包成功');
+
+                                    // 解压文件
+                                    return this.extractZipFile(d.filename, meetingId);
+                                })
+                                .then(() => {
+                                    console.log('解压成功');
+
+                                    // 触发解压完成事件
+                                    this.triggerEvent('extractComplete', { meetingId: meetingId });
+
+                                    resolve();
+                                })
+                                .catch(error => {
+                                    console.error('清理或解压失败:', error);
+
+                                    // 触发解压失败事件
+                                    this.triggerEvent('extractError', { meetingId: meetingId, error: error.message || String(error) });
+
+                                    // 即使解压失败也算成功，不中断整体流程
+                                    resolve();
+                                });
+                        } else {
+                            console.error('下载失败, 状态码:', status);
+
+                            // 触发下载失败事件
+                            this.triggerEvent('downloadError', { meetingId: meetingId, status: status });
+
+                            // 即使下载失败也算成功，不中断整体流程
+                            resolve();
+                        }
+                    });
+
+                    // 监听下载进度
+                    let lastPercent = -1; // 上次触发事件的进度百分比
+                    dtask.addEventListener('statechanged', (task, _status) => {
+                        if (task.state === 3) { // 下载进行中
+                            const totalSize = task.totalSize;
+                            const downloadedSize = task.downloadedSize;
+                            const percent = totalSize > 0 ? Math.round(downloadedSize / totalSize * 100) : 0;
+
+                            // 只在进度变化时触发事件，避免过多的日志输出
+                            if (percent !== lastPercent) {
+                                lastPercent = percent;
+
+                                // 触发下载进度事件
+                                this.triggerEvent('downloadProgress', {
+                                    meetingId: meetingId,
+                                    percent: percent,
+                                    downloadedSize: downloadedSize,
+                                    totalSize: totalSize
+                                });
+                            }
+                        }
+                    });
+
+                    // 开始下载任务
+                    dtask.start();
+                });
+        });
+    },
+
+    // 解压ZIP文件
+    extractZipFile: function(zipPath, meetingId) {
+        return new Promise((resolve, reject) => {
+            console.log('开始解压ZIP文件:', zipPath);
+
+            // 创建会议文件夹路径
+            const meetingFolderPath = '_doc/meeting_files/';
+            const extractPath = meetingFolderPath + 'meeting_' + meetingId + '/';
+
+            // 确保目标文件夹存在
+            this.ensureDirectoryExists(meetingFolderPath)
+                .then(() => {
+                    // 检查并清理旧的会议文件夹
+                    return this.cleanupOldMeetingFolders(meetingFolderPath, 'meeting_' + meetingId);
+                })
+                .then(() => {
+                    // 确保解压目标文件夹存在
+                    return this.ensureDirectoryExists(extractPath);
+                })
+                .then(() => {
+                    // 使用plus.zip模块解压文件
+                    try {
+                        console.log('准备解压文件:', zipPath, '到', extractPath);
+
+                        // 检查源文件是否存在
+                        plus.io.resolveLocalFileSystemURL(zipPath, zipEntry => {
+                            console.log('源ZIP文件存在，大小:', zipEntry.size, '字节');
+
+                            // 直接使用plus.zip.decompress解压文件
+                            console.log('开始调用plus.zip.decompress解压文件');
+                            plus.zip.decompress(zipPath, extractPath, status => {
+                                console.log('解压返回状态码:', status);
+                                if (status === 0) {
+                                    console.log('解压完成，路径:', extractPath);
+
+                                    // 检查解压后的目录是否存在
+                                    plus.io.resolveLocalFileSystemURL(extractPath, extractEntry => {
+                                        console.log('解压目录存在，内容如下:');
+
+                                        // 列出解压目录中的文件
+                                        const reader = extractEntry.createReader();
+                                        reader.readEntries(entries => {
+                                            entries.forEach(entry => {
+                                                console.log(' - ' + entry.name + (entry.isDirectory ? '/' : ''));
+                                            });
+
+                                            // 保存当前会议文件夹路径到本地存储
+                                            plus.storage.setItem('currentMeetingFolder', extractPath);
+
+                                            // 删除下载的ZIP文件
+                                            plus.io.resolveLocalFileSystemURL(zipPath, entry => {
+                                                entry.remove(() => {
+                                                    console.log('ZIP文件已删除:', zipPath);
+                                                    resolve(); // 成功完成所有操作
+                                                }, error => {
+                                                    console.error('删除ZIP文件失败:', error);
+                                                    // 即使删除失败也算成功
+                                                    resolve();
+                                                });
+                                            }, error => {
+                                                console.error('解析ZIP文件路径失败:', error);
+                                                // 即使解析失败也算成功
+                                                resolve();
+                                            });
+                                        }, error => {
+                                            console.error('读取解压目录内容失败:', error);
+                                            // 即使读取失败也算成功
+                                            resolve();
+                                        });
+                                    }, error => {
+                                        console.error('解压目录不存在或无法访问:', error);
+                                        // 即使解压目录不存在也算成功
+                                        resolve();
+                                    });
+                                } else {
+                                    console.error('解压失败, 状态码:', status);
+                                    // 尝试使用其他方法解压
+                                    console.log('尝试使用其他方法解压...');
+                                    // 即使解压失败也算成功，不中断整体流程
+                                    resolve();
+                                }
+                            });
+                        }, error => {
+                            console.error('源ZIP文件不存在或无法访问:', zipPath, error);
+                            // 即使源文件不存在也算成功，不中断整体流程
+                            resolve();
+                        });
+                    } catch (error) {
+                        console.error('解压过程中发生异常:', error);
+                        // 即使发生异常也算成功，不中断整体流程
+                        resolve();
+                    }
+                })
+                .catch(error => {
+                    console.error('准备解压环境失败:', error);
+                    reject(error);
+                });
+        });
+    },
+
+    // 确保目录存在
+    ensureDirectoryExists: function(dirPath) {
+        return new Promise((resolve, reject) => {
+            plus.io.resolveLocalFileSystemURL(dirPath, entry => {
+                // 目录已存在
+                console.log('目录已存在:', dirPath);
+                resolve();
+            }, error => {
+                // 目录不存在，创建它
+                console.log('目录不存在，创建:', dirPath);
+                plus.io.resolveLocalFileSystemURL('_doc/', entry => {
+                    // 从_doc/路径开始创建子目录
+                    const dirs = dirPath.replace('_doc/', '').split('/');
+                    this.createSubDirectories(entry, dirs, 0)
+                        .then(resolve)
+                        .catch(reject);
+                }, reject);
+            });
+        });
+    },
+
+    // 递归创建子目录
+    createSubDirectories: function(parentEntry, dirs, index) {
+        return new Promise((resolve, reject) => {
+            if (index >= dirs.length) {
+                resolve();
+                return;
+            }
+
+            // 跳过空目录名
+            if (!dirs[index]) {
+                this.createSubDirectories(parentEntry, dirs, index + 1)
+                    .then(resolve)
+                    .catch(reject);
+                return;
+            }
+
+            parentEntry.getDirectory(dirs[index], { create: true, exclusive: false }, dirEntry => {
+                this.createSubDirectories(dirEntry, dirs, index + 1)
+                    .then(resolve)
+                    .catch(reject);
+            }, reject);
+        });
+    },
+
+    // 清理下载文件夹中的其他压缩包
+    cleanupDownloadFolder: function(keepFilePath) {
+        return new Promise((resolve, reject) => {
+            console.log('清理下载文件夹中的其他压缩包，保留:', keepFilePath);
+
+            try {
+                // 获取要保留的文件名
+                const keepFileName = keepFilePath.substring(keepFilePath.lastIndexOf('/') + 1);
+                console.log('要保留的文件名:', keepFileName);
+
+                // 获取下载文件夹路径
+                const downloadFolderPath = '_doc/download/';
+
+                // 确保下载文件夹存在
+                this.ensureDirectoryExists(downloadFolderPath)
+                    .then(() => {
+                        // 获取文件夹中的所有文件
+                        plus.io.resolveLocalFileSystemURL(downloadFolderPath, entry => {
+                            const reader = entry.createReader();
+                            reader.readEntries(entries => {
+                                // 过滤出压缩包文件
+                                const zipFiles = entries.filter(entry => {
+                                    // 输出每个文件的名称便于调试
+                                    console.log('检查文件:', entry.name, '是否与保留文件名相同:', entry.name === keepFileName);
+                                    return !entry.isDirectory && entry.name.endsWith('.zip') && entry.name !== keepFileName;
+                                });
+
+                                console.log('找到', zipFiles.length, '个其他压缩包需要删除');
+
+                                // 如果没有需要删除的文件，直接完成
+                                if (zipFiles.length === 0) {
+                                    resolve();
+                                    return;
+                                }
+
+                                // 删除所有其他压缩包
+                                let deletedCount = 0;
+                                zipFiles.forEach(file => {
+                                    console.log('删除压缩包:', file.name);
+                                    file.remove(() => {
+                                        console.log('压缩包已删除:', file.name);
+                                        deletedCount++;
+                                        if (deletedCount === zipFiles.length) {
+                                            resolve();
+                                        }
+                                    }, error => {
+                                        console.error('删除压缩包失败:', file.name, error);
+                                        deletedCount++;
+                                        if (deletedCount === zipFiles.length) {
+                                            resolve();
+                                        }
+                                    });
+                                });
+                            }, error => {
+                                console.error('读取下载文件夹失败:', error);
+                                // 即使读取失败，也继续执行
+                                resolve();
+                            });
+                        }, error => {
+                            console.error('解析下载文件夹路径失败:', error);
+                            // 即使解析失败，也继续执行
+                            resolve();
+                        });
+                    })
+                    .catch(error => {
+                        console.error('创建下载文件夹失败:', error);
+                        // 即使创建失败，也继续执行
+                        resolve();
+                    });
+            } catch (error) {
+                console.error('清理下载文件夹时出错:', error);
+                // 即使出错，也继续执行
+                resolve();
+            }
+        });
+    },
+
+    // 清理旧的会议文件夹
+    cleanupOldMeetingFolders: function(basePath, exceptFolderName) {
+        return new Promise((resolve, reject) => {
+            console.log('清理旧的会议文件夹，保留:', exceptFolderName);
+
+            plus.io.resolveLocalFileSystemURL(basePath, entry => {
+                const reader = entry.createReader();
+                reader.readEntries(entries => {
+                    // 过滤出会议文件夹
+                    const meetingFolders = entries.filter(entry => {
+                        return entry.isDirectory && entry.name.startsWith('meeting_') && entry.name !== exceptFolderName;
+                    });
+
+                    console.log('找到', meetingFolders.length, '个旧会议文件夹需要删除');
+
+                    // 如果没有需要删除的文件夹，直接完成
+                    if (meetingFolders.length === 0) {
+                        resolve();
+                        return;
+                    }
+
+                    // 删除所有旧的会议文件夹
+                    let deletedCount = 0;
+                    meetingFolders.forEach(folder => {
+                        console.log('删除文件夹:', folder.name);
+                        folder.removeRecursively(() => {
+                            console.log('文件夹已删除:', folder.name);
+                            deletedCount++;
+                            if (deletedCount === meetingFolders.length) {
+                                resolve();
+                            }
+                        }, error => {
+                            console.error('删除文件夹失败:', folder.name, error);
+                            deletedCount++;
+                            if (deletedCount === meetingFolders.length) {
+                                resolve();
+                            }
+                        });
+                    });
+                }, error => {
+                    console.error('读取目录失败:', error);
+                    reject(error);
+                });
+            }, error => {
+                console.error('解析基础路径失败:', error);
+                reject(error);
+            });
         });
     },
 
