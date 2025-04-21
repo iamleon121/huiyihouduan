@@ -39,7 +39,7 @@ UPLOAD_DIR = os.path.join(project_root, "uploads")
 
 # --- 会议基本CRUD操作 ---
 
-@router.post("/", response_model=schemas.Meeting)
+@router.post("/")
 async def create_new_meeting(meeting: schemas.MeetingCreate, db: Session = Depends(get_db)):
     """创建新会议及其议程项"""
     db_meeting = crud.get_meeting(db, meeting_id=meeting.id)
@@ -53,29 +53,289 @@ async def create_new_meeting(meeting: schemas.MeetingCreate, db: Session = Depen
         # 不再更新会议变更识别码
         # 只有状态变为"进行中"时才会更新识别码
 
-        return db_meeting
+        # 手动构建响应数据
+        response = {
+            "id": db_meeting.id,
+            "title": db_meeting.title,
+            "intro": db_meeting.intro,
+            "time": db_meeting.time,
+            "status": db_meeting.status,
+            "agenda_items": []
+        }
+
+        # 添加议程项
+        if db_meeting.agenda_items:
+            for item in db_meeting.agenda_items:
+                agenda_item = {
+                    "title": item.title,
+                    "position": item.position,
+                    "meeting_id": item.meeting_id,
+                    "files": [],
+                    "pages": item.pages,
+                    "reporter": item.reporter,
+                    "duration_minutes": item.duration_minutes
+                }
+
+                # 添加文件
+                if item.files:
+                    for file in item.files:
+                        try:
+                            if file is None:
+                                continue
+
+                            file_data = {
+                                "id": getattr(file, 'id', None),
+                                "filename": getattr(file, 'filename', None),
+                                "path": getattr(file, 'path', None),
+                                "size": getattr(file, 'size', None),
+                                "content_type": getattr(file, 'content_type', None)
+                            }
+                            agenda_item["files"].append(file_data)
+                        except Exception as e:
+                            print(f"处理文件时出错: {str(e)}")
+                            # 继续处理下一个文件
+
+                response["agenda_items"].append(agenda_item)
+
+        return response
     except ValueError as e:
         # 处理标题重复错误
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/", response_model=List[schemas.Meeting])
+@router.get("/")
 def read_meetings(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """获取会议列表"""
     meetings = crud.get_meetings(db)
-    return meetings
+
+    # 手动构建响应数据
+    response = []
+    for meeting in meetings:
+        meeting_data = {
+            "id": meeting.id,
+            "title": meeting.title,
+            "intro": meeting.intro,
+            "time": meeting.time,
+            "status": meeting.status,
+            "agenda_items": []
+        }
+
+        # 添加议程项
+        if meeting.agenda_items:
+            for item in meeting.agenda_items:
+                agenda_item = {
+                    "title": item.title,
+                    "position": item.position,
+                    "meeting_id": item.meeting_id,
+                    "files": [],
+                    "pages": item.pages,
+                    "reporter": item.reporter,
+                    "duration_minutes": item.duration_minutes
+                }
+
+                # 添加文件
+                if item.files:
+                    for file in item.files:
+                        try:
+                            if file is None:
+                                continue
+
+                            file_data = {
+                                "id": getattr(file, 'id', None),
+                                "filename": getattr(file, 'filename', None),
+                                "path": getattr(file, 'path', None),
+                                "size": getattr(file, 'size', None),
+                                "content_type": getattr(file, 'content_type', None)
+                            }
+                            agenda_item["files"].append(file_data)
+                        except Exception as e:
+                            print(f"处理文件时出错: {str(e)}")
+                            # 继续处理下一个文件
+
+                meeting_data["agenda_items"].append(agenda_item)
+
+        response.append(meeting_data)
+
+    return response
 
 
-@router.get("/{meeting_id}", response_model=schemas.Meeting)
+@router.get("/{meeting_id}")
 def read_meeting(meeting_id: str, db: Session = Depends(get_db)):
     """获取单个会议详情"""
     db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
     if db_meeting is None:
         raise HTTPException(status_code=404, detail="Meeting not found")
-    return db_meeting
+
+    # 手动构建响应数据
+    response = {
+        "id": db_meeting.id,
+        "title": db_meeting.title,
+        "intro": db_meeting.intro,  # 确保包含会议简介
+        "time": db_meeting.time,
+        "status": db_meeting.status,
+        "agenda_items": []
+    }
+
+    # 添加议程项
+    if db_meeting.agenda_items:
+        for item in db_meeting.agenda_items:
+            agenda_item = {
+                "title": item.title,
+                "position": item.position,
+                "meeting_id": item.meeting_id,
+                "files": [],
+                "pages": item.pages,
+                "reporter": item.reporter,
+                "duration_minutes": item.duration_minutes
+            }
+
+            # 添加文件
+            if item.files:
+                # 处理文件信息，确保格式正确
+                processed_files = []
+                for file in item.files:
+                    # 如果文件信息是字典，直接使用
+                    if isinstance(file, dict):
+                        processed_files.append(file)
+                    # 如果文件信息是字符串，创建一个字典
+                    elif isinstance(file, str):
+                        processed_files.append({
+                            "name": file,
+                            "path": "",
+                            "size": 0,
+                            "url": ""
+                        })
+                    # 其他情况，跳过
+                    else:
+                        print(f"跳过无效的文件信息: {file}")
+
+                agenda_item["files"] = processed_files
+                print(f"议程项 {item.position} 的文件信息: {processed_files}")
+
+            response["agenda_items"].append(agenda_item)
+
+    return response
 
 
-@router.put("/{meeting_id}", response_model=schemas.Meeting)
+@router.get("/{meeting_id}/data")
+async def get_meeting_data(meeting_id: str, db: Session = Depends(get_db)):
+    """
+    获取指定会议的数据和压缩包URL
+
+    此API用于客户端获取指定会议的数据和压缩包URL。
+    如果会议不存在或不是"进行中"状态，将返回404错误。
+
+    Args:
+        meeting_id: 会议ID
+
+    返回:
+        dict: 包含会议数据和压缩包URL的字典
+          - id: 会议状态变更识别码
+          - meeting_id: 会议ID
+          - title: 会议标题
+          - time: 会议时间
+          - status: 会议状态
+          - package_url: 会议压缩包URL（如果有）
+          - agenda_items: 议程项列表，每个议程项包含标题、位置和文件列表
+    """
+    # 获取最新的会议变更识别码
+    token = crud.get_meeting_change_status_token(db)
+    print(f"[数据查询] 当前会议状态识别码: {token}")
+
+    # 查询指定会议
+    meeting = crud.get_meeting(db, meeting_id=meeting_id)
+
+    # 如果会议不存在，返回404错误
+    if not meeting:
+        raise HTTPException(status_code=404, detail=f"会议 {meeting_id} 不存在")
+
+    # 如果会议不是"进行中"状态，返回404错误
+    if meeting.status != "进行中":
+        raise HTTPException(status_code=404, detail=f"会议 {meeting_id} 不是进行中状态")
+
+    # 格式化时间，将T替换为空格
+    meeting_time = meeting.time
+    if meeting_time and 'T' in meeting_time:
+        meeting_time = meeting_time.replace('T', ' ')
+
+    # 构建会议数据
+    meeting_data = {
+        "id": token,  # 使用token作为数据包的ID
+        "meeting_id": meeting.id,  # 添加实际的会议ID
+        "title": meeting.title,
+        "intro": meeting.intro,  # 添加会议简介
+        "time": meeting_time,
+        "status": meeting.status,
+        "agenda_items": []  # 添加议程项列表
+    }
+
+    # 添加议程项和文件信息
+    if meeting.agenda_items:
+        # 按position排序议程项
+        sorted_agenda_items = sorted(meeting.agenda_items, key=lambda x: x.position)
+
+        for agenda_item in sorted_agenda_items:
+            item_data = {
+                "position": agenda_item.position,
+                "title": agenda_item.title,
+                "files": []
+            }
+
+            # 添加文件信息
+            if agenda_item.files:
+                # 处理文件信息，确保格式正确
+                processed_files = []
+                for file in agenda_item.files:
+                    # 如果文件信息是字典，直接使用
+                    if isinstance(file, dict):
+                        processed_files.append(file)
+                    # 如果文件信息是字符串，创建一个字典
+                    elif isinstance(file, str):
+                        processed_files.append({
+                            "name": file,
+                            "path": "",
+                            "size": 0,
+                            "url": ""
+                        })
+                    # 其他情况，跳过
+                    else:
+                        print(f"跳过无效的文件信息: {file}")
+
+                item_data["files"] = processed_files
+                print(f"议程项 {agenda_item.position} 的文件信息: {processed_files}")
+
+            meeting_data["agenda_items"].append(item_data)
+
+    # 如果会议有压缩包，添加压缩包URL
+    if meeting.package_path:
+        # 从 package_path 中提取文件名
+        package_filename = os.path.basename(meeting.package_path)
+        # 构建压缩包URL
+        package_url = f"/uploads/packages/{package_filename}"
+        meeting_data["package_url"] = package_url
+    else:
+        # 如果没有压缩包，尝试生成
+        try:
+            success = await MeetingService.generate_meeting_package(db, meeting.id)
+            if success:
+                # 重新获取会议信息，因为包路径可能已更新
+                db.refresh(meeting)
+                if meeting.package_path:
+                    # 从 package_path 中提取文件名
+                    package_filename = os.path.basename(meeting.package_path)
+                    # 构建压缩包URL
+                    package_url = f"/uploads/packages/{package_filename}"
+                    meeting_data["package_url"] = package_url
+        except Exception as e:
+            print(f"生成会议压缩包失败: {str(e)}")
+            # 即使生成失败，也继续返回会议数据
+
+    print(f"[数据查询] 返回会议 {meeting_id} 数据: {meeting_data}")
+
+    return meeting_data
+
+
+@router.put("/{meeting_id}")
 async def update_existing_meeting(meeting_id: str, meeting: schemas.MeetingUpdate, db: Session = Depends(get_db)):
     """更新会议信息，包括其议程项（采用删除旧项，添加新项的策略）"""
     try:
@@ -87,7 +347,52 @@ async def update_existing_meeting(meeting_id: str, meeting: schemas.MeetingUpdat
 
         # Need to reload agenda items if the response model expects them
         db.refresh(db_meeting, attribute_names=['agenda_items'])
-        return db_meeting
+
+        # 手动构建响应数据
+        response = {
+            "id": db_meeting.id,
+            "title": db_meeting.title,
+            "intro": db_meeting.intro,
+            "time": db_meeting.time,
+            "status": db_meeting.status,
+            "agenda_items": []
+        }
+
+        # 添加议程项
+        if db_meeting.agenda_items:
+            for item in db_meeting.agenda_items:
+                agenda_item = {
+                    "title": item.title,
+                    "position": item.position,
+                    "meeting_id": item.meeting_id,
+                    "files": [],
+                    "pages": item.pages,
+                    "reporter": item.reporter,
+                    "duration_minutes": item.duration_minutes
+                }
+
+                # 添加文件
+                if item.files:
+                    for file in item.files:
+                        try:
+                            if file is None:
+                                continue
+
+                            file_data = {
+                                "id": getattr(file, 'id', None),
+                                "filename": getattr(file, 'filename', None),
+                                "path": getattr(file, 'path', None),
+                                "size": getattr(file, 'size', None),
+                                "content_type": getattr(file, 'content_type', None)
+                            }
+                            agenda_item["files"].append(file_data)
+                        except Exception as e:
+                            print(f"处理文件时出错: {str(e)}")
+                            # 继续处理下一个文件
+
+                response["agenda_items"].append(agenda_item)
+
+        return response
     except ValueError as e:
         # 处理标题重复错误
         raise HTTPException(status_code=400, detail=str(e))
@@ -160,7 +465,7 @@ def get_meeting_status_token(db: Session = Depends(get_db)):
     }
 
 
-@router.put("/{meeting_id}/status", response_model=schemas.Meeting)
+@router.put("/{meeting_id}/status")
 async def update_meeting_status_endpoint(meeting_id: str, status_update: schemas.MeetingUpdate, db: Session = Depends(get_db)):
     """更新会议状态，仅当会议转变为"进行中"状态时更新会议变更识别码"""
     # 获取要更新的新状态
@@ -220,7 +525,51 @@ async def update_meeting_status_endpoint(meeting_id: str, status_update: schemas
 
         print(f"[状态变更] 会议 {meeting_id} ZIP包删除完成")
 
-    return db_meeting
+    # 手动构建响应数据
+    response = {
+        "id": db_meeting.id,
+        "title": db_meeting.title,
+        "intro": db_meeting.intro,
+        "time": db_meeting.time,
+        "status": db_meeting.status,
+        "agenda_items": []
+    }
+
+    # 添加议程项
+    if db_meeting.agenda_items:
+        for item in db_meeting.agenda_items:
+            agenda_item = {
+                "title": item.title,
+                "position": item.position,
+                "meeting_id": item.meeting_id,
+                "files": [],
+                "pages": item.pages,
+                "reporter": item.reporter,
+                "duration_minutes": item.duration_minutes
+            }
+
+            # 添加文件
+            if item.files:
+                for file in item.files:
+                    try:
+                        if file is None:
+                            continue
+
+                        file_data = {
+                            "id": getattr(file, 'id', None),
+                            "filename": getattr(file, 'filename', None),
+                            "path": getattr(file, 'path', None),
+                            "size": getattr(file, 'size', None),
+                            "content_type": getattr(file, 'content_type', None)
+                        }
+                        agenda_item["files"].append(file_data)
+                    except Exception as e:
+                        print(f"处理文件时出错: {str(e)}")
+                        # 继续处理下一个文件
+
+            response["agenda_items"].append(agenda_item)
+
+    return response
 
 
 @router.post("/status/token/test", response_model=dict)
@@ -312,13 +661,114 @@ async def download_meeting_package(meeting_id: str, db: Session = Depends(get_db
     # 使用MeetingService下载会议文件包
     zip_buffer = await MeetingService.download_meeting_package(db=db, meeting_id=meeting_id)
 
-    # 获取会议信息用于文件名
-    db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
-    zip_filename = f"{db_meeting.title.replace(' ', '_')}_{meeting_id}_jpgs.zip"
+    # 准备文件名 - 使用ASCII字符确保兼容性
+    # 仅使用会议ID作为文件名，避免中文字符编码问题
+    zip_filename = f"meeting_{meeting_id}_jpgs.zip"
 
     # 准备响应
     headers = {
         'Content-Disposition': f'attachment; filename="{zip_filename}"'
     }
+
+    return StreamingResponse(zip_buffer, media_type="application/zip", headers=headers)
+
+
+@router.get("/active/meetings")
+def get_active_meetings(db: Session = Depends(get_db)):
+    """
+    获取所有进行中的会议列表
+
+    此API用于客户端获取所有当前进行中的会议列表。
+    如果没有进行中的会议，将返回空列表。
+
+    Returns:
+        list: 进行中的会议列表，每个会议包含会议ID、标题、时间和压缩包URL
+    """
+    # 查询所有处于"进行中"状态的会议
+    in_progress_meetings = db.query(models.Meeting).filter(models.Meeting.status == "进行中").all()
+
+    # 准备响应数据
+    meetings_data = []
+
+    for meeting in in_progress_meetings:
+        # 格式化时间，将T替换为空格
+        meeting_time = meeting.time
+        if meeting_time and 'T' in meeting_time:
+            meeting_time = meeting_time.replace('T', ' ')
+
+        meeting_data = {
+            "id": meeting.id,
+            "title": meeting.title,
+            "time": meeting_time,
+            "status": meeting.status
+        }
+
+        # 如果会议有压缩包，添加压缩包URL
+        if meeting.package_path:
+            # 从 package_path 中提取文件名
+            package_filename = os.path.basename(meeting.package_path)
+            # 构建压缩包URL
+            package_url = f"/uploads/packages/{package_filename}"
+            meeting_data["package_url"] = package_url
+
+        meetings_data.append(meeting_data)
+
+    print(f"[活动会议查询] 当前进行中会议数量: {len(meetings_data)}")
+
+    return meetings_data
+
+
+@router.get("/active/download-package/{meeting_id}")
+async def download_active_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
+    """
+    下载指定进行中会议的压缩包
+
+    此API用于客户端直接下载指定进行中会议的压缩包。
+    如果会议不存在或不是进行中状态，将返回404错误。
+
+    Args:
+        meeting_id: 会议ID
+
+    Returns:
+        StreamingResponse: ZIP文件流响应
+    """
+    # 查询指定会议
+    meeting = crud.get_meeting(db, meeting_id=meeting_id)
+
+    # 如果会议不存在，返回404错误
+    if not meeting:
+        raise HTTPException(status_code=404, detail=f"会议 {meeting_id} 不存在")
+
+    # 如果会议不是进行中状态，返回404错误
+    if meeting.status != "进行中":
+        raise HTTPException(status_code=404, detail=f"会议 {meeting_id} 不是进行中状态")
+
+    # 检查会议是否有压缩包
+    if not meeting.package_path:
+        # 如果没有压缩包，尝试生成
+        success = await MeetingService.generate_meeting_package(db, meeting_id)
+        if not success:
+            raise HTTPException(status_code=500, detail="生成会议压缩包失败")
+
+        # 重新获取会议信息，因为包路径可能已更新
+        db.refresh(meeting)
+
+        # 再次检查是否有压缩包
+        if not meeting.package_path:
+            raise HTTPException(status_code=500, detail="生成会议压缩包失败")
+
+    # 使用MeetingService下载会议文件包
+    zip_buffer = await MeetingService.download_meeting_package(db=db, meeting_id=meeting_id)
+
+    # 准备文件名 - 使用ASCII字符确保兼容性
+    # 仅使用会议ID作为文件名，避免中文字符编码问题
+    zip_filename = f"meeting_{meeting_id}_jpgs.zip"
+
+    # 准备响应
+    headers = {
+        'Content-Disposition': f'attachment; filename="{zip_filename}"'
+    }
+
+    print(f"[压缩包下载] 返回进行中会议 {meeting_id} 的压缩包")
 
     return StreamingResponse(zip_buffer, media_type="application/zip", headers=headers)

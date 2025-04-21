@@ -25,6 +25,179 @@ let loadingProgress = 0;
 // 进度条更新定时器
 let progressTimer = null;
 
+// 检查本地存储中的会议状态并显示会议选择界面
+function checkMeetingStatus() {
+    if (!initializePlus()) {
+        console.error('plus初始化失败，无法检查会议状态');
+        showError('初始化失败，请重启应用');
+        return;
+    }
+
+    try {
+        // 从本地存储中获取会议状态
+        const meetingStatusJson = plus.storage.getItem('meetingStatus');
+        if (!meetingStatusJson) {
+            console.log('未找到会议状态数据，直接获取会议数据');
+            fetchMeetingData();
+            return;
+        }
+
+        const meetingStatus = JSON.parse(meetingStatusJson);
+        console.log('从本地存储中获取到会议状态:', meetingStatus);
+
+        // 检查是否有进行中的会议
+        if (meetingStatus.meetings && meetingStatus.meetings.length > 0) {
+            // 如果只有一个会议，直接选择它
+            if (meetingStatus.meetings.length === 1) {
+                console.log('只有一个进行中的会议，直接获取数据');
+                // 将选中的会议ID存储到本地
+                const selectedMeeting = meetingStatus.meetings[0];
+                plus.storage.setItem('selectedMeetingId', selectedMeeting.id);
+
+                // 显示加载提示
+                updateLoadingText(`正在加载会议: ${selectedMeeting.title || '未命名会议'}`);
+
+                // 直接获取数据
+                fetchMeetingData();
+            }
+            // 如果有多个会议，显示选择界面
+            else {
+                console.log('发现多个进行中的会议，显示会议选择界面');
+                displayMeetingSelection(meetingStatus.meetings);
+            }
+        } else {
+            console.log('未找到进行中的会议，直接获取数据');
+            fetchMeetingData();
+        }
+    } catch (error) {
+        console.error('检查会议状态时出错:', error);
+        showError('检查会议状态失败，请重试');
+    }
+}
+
+// 显示会议选择界面
+function displayMeetingSelection(meetings) {
+    // 隐藏加载进度界面
+    document.getElementById('loading-progress').style.display = 'none';
+
+    // 显示会议选择模态框
+    const meetingSelectionModal = document.getElementById('meeting-selection-modal');
+    meetingSelectionModal.style.display = 'flex';
+
+    // 获取会议列表容器
+    const meetingList = document.getElementById('meeting-list');
+    meetingList.innerHTML = '';
+
+    // 添加会议选项
+    meetings.forEach((meeting, index) => {
+        const meetingItem = document.createElement('div');
+        meetingItem.className = 'meeting-item';
+        meetingItem.dataset.id = meeting.id;
+
+        // 格式化时间
+        const meetingTime = meeting.time || '无时间信息';
+
+        // 获取会议简介，如果有的话
+        const meetingIntro = meeting.intro || '无会议简介';
+
+        // 添加延迟动画效果
+        meetingItem.style.animationDelay = `${index * 0.1}s`;
+
+        meetingItem.innerHTML = `
+            <h3>${meeting.title || '未命名会议'}</h3>
+            <p class="meeting-time"><i class="meeting-icon time-icon"></i>${meetingTime}</p>
+            <p class="meeting-intro">${meetingIntro.length > 50 ? meetingIntro.substring(0, 50) + '...' : meetingIntro}</p>
+        `;
+
+        // 添加点击事件
+        meetingItem.addEventListener('click', function() {
+            // 移除其他选项的选中状态
+            document.querySelectorAll('.meeting-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+
+            // 添加选中状态
+            this.classList.add('selected');
+
+            // 将选中的会议ID存储到本地
+            plus.storage.setItem('selectedMeetingId', meeting.id);
+
+            // 更新标题显示选中的会议
+            const meetingSelectionTitle = document.querySelector('#meeting-selection h2');
+            if (meetingSelectionTitle) {
+                meetingSelectionTitle.innerHTML = `已选择: <span style="color:#4CAF50;">${meeting.title || '未命名会议'}</span>`;
+            }
+
+            // 添加确认按钮，如果还没有
+            if (!document.getElementById('confirm-selection-btn')) {
+                const confirmBtn = document.createElement('button');
+                confirmBtn.id = 'confirm-selection-btn';
+                confirmBtn.className = 'confirm-btn';
+                confirmBtn.textContent = '确认选择';
+                confirmBtn.style.cssText = `
+                    display: block;
+                    margin: 20px auto 0;
+                    padding: 12px 25px;
+                    background: linear-gradient(135deg, #4CAF50, #2E7D32);
+                    color: white;
+                    border: none;
+                    border-radius: 30px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 10px rgba(46, 125, 50, 0.3);
+                `;
+
+                confirmBtn.addEventListener('mouseover', function() {
+                    this.style.transform = 'translateY(-2px)';
+                    this.style.boxShadow = '0 6px 15px rgba(46, 125, 50, 0.4)';
+                });
+
+                confirmBtn.addEventListener('mouseout', function() {
+                    this.style.transform = 'translateY(0)';
+                    this.style.boxShadow = '0 4px 10px rgba(46, 125, 50, 0.3)';
+                });
+
+                confirmBtn.addEventListener('click', function() {
+                    // 添加点击效果
+                    this.style.transform = 'scale(0.95)';
+
+                    // 隐藏会议选择模态框
+                    setTimeout(() => {
+                        meetingSelectionModal.style.display = 'none';
+
+                        // 显示加载进度界面
+                        document.getElementById('loading-progress').style.display = 'flex';
+
+                        // 开始获取会议数据
+                        fetchMeetingData();
+                    }, 200);
+                });
+
+                document.getElementById('meeting-selection').appendChild(confirmBtn);
+            }
+        });
+
+        meetingList.appendChild(meetingItem);
+    });
+
+    // 添加提示文字
+    const meetingCount = meetings.length;
+    const meetingCountText = document.createElement('div');
+    meetingCountText.className = 'meeting-count';
+    meetingCountText.textContent = `共找到 ${meetingCount} 个进行中的会议`;
+    meetingCountText.style.cssText = `
+        text-align: center;
+        color: #7f8c8d;
+        font-size: 14px;
+        margin-top: 15px;
+        font-style: italic;
+    `;
+
+    document.getElementById('meeting-selection').appendChild(meetingCountText);
+}
+
 // 获取会议数据的函数
 function fetchMeetingData() {
     if (!initializePlus()) {
@@ -53,78 +226,20 @@ function fetchMeetingData() {
             return;
         }
 
-        // 设置数据更新完成的回调
-        const dataUpdateHandler = function(jsonData) {
-            console.log('数据更新成功');
-
-            // 停止进度条动画
-            stopProgressAnimation();
-
-            // 设置进度为100%
-            setProgress(100);
-
-            // 更新完成，显示返回按钮
-            dataUpdateCompleted = true;
-            showButtons();
-
-            // 更新加载文本
-            updateLoadingText('数据更新完成');
-
-            // 移除事件监听器，避免重复处理
-            LoadingService.removeEventListener('dataUpdate', dataUpdateHandler);
-            LoadingService.removeEventListener('dataInit', dataUpdateHandler);
-            LoadingService.removeEventListener('idChanged', dataUpdateHandler);
-
-            // 如果有数据，输出日志
-            if (jsonData) {
-                console.log('获取到的会议数据:', jsonData.title || '无标题');
-            }
-        };
-
-        // 设置数据更新错误的回调
-        const errorHandler = function(error) {
-            console.error('数据获取失败:', error);
-
-            // 停止进度条动画
-            stopProgressAnimation();
-
-            // 设置进度为20%，表示失败
-            setProgress(20);
-
-            // 即使失败也标记为完成
-            dataUpdateCompleted = true;
-
-            // 显示返回按钮
-            showButtons();
-
-            // 显示错误消息
-            let errorMessage = '数据获取失败，请重试';
-            if (error && error.message) {
-                errorMessage = error.message;
-            }
-            showError(errorMessage);
-
-            // 移除事件监听器，避免重复处理
-            LoadingService.removeEventListener('error', errorHandler);
-        };
-
-        // 添加事件监听器
-        LoadingService.addEventListener('dataUpdate', dataUpdateHandler);
-        LoadingService.addEventListener('dataInit', dataUpdateHandler);
-        LoadingService.addEventListener('idChanged', dataUpdateHandler);
-        LoadingService.addEventListener('error', errorHandler);
-
-        // 触发数据获取
-        try {
-            LoadingService.fetchMeetingData();
-        } catch (error) {
-            console.error('触发数据获取失败:', error);
-            showError('数据服务调用失败，请重试');
+        // 从本地存储中获取选中的会议ID
+        const selectedMeetingId = plus.storage.getItem('selectedMeetingId');
+        if (!selectedMeetingId) {
+            console.error('未找到选中的会议ID');
+            showError('未选择会议，请重试');
             stopProgressAnimation();
             setProgress(20);
             dataUpdateCompleted = true;
             showButtons();
+            return;
         }
+
+        console.log('从本地存储中获取到选中的会议ID:', selectedMeetingId);
+        fetchMeetingById(selectedMeetingId);
     } else {
         console.error('LoadingService未定义');
 
@@ -142,6 +257,215 @@ function fetchMeetingData() {
 
         // 显示错误消息
         showError('LoadingService未定义，请重试');
+    }
+}
+
+// 显示会议选择界面
+function showMeetingSelection(meetings) {
+    console.log('显示会议选择界面');
+
+    // 停止进度条动画
+    stopProgressAnimation();
+
+    // 设置进度为50%
+    setProgress(50);
+
+    // 更新加载文本
+    updateLoadingText('请选择要加载的会议');
+
+    // 获取会议选择界面元素
+    const meetingSelection = document.querySelector('.meeting-selection');
+    const meetingList = document.getElementById('meetingList');
+
+    if (!meetingSelection || !meetingList) {
+        console.error('找不到会议选择界面元素');
+        showError('加载会议选择界面失败');
+        dataUpdateCompleted = true;
+        showButtons();
+        return;
+    }
+
+    // 清空会议列表
+    meetingList.innerHTML = '';
+
+    // 添加会议项
+    meetings.forEach(meeting => {
+        const meetingItem = document.createElement('div');
+        meetingItem.className = 'meeting-item';
+        meetingItem.dataset.id = meeting.id;
+
+        const meetingTitle = document.createElement('div');
+        meetingTitle.className = 'meeting-item-title';
+        meetingTitle.textContent = meeting.title || '无标题会议';
+
+        const meetingTime = document.createElement('div');
+        meetingTime.className = 'meeting-item-time';
+        meetingTime.textContent = meeting.time || '无时间信息';
+
+        meetingItem.appendChild(meetingTitle);
+        meetingItem.appendChild(meetingTime);
+
+        // 添加点击事件
+        meetingItem.addEventListener('click', function() {
+            const meetingId = this.dataset.id;
+            console.log('选择了会议:', meetingId);
+
+            // 隐藏会议选择界面
+            meetingSelection.style.display = 'none';
+
+            // 更新加载文本
+            updateLoadingText('正在获取会议数据...');
+
+            // 重新启动进度条动画
+            startProgressAnimation(50, 80, 5000); // 从50%到80%，持续5秒
+
+            // 获取选中会议的数据
+            fetchMeetingById(meetingId);
+        });
+
+        meetingList.appendChild(meetingItem);
+    });
+
+    // 显示会议选择界面
+    meetingSelection.style.display = 'flex';
+}
+
+// 获取指定会议的数据
+function fetchMeetingById(meetingId) {
+    console.log('开始获取会议数据, ID:', meetingId);
+
+    // 设置数据更新完成的回调
+    const dataUpdateHandler = function(jsonData) {
+        console.log('数据更新成功');
+
+        // 停止进度条动画
+        stopProgressAnimation();
+
+        // 设置进度为100%
+        setProgress(100);
+
+        // 更新完成，显示返回按钮
+        dataUpdateCompleted = true;
+        showButtons();
+
+        // 更新加载文本
+        updateLoadingText('数据更新完成，准备返回主页面');
+
+        // 移除事件监听器，避免重复处理
+        LoadingService.removeEventListener('dataUpdate', dataUpdateHandler);
+        LoadingService.removeEventListener('dataInit', dataUpdateHandler);
+        LoadingService.removeEventListener('idChanged', dataUpdateHandler);
+
+        // 如果有数据，输出日志
+        if (jsonData) {
+            console.log('获取到的会议数据:', jsonData.title || '无标题');
+        }
+
+        // 关闭现有main页面并创建新的main页面
+        try {
+            // 检查main页面是否存在
+            const mainView = plus.webview.getWebviewById('main');
+            if (mainView) {
+                console.log('关闭现有main页面，准备创建新的main页面');
+
+                // 先创建新的main页面，但不显示
+                const newMainView = plus.webview.create('main.html', 'main_new', {
+                    scrollIndicator: 'none',
+                    scalable: false
+                });
+
+                // 等待新页面加载完成
+                newMainView.addEventListener('loaded', function() {
+                    console.log('新的main页面加载完成');
+
+                    // 关闭旧的main页面
+                    mainView.close('none');
+
+                    // 将新页面的ID改为main
+                    newMainView.id = 'main';
+
+                    // 显示新页面
+                    newMainView.show('fade-in', 300);
+                });
+
+                // 如果加载超时，也关闭旧页面并显示新页面
+                setTimeout(function() {
+                    if (plus.webview.getWebviewById('main_new')) {
+                        console.log('新页面加载超时，强制切换');
+                        mainView.close('none');
+                        newMainView.id = 'main';
+                        newMainView.show('fade-in', 300);
+                    }
+                }, 3000);
+            } else {
+                console.log('main页面不存在，直接创建新页面');
+                plus.webview.open('main.html', 'main', {
+                    scrollIndicator: 'none',
+                    scalable: false
+                });
+            }
+        } catch (error) {
+            console.error('关闭并创建新main页面时出错:', error);
+            // 出错时尝试直接打开新页面
+            try {
+                plus.webview.open('main.html', 'main', {
+                    scrollIndicator: 'none',
+                    scalable: false
+                });
+            } catch (e) {
+                console.error('尝试直接打开新页面也失败:', e);
+            }
+        }
+    };
+
+    // 设置数据更新错误的回调
+    const errorHandler = function(error) {
+        console.error('数据获取失败:', error);
+
+        // 停止进度条动画
+        stopProgressAnimation();
+
+        // 设置进度为20%，表示失败
+        setProgress(20);
+
+        // 即使失败也标记为完成
+        dataUpdateCompleted = true;
+
+        // 显示返回按钮
+        showButtons();
+
+        // 显示错误消息
+        let errorMessage = '数据获取失败，请重试';
+        if (error && error.message) {
+            errorMessage = error.message;
+        }
+        showError(errorMessage);
+
+        // 移除事件监听器，避免重复处理
+        LoadingService.removeEventListener('error', errorHandler);
+    };
+
+    // 添加事件监听器
+    LoadingService.addEventListener('dataUpdate', dataUpdateHandler);
+    LoadingService.addEventListener('dataInit', dataUpdateHandler);
+    LoadingService.addEventListener('idChanged', dataUpdateHandler);
+    LoadingService.addEventListener('error', errorHandler);
+
+    // 触发数据获取
+    try {
+        LoadingService.fetchMeetingById(meetingId)
+            .then(data => {
+                console.log('获取会议数据成功:', data.title || '无标题');
+            })
+            .catch(error => {
+                console.error('获取会议数据失败:', error);
+                errorHandler(error);
+            });
+    } catch (error) {
+        console.error('触发数据获取失败:', error);
+        errorHandler({
+            message: '数据服务调用失败，请重试'
+        });
     }
 }
 
@@ -285,9 +609,9 @@ document.addEventListener('plusready', function plusReadyHandler() {
     console.log('从配置中读取标题文字');
     updateTitleFromConfig();
 
-    // 开始获取会议数据
-    console.log('开始获取会议数据');
-    fetchMeetingData();
+    // 先检查本地存储中的会议状态
+    console.log('开始检查本地存储中的会议状态');
+    checkMeetingStatus();
 
     // 创建返回main页面的函数
     window.returnToMain = function() {
@@ -304,51 +628,108 @@ document.addEventListener('plusready', function plusReadyHandler() {
             // 检查main页面是否已存在
             const mainView = plus.webview.getWebviewById('main');
             if (mainView) {
-                // 如果main页面已存在，则显示它而不是重新创建
-                console.log('找到已存在的main页面，显示它');
-                // 恢复main页面的状态轮询
-                try {
-                    // 使用plus.webview.evalJS方法执行main页面中的代码
-                    mainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("状态轮询已恢复"); }');
-                } catch (error) {
-                    console.error('恢复状态轮询失败：', error);
-                    // 尝试多次恢复状态轮询
-                    setTimeout(function() {
-                        try {
-                            mainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("状态轮询已通过延迟方式恢复"); }');
-                        } catch (retryError) {
-                            console.error('重试恢复状态轮询失败：', retryError);
-                        }
-                    }, 500);
-                }
-                mainView.show();
-                // 关闭当前loading页面
-                const currentWebview = plus.webview.currentWebview();
-                currentWebview.close();
-            } else {
-                // 如果main页面不存在，则创建新的main页面
-                console.log('未找到main页面，创建新页面');
-                // 创建新页面时，需要等待页面创建完成后再设置isDataFetchEnabled
-                const newMainView = plus.webview.open('main.html', 'main', {});
-                // 监听页面加载完成事件
+                console.log('关闭现有main页面，准备创建新的main页面');
+
+                // 先创建新的main页面，但不显示
+                const newMainView = plus.webview.create('main.html', 'main_new', {
+                    scrollIndicator: 'none',
+                    scalable: false
+                });
+
+                // 等待新页面加载完成
                 newMainView.addEventListener('loaded', function() {
+                    console.log('新的main页面加载完成');
+
                     try {
-                        // 在新页面加载完成后恢复状态轮询
+                        // 在新页面中启用状态轮询
                         newMainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("状态轮询已在新页面中启用"); }');
                     } catch (error) {
                         console.error('在新页面中启用状态轮询失败：', error);
                     }
+
+                    // 关闭旧的main页面
+                    mainView.close('none');
+
+                    // 将新页面的ID改为main
+                    newMainView.id = 'main';
+
+                    // 显示新页面
+                    newMainView.show('fade-in', 300);
+
+                    // 关闭当前loading页面
+                    const currentWebview = plus.webview.currentWebview();
+                    currentWebview.close();
                 });
 
-                // 添加额外的显示事件监听，确保在页面显示时也设置标志
-                newMainView.addEventListener('show', function() {
-                    try {
-                        // 确保在页面显示时也恢复状态轮询
-                        newMainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("状态轮询已在页面显示时启用"); }');
-                    } catch (error) {
-                        console.error('在页面显示时启用状态轮询失败：', error);
+                // 如果加载超时，也关闭旧页面并显示新页面
+                setTimeout(function() {
+                    if (plus.webview.getWebviewById('main_new')) {
+                        console.log('新页面加载超时，强制切换');
+
+                        try {
+                            // 在新页面中启用状态轮询
+                            newMainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("状态轮询已在超时后启用"); }');
+                        } catch (error) {
+                            console.error('在超时后启用状态轮询失败：', error);
+                        }
+
+                        mainView.close('none');
+                        newMainView.id = 'main';
+                        newMainView.show('fade-in', 300);
+
+                        // 关闭当前loading页面
+                        const currentWebview = plus.webview.currentWebview();
+                        currentWebview.close();
                     }
+                }, 3000);
+            } else {
+                // 如果main页面不存在，则创建新的main页面
+                console.log('未找到main页面，创建新页面');
+
+                // 创建新的main页面
+                const newMainView = plus.webview.create('main.html', 'main', {
+                    scrollIndicator: 'none',
+                    scalable: false
                 });
+
+                // 等待新页面加载完成
+                newMainView.addEventListener('loaded', function() {
+                    console.log('新的main页面加载完成');
+
+                    try {
+                        // 在新页面中启用状态轮询
+                        newMainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("状态轮询已在新页面中启用"); }');
+                    } catch (error) {
+                        console.error('在新页面中启用状态轮询失败：', error);
+                    }
+
+                    // 显示新页面
+                    newMainView.show('fade-in', 300);
+
+                    // 关闭当前loading页面
+                    const currentWebview = plus.webview.currentWebview();
+                    currentWebview.close();
+                });
+
+                // 如果加载超时，也显示新页面
+                setTimeout(function() {
+                    if (plus.webview.getWebviewById('main') && !newMainView.isVisible()) {
+                        console.log('新页面加载超时，强制显示');
+
+                        try {
+                            // 在新页面中启用状态轮询
+                            newMainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("状态轮询已在超时后启用"); }');
+                        } catch (error) {
+                            console.error('在超时后启用状态轮询失败：', error);
+                        }
+
+                        newMainView.show('fade-in', 300);
+
+                        // 关闭当前loading页面
+                        const currentWebview = plus.webview.currentWebview();
+                        currentWebview.close();
+                    }
+                }, 3000);
             }
         } else {
             console.error('plus未初始化，无法跳转');

@@ -19,12 +19,35 @@
 
     <div class="loading-container">
         <div class="loading-title">无纸化会议系统</div>
-        <div class="loading-spinner"></div>
-        <div class="progress-container">
-            <div class="progress-bar" id="loadingProgress"></div>
+
+        <!-- 会议选择模态框 -->
+        <div id="meeting-selection-modal" class="meeting-selection-modal" style="display: none;">
+            <div class="modal-overlay"></div>
+            <div id="meeting-selection" class="meeting-selection">
+                <h2>请选择要加入的会议</h2>
+                <div class="meeting-list" id="meeting-list">
+                    <!-- 会议选项将通过JavaScript动态添加 -->
+                </div>
+            </div>
         </div>
-        <div class="loading-text pulse">正在初始化系统...</div>
-        <div class="error-text">加载过程中出现错误</div>
+
+        <!-- 加载界面 -->
+        <div id="loading-progress" class="loading-progress">
+            <div class="loading-spinner"></div>
+            <div class="progress-container">
+                <div class="progress-bar" id="loadingProgress"></div>
+            </div>
+            <div class="loading-text pulse">正在初始化系统...</div>
+            <div class="error-text">加载过程中出现错误</div>
+        </div>
+    </div>
+
+    <!-- 会议选择界面 -->
+    <div class="meeting-selection" style="display: none;">
+        <div class="selection-title">请选择要加载的会议</div>
+        <div class="meeting-list" id="meetingList">
+            <!-- 会议项将通过JavaScript动态添加 -->
+        </div>
     </div>
 
     <!-- 按钮容器 -->

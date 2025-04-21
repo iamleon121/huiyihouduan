@@ -24,30 +24,80 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-@router.get("/", response_model=List[schemas.User])
+@router.get("/")
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """获取用户列表"""
     # 使用UserService获取用户列表
     users = UserService.get_users(db, skip=skip, limit=limit)
-    return users
 
-@router.post("/", response_model=schemas.User)
+    # 手动构建响应数据
+    response = []
+    for user in users:
+        user_data = {
+            "id": user.id,
+            "username": user.username,
+            "real_name": user.real_name,
+            "role": user.role,
+            "status": user.status,
+            "is_active": user.is_active
+        }
+        response.append(user_data)
+
+    return response
+
+@router.post("/")
 def create_user_endpoint(user: schemas.UserCreate, db: Session = Depends(get_db)):
     """创建新用户"""
     # 使用UserService创建新用户
-    return UserService.create_user(db=db, user=user)
+    user = UserService.create_user(db=db, user=user)
 
-@router.get("/{user_id}", response_model=schemas.User)
+    # 手动构建响应数据
+    response = {
+        "id": user.id,
+        "username": user.username,
+        "real_name": user.real_name,
+        "role": user.role,
+        "status": user.status,
+        "is_active": user.is_active
+    }
+
+    return response
+
+@router.get("/{user_id}")
 def read_user(user_id: int, db: Session = Depends(get_db)):
     """获取单个用户详情"""
     # 使用UserService获取单个用户详情
-    return UserService.get_user(db, user_id=user_id)
+    user = UserService.get_user(db, user_id=user_id)
 
-@router.put("/{user_id}", response_model=schemas.User)
+    # 手动构建响应数据
+    response = {
+        "id": user.id,
+        "username": user.username,
+        "real_name": user.real_name,
+        "role": user.role,
+        "status": user.status,
+        "is_active": user.is_active
+    }
+
+    return response
+
+@router.put("/{user_id}")
 def update_user_endpoint(user_id: int, user_update: schemas.UserUpdate, db: Session = Depends(get_db)):
     """更新用户信息"""
     # 使用UserService更新用户信息
-    return UserService.update_user(db=db, user_id=user_id, user_update=user_update)
+    user = UserService.update_user(db=db, user_id=user_id, user_update=user_update)
+
+    # 手动构建响应数据
+    response = {
+        "id": user.id,
+        "username": user.username,
+        "real_name": user.real_name,
+        "role": user.role,
+        "status": user.status,
+        "is_active": user.is_active
+    }
+
+    return response
 
 @router.delete("/{user_id}", response_model=dict)
 def delete_user_endpoint(user_id: int, db: Session = Depends(get_db)):
@@ -55,11 +105,23 @@ def delete_user_endpoint(user_id: int, db: Session = Depends(get_db)):
     # 使用UserService删除用户
     return UserService.delete_user(db=db, user_id=user_id)
 
-@router.post("/login", response_model=schemas.User)
+@router.post("/login")
 def login(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     """用户登录"""
     # 使用UserService进行用户登录
-    return UserService.login(db, username, password)
+    user = UserService.login(db, username, password)
+
+    # 手动构建响应数据
+    response = {
+        "id": user.id,
+        "username": user.username,
+        "real_name": user.real_name,
+        "role": user.role,
+        "status": user.status,
+        "is_active": user.is_active
+    }
+
+    return response
 
 @router.post("/token", response_model=schemas.Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -80,8 +142,20 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@router.get("/me", response_model=schemas.User)
+@router.get("/me")
 def read_users_me(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     """获取当前用户信息"""
     # 使用UserService获取当前用户
-    return UserService.get_current_user(db, token)
+    user = UserService.get_current_user(db, token)
+
+    # 手动构建响应数据
+    response = {
+        "id": user.id,
+        "username": user.username,
+        "real_name": user.real_name,
+        "role": user.role,
+        "status": user.status,
+        "is_active": user.is_active
+    }
+
+    return response

@@ -306,9 +306,31 @@ const MeetingService = {
                 console.log('标准化后的状态数据:', normalizedStatusData);
 
                 // 将状态数据保存到本地存储
-                const statusString = JSON.stringify(normalizedStatusData);
+                // 如果是数组并且有多个会议，将它们全部保存
+                let meetingsToStore = [];
+
+                if (Array.isArray(statusData)) {
+                    // 如果原始数据是数组，直接使用
+                    meetingsToStore = statusData;
+                } else if (statusData.meetings && Array.isArray(statusData.meetings)) {
+                    // 如果原始数据有meetings字段且是数组，使用它
+                    meetingsToStore = statusData.meetings;
+                } else {
+                    // 如果原始数据是单个对象，将其包装为数组
+                    meetingsToStore = [statusData];
+                }
+
+                // 创建完整的状态数据对象
+                const fullStatusData = {
+                    token: token,
+                    meeting_id: meetingId,
+                    meetings: meetingsToStore,
+                    original_data: statusData // 保存原始数据以便后续处理
+                };
+
+                const statusString = JSON.stringify(fullStatusData);
                 plus.storage.setItem('meetingStatus', statusString);
-                console.log('已将状态数据保存到本地存储');
+                console.log('已将状态数据保存到本地存储，包含 ' + meetingsToStore.length + ' 个会议');
 
                 // 检查token是否变化
                 if (this.statusToken !== token) {
@@ -320,21 +342,41 @@ const MeetingService = {
                     // 触发状态变更事件
                     this.triggerEvent('statusChanged', normalizedStatusData);
 
-                    // 当状态变化时，打开loading页面获取新数据
-                    console.log('状态变化，打开loading页面获取新数据');
+                    // 当状态变化时，确保本地存储更新完成后再打开loading页面
+                    console.log('状态变化，确保本地存储更新完成后再打开loading页面');
 
-                    // 检查loading页面是否已经存在
-                    const existingLoading = plus.webview.getWebviewById('loading');
-                    if (existingLoading) {
-                        console.log('loading页面已存在，显示已有页面');
-                        existingLoading.show();
-                    } else {
-                        console.log('loading页面不存在，创建新页面');
-                        plus.webview.open('loading.html', 'loading', {
-                            scrollIndicator: 'none',
-                            scalable: false
-                        });
-                    }
+                    // 使用setTimeout确保本地存储更新完成
+                    setTimeout(() => {
+                        // 再次检查本地存储是否已更新
+                        try {
+                            const storedStatus = plus.storage.getItem('meetingStatus');
+                            if (storedStatus) {
+                                const parsedStatus = JSON.parse(storedStatus);
+                                if (parsedStatus && parsedStatus.token === token) {
+                                    console.log('本地存储已成功更新，准备打开loading页面');
+
+                                    // 检查loading页面是否已经存在
+                                    const existingLoading = plus.webview.getWebviewById('loading');
+                                    if (existingLoading) {
+                                        console.log('loading页面已存在，显示已有页面');
+                                        existingLoading.show();
+                                    } else {
+                                        console.log('loading页面不存在，创建新页面');
+                                        plus.webview.open('loading.html', 'loading', {
+                                            scrollIndicator: 'none',
+                                            scalable: false
+                                        });
+                                    }
+                                } else {
+                                    console.error('本地存储更新失败，存储的token与当前token不匹配');
+                                }
+                            } else {
+                                console.error('本地存储更新失败，未找到存储的状态数据');
+                            }
+                        } catch (error) {
+                            console.error('检查本地存储更新时出错:', error);
+                        }
+                    }, 200); // 等待200毫秒，确保本地存储更新完成
                 } else {
                     console.log('会议状态未变更');
                 }

@@ -35,6 +35,155 @@
     max-width: 80%;
 }
 
+/* 会议选择模态框样式 */
+.meeting-selection-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000; /* 确保模态框显示在最上层 */
+    backdrop-filter: blur(5px); /* 背景模糊效果 */
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 10001;
+    animation: fadeIn 0.3s ease forwards;
+}
+
+/* 会议选择界面样式 */
+.meeting-selection {
+    width: 90%;
+    max-width: 500px;
+    background-color: #ffffff;
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3), 0 5px 15px rgba(0, 0, 0, 0.2);
+    z-index: 10002; /* 确保显示在遮罩层之上 */
+    animation: zoomIn 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.meeting-selection h2 {
+    color: #2c3e50;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 24px;
+    font-weight: 600;
+    position: relative;
+    padding-bottom: 12px;
+}
+
+.meeting-selection h2:after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    border-radius: 3px;
+}
+
+.meeting-list {
+    max-height: 350px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    padding: 5px;
+}
+
+.meeting-item {
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-left: 5px solid #4CAF50;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.meeting-item:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(255, 255, 255, 0) 60%);
+    z-index: 0;
+}
+
+.meeting-item:hover {
+    background-color: #f5f5f5;
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.meeting-item h3 {
+    margin: 0 0 8px 0;
+    color: #2c3e50;
+    font-size: 18px;
+    font-weight: 600;
+    position: relative;
+    z-index: 1;
+}
+
+.meeting-item p {
+    margin: 0;
+    color: #7f8c8d;
+    font-size: 14px;
+    position: relative;
+    z-index: 1;
+}
+
+.meeting-item.selected {
+    background-color: #e8f5e9;
+    border-left: 5px solid #2E7D32;
+    box-shadow: 0 5px 15px rgba(46, 125, 50, 0.2);
+}
+
+/* 自定义滚动条样式 */
+.meeting-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.meeting-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.meeting-list::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+
+.meeting-list::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* 加载进度界面样式 */
+.loading-progress {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
 /* 错误文本样式 */
 .error-text {
     font-size: 16px;
@@ -196,29 +345,93 @@
     animation: pulse 2s infinite ease-in-out;
 }
 
+/* 缩放动画 */
+@keyframes zoomIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* 会议时间和简介样式 */
+.meeting-time {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    color: #3498db;
+    font-weight: 500;
+}
+
+.meeting-intro {
+    color: #7f8c8d;
+    font-size: 14px;
+    line-height: 1.4;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(0, 0, 0, 0.1);
+}
+
+/* 图标样式 */
+.meeting-icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.time-icon {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%233498db"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12.5,7H11V13L16.2,16.2L17,14.9L12.5,12.2V7Z"></path></svg>');
+}
+
+/* 滑动条样式 */
+.meeting-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.meeting-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.meeting-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+.meeting-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
 /* 响应式调整 */
 @media (max-width: 768px) {
     .loading-title {
         font-size: 24px;
     }
-    
+
     .loading-text {
         font-size: 16px;
     }
-    
+
     .progress-container {
         width: 250px;
     }
-    
+
     .loading-spinner {
         width: 60px;
         height: 60px;
     }
-    
+
     .button-container {
         bottom: 20px;
     }
-    
+
     .loading-button {
         padding: 10px 20px;
         font-size: 14px;
@@ -229,26 +442,26 @@
     .loading-title {
         font-size: 20px;
     }
-    
+
     .loading-text {
         font-size: 14px;
     }
-    
+
     .progress-container {
         width: 200px;
     }
-    
+
     .loading-spinner {
         width: 50px;
         height: 50px;
     }
-    
+
     .button-container {
         flex-direction: column;
         gap: 10px;
         align-items: center;
     }
-    
+
     .loading-button {
         width: 150px;
         text-align: center;

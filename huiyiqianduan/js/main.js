@@ -243,3 +243,5 @@ function openOptionPage() {
         window.location.href = 'option.html';
     }
 }
+
+

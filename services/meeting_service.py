@@ -421,7 +421,8 @@ class MeetingService:
             agenda_info = {
                 "position": position,
                 "title": agenda_item.title,
-                "content": agenda_item.content,
+                "reporter": agenda_item.reporter,
+                "duration_minutes": agenda_item.duration_minutes,
                 "files": []
             }
 
