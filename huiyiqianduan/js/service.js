@@ -607,8 +607,9 @@ const MeetingService = {
                 console.error('服务器连接超时:', this.serverBaseUrl);
             };
 
-            // 使用HEAD请求检查服务器连接，不下载实际内容
-            xhr.open('HEAD', this.serverBaseUrl);
+            // 使用GET请求检查服务器连接
+            // 注意：我们使用GET代替HEAD，因为服务器可能不允许HEAD请求
+            xhr.open('GET', this.serverBaseUrl + '/api/v1/meetings/active/meetings');
             xhr.send();
 
             return true;

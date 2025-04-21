@@ -513,17 +513,17 @@ const LoadingService = {
             const meetingFolderPath = '_doc/meeting_files/';
             const extractPath = meetingFolderPath + 'meeting_' + meetingId + '/';
 
+            console.log('解压目标路径:', extractPath);
+
             // 确保目标文件夹存在
             this.ensureDirectoryExists(meetingFolderPath)
                 .then(() => {
+                    console.log('会议文件夹存在，开始清空所有子文件夹');
                     // 先清空整个meeting_files文件夹，删除所有子文件夹
                     return this.cleanAllMeetingFolders(meetingFolderPath);
                 })
                 .then(() => {
-                    // 先清空目标文件夹，如果存在
-                    return this.cleanTargetFolder(extractPath);
-                })
-                .then(() => {
+                    console.log('清空完成，确保解压目标文件夹存在');
                     // 确保解压目标文件夹存在
                     return this.ensureDirectoryExists(extractPath);
                 })
@@ -532,89 +532,44 @@ const LoadingService = {
                     try {
                         console.log('准备解压文件:', zipPath, '到', extractPath);
 
-                        // 检查源文件是否存在
-                        plus.io.resolveLocalFileSystemURL(zipPath, zipEntry => {
-                            // 获取文件大小
-                            zipEntry.file(function(file) {
-                                const fileSize = file.size;
-                                console.log('源ZIP文件存在，大小:', fileSize, '字节');
+                        // 直接使用plus.zip.decompress解压文件
+                        console.log('开始调用plus.zip.decompress解压文件');
+                        console.log('当前时间:', new Date().toLocaleTimeString());
 
-                                // 检查文件大小是否有效
-                                if (!fileSize || fileSize <= 0) {
-                                    console.error('源ZIP文件大小无效:', fileSize);
-                                    // 即使文件大小无效也算成功，不中断整体流程
-                                    resolve();
-                                    return;
-                                }
+                        // 简化解压过程，直接调用decompress
+                        plus.zip.decompress(zipPath, extractPath, status => {
+                            console.log('解压返回状态码:', status, '当前时间:', new Date().toLocaleTimeString());
 
-                                // 直接使用plus.zip.decompress解压文件
-                                console.log('开始调用plus.zip.decompress解压文件');
-                                try {
-                                    plus.zip.decompress(zipPath, extractPath, status => {
-                                        console.log('解压返回状态码:', status);
-                                        // 检查状态码是否有效
-                                        if (status === 0 || status === '0') {
-                                            console.log('解压完成，路径:', extractPath);
+                            // 检查状态码是否有效，接受更多的成功状态码
+                            if (status === 0 || status === '0' || status === 200 || status === '200') {
+                                console.log('解压成功，路径:', extractPath);
 
-                                            // 检查解压后的目录是否存在
-                                            plus.io.resolveLocalFileSystemURL(extractPath, extractEntry => {
-                                                console.log('解压目录存在，内容如下:');
+                                // 保存当前会议文件夹路径到本地存储
+                                plus.storage.setItem('currentMeetingFolder', extractPath);
 
-                                                // 列出解压目录中的文件
-                                                const reader = extractEntry.createReader();
-                                                reader.readEntries(entries => {
-                                                    entries.forEach(entry => {
-                                                        console.log(' - ' + entry.name + (entry.isDirectory ? '/' : ''));
-                                                    });
-
-                                                    // 保存当前会议文件夹路径到本地存储
-                                                    plus.storage.setItem('currentMeetingFolder', extractPath);
-
-                                                    // 删除下载的ZIP文件
-                                                    plus.io.resolveLocalFileSystemURL(zipPath, entry => {
-                                                        entry.remove(() => {
-                                                            console.log('ZIP文件已删除:', zipPath);
-                                                            resolve(); // 成功完成所有操作
-                                                        }, error => {
-                                                            console.error('删除ZIP文件失败:', error);
-                                                            // 即使删除失败也算成功
-                                                            resolve();
-                                                        });
-                                                    }, error => {
-                                                        console.error('解析ZIP文件路径失败:', error);
-                                                        // 即使解析失败也算成功
-                                                        resolve();
-                                                    });
-                                                }, error => {
-                                                    console.error('读取解压目录内容失败:', error);
-                                                    // 即使读取失败也算成功
-                                                    resolve();
-                                                });
-                                            }, error => {
-                                                console.error('解压目录不存在或无法访问:', error);
-                                                // 即使解压目录不存在也算成功
-                                                resolve();
-                                            });
-                                        } else {
-                                            console.error('解压失败, 状态码:', status);
-                                            // 尝试使用其他方法解压
-                                            console.log('尝试使用其他方法解压...');
-                                            // 即使解压失败也算成功，不中断整体流程
-                                            resolve();
-                                        }
+                                // 删除下载的ZIP文件
+                                plus.io.resolveLocalFileSystemURL(zipPath, entry => {
+                                    entry.remove(() => {
+                                        console.log('ZIP文件已删除:', zipPath);
+                                        resolve(); // 成功完成所有操作
+                                    }, error => {
+                                        console.error('删除ZIP文件失败:', error);
+                                        // 即使删除失败也算成功
+                                        resolve();
                                     });
-                                } catch (innerError) {
-                                    console.error('调用plus.zip.decompress时出错:', innerError);
+                                }, error => {
+                                    console.error('解析ZIP文件路径失败:', error);
+                                    // 即使解析失败也算成功
                                     resolve();
-                                }
-                            }, error => {
-                                console.error('源ZIP文件不存在或无法访问:', zipPath, error);
-                                // 即使源文件不存在也算成功，不中断整体流程
+                                });
+                            } else {
+                                console.error('解压失败, 状态码:', status);
+                                // 即使解压失败也算成功，不中断整体流程
                                 resolve();
-                            });
+                            }
                         }, error => {
-                            console.error('源ZIP文件不存在或无法访问:', zipPath, error);
-                            // 即使源文件不存在也算成功，不中断整体流程
+                            console.error('解压出错:', error);
+                            // 即使解压出错也算成功，不中断整体流程
                             resolve();
                         });
                     } catch (error) {
