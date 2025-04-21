@@ -76,6 +76,188 @@ function showErrorMessage(message) {
     `;
 }
 
+// 递归查找文件的函数
+function findFileInDirectory(directory, filename) {
+    console.log('在目录中查找文件：', directory.name, '文件名：', filename);
+
+    // 提取要查找的纯文件名（不包含扩展名）
+    const searchFilenameWithoutExt = filename.includes('.') ?
+        filename.substring(0, filename.lastIndexOf('.')) : filename;
+
+    console.log('查找的纯文件名：', searchFilenameWithoutExt);
+
+    // 创建目录读取器
+    const reader = directory.createReader();
+
+    // 读取目录内容
+    reader.readEntries(function(entries) {
+        console.log('在', directory.name, '中找到', entries.length, '个条目');
+
+        // 首先在当前目录中查找文件
+        let exactMatch = null;
+        let partialMatches = [];
+
+        // 首先检查当前目录中的文件
+        for (let i = 0; i < entries.length; i++) {
+            const entry = entries[i];
+
+            // 如果是文件，检查是否匹配
+            if (!entry.isDirectory) {
+                console.log('检查文件：', entry.name);
+
+                // 精确匹配
+                if (entry.name === filename) {
+                    console.log('找到精确匹配文件：', entry.name);
+                    exactMatch = entry;
+                    break;
+                }
+
+                // 部分匹配 - 检查文件名是否包含我们要查找的文件名
+                // 文件名格式可能是 {fileId}_{filename}.jpg
+                if (entry.name.endsWith('.jpg') && entry.name.includes(searchFilenameWithoutExt)) {
+                    // 检查是否是真正的匹配，而不是子字符串匹配
+                    // 文件名格式应该是 {fileId}_{filename}.jpg
+                    const parts = entry.name.split('_');
+                    if (parts.length >= 2) {
+                        // 如果文件名中包含下划线，则需要特殊处理
+                        // 尝试匹配最后部分（去除扩展名）
+                        const fileNamePart = parts.slice(1).join('_');
+                        const fileNameWithoutExt = fileNamePart.endsWith('.jpg') ?
+                            fileNamePart.substring(0, fileNamePart.length - 4) : fileNamePart;
+
+                        console.log('比较：', fileNameWithoutExt, 'vs', searchFilenameWithoutExt);
+
+                        if (fileNameWithoutExt === searchFilenameWithoutExt) {
+                            console.log('找到匹配文件：', entry.name);
+                            partialMatches.push(entry);
+                        }
+                    } else {
+                        // 如果没有下划线，但文件名包含要查找的名称，也添加到匹配列表
+                        console.log('找到可能的匹配文件：', entry.name);
+                        partialMatches.push(entry);
+                    }
+                }
+            }
+        }
+
+        // 如果找到精确匹配，优先使用
+        if (exactMatch) {
+            loadFile(exactMatch);
+            return;
+        }
+
+        // 如果有部分匹配，使用第一个
+        if (partialMatches.length > 0) {
+            console.log('使用部分匹配文件：', partialMatches[0].name);
+            loadFile(partialMatches[0]);
+            return;
+        }
+
+        // 检查是否有jpgs目录
+        const jpgsDir = entries.find(entry => entry.isDirectory && entry.name === 'jpgs');
+        if (jpgsDir) {
+            console.log('找到jpgs目录，在其中查找文件');
+            findFileInDirectory(jpgsDir, filename);
+            return;
+        }
+
+        // 如果当前目录中没有找到文件，递归查找子目录
+        const agendaDirs = entries.filter(entry =>
+            entry.isDirectory && entry.name.startsWith('agenda_'));
+
+        // 如果有agenda目录，优先查找这些目录
+        if (agendaDirs.length > 0) {
+            console.log('找到', agendaDirs.length, '个议程目录，开始递归查找');
+            searchDirectories(agendaDirs);
+            return;
+        }
+
+        // 如果没有agenda目录，查找所有子目录
+        const otherDirs = entries.filter(entry => entry.isDirectory);
+        if (otherDirs.length > 0) {
+            console.log('找到', otherDirs.length, '个其他目录，开始递归查找');
+            searchDirectories(otherDirs);
+            return;
+        }
+
+        // 如果没有子目录，返回未找到
+        console.error('在当前目录中未找到文件或子目录：', directory.name);
+        showErrorMessage('未找到文件：' + filename);
+
+        // 递归查找目录列表的函数
+        function searchDirectories(directories) {
+            let searchedCount = 0;
+
+            function checkNextDirectory() {
+                if (searchedCount >= directories.length) {
+                    console.error('在所有目录中未找到文件：', filename);
+                    showErrorMessage('未找到文件：' + filename);
+                    return;
+                }
+
+                const subdir = directories[searchedCount];
+                searchedCount++;
+
+                // 递归查找子目录
+                findFileInDirectory(subdir, filename);
+            }
+
+            // 开始递归查找
+            checkNextDirectory();
+        }
+    }, function(error) {
+        console.error('读取目录内容失败：', error);
+        showErrorMessage('读取目录内容失败');
+    });
+}
+
+// 加载文件并显示
+ function loadFile(fileEntry) {
+    console.log('加载文件：', fileEntry.name);
+
+    // 获取文件对象
+    fileEntry.file(function(file) {
+        const reader = new plus.io.FileReader();
+
+        reader.onloadend = function(e) {
+            // 读取完成，显示图片内容
+            const fileContent = document.getElementById('fileContent');
+            fileContent.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: auto; display: block; margin: 0; padding: 0;">`;
+
+            // 添加图片加载完成事件
+            const img = fileContent.querySelector('img');
+            if (img) {
+                img.onload = function() {
+                    console.log('图片加载完成，准备滚动到第1页');
+                    // 获取URL中的总页数参数
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const pageParam = urlParams.get('page');
+                    const totalPages = pageParam ? parseInt(pageParam) : 1;
+
+                    // 添加页面分隔线
+                    addPageDividers();
+
+                    // 如果有多页，滚动到第1页
+                    if (totalPages > 1) {
+                        setTimeout(() => scrollToPage(1), 300);
+                    }
+                };
+            }
+        };
+
+        reader.onerror = function(e) {
+            console.error('读取文件内容失败：', e);
+            showErrorMessage('读取文件内容失败');
+        };
+
+        // 开始读取文件
+        reader.readAsDataURL(file);
+    }, function(error) {
+        console.error('获取文件对象失败：', error);
+        showErrorMessage('获取文件对象失败');
+    });
+}
+
 // 返回函数
 function goBack() {
     if (typeof plus !== 'undefined') {
@@ -211,67 +393,75 @@ document.addEventListener('plusready', function() {
             headerTitle.textContent = filename;
         }
 
-        // 构建完整的文件路径，添加doc/documents/前缀
-        const jpgFilename = filename + '.jpg';
-        console.log('当前加载的文件名：', jpgFilename);
+        // 显示加载状态
+        const fileContent = document.getElementById('fileContent');
+        fileContent.innerHTML = '<div style="text-align: center; padding: 20px;"><div style="color: #666; margin-bottom: 20px;">正在加载文件...</div></div>';
 
-        // 移除总页数信息显示
+        // 从本地存储中获取当前会议数据，以获取会议ID
+        try {
+            const storedData = plus.storage.getItem('meetingData');
+            if (!storedData) {
+                console.error('未找到会议数据');
+                showErrorMessage('未找到会议数据，无法加载文件');
+                return;
+            }
 
-        // 检查文件是否存在于documents目录
-        plus.io.requestFileSystem(plus.io.PRIVATE_DOC, function(fs) {
-            fs.root.getDirectory('documents', { create: false }, function(dirEntry) {
-                const filePath = '_doc/documents/' + jpgFilename;
-                plus.io.resolveLocalFileSystemURL(filePath, function(entry) {
-                    console.log('文件存在：', jpgFilename);
-                    // 读取文件内容
-                    entry.file(function(file) {
-                        const reader = new plus.io.FileReader();
-                        reader.onloadend = function(e) {
-                            // 读取完成，显示图片内容
-                            const fileContent = document.getElementById('fileContent');
+            const meetingData = JSON.parse(storedData);
+            const meetingId = meetingData.meeting_id || meetingData.id;
 
-                            // 不显示总页数
+            if (!meetingId) {
+                console.error('会议数据中未找到会议ID');
+                showErrorMessage('会议数据中未找到会议ID');
+                return;
+            }
 
-                            fileContent.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: auto; display: block; margin: 0; padding: 0;">`;
+            console.log('当前会议ID：', meetingId);
 
-                            // 添加图片加载完成事件，确保能正确执行自动跳转到第1页
-                            const img = fileContent.querySelector('img');
-                            if (img) {
-                                img.onload = function() {
-                                    console.log('图片加载完成，准备滚动到第1页');
-                                    // 获取URL中的总页数参数
-                                    const urlParams = new URLSearchParams(window.location.search);
-                                    const pageParam = urlParams.get('page');
-                                    const totalPages = pageParam ? parseInt(pageParam) : 1;
+            // 检查meeting-files目录是否存在
+            plus.io.requestFileSystem(plus.io.PRIVATE_DOC, function(fs) {
+                fs.root.getDirectory('meeting-files', { create: false }, function(meetingFilesDir) {
+                    console.log('meeting-files目录存在');
 
-                                    // 如果有多页，滚动到第1页
-                                    if (totalPages > 1) {
-                                        setTimeout(() => scrollToPage(1), 300);
-                                    }
-                                };
+                    // 查找会议文件夹（可能包含会议ID前缀）
+                    const dirReader = meetingFilesDir.createReader();
+                    dirReader.readEntries(function(entries) {
+                        console.log('在meeting-files中找到', entries.length, '个文件夹');
+
+                        // 查找包含会议ID的文件夹
+                        let meetingFolder = null;
+                        for (let i = 0; i < entries.length; i++) {
+                            const entry = entries[i];
+                            if (entry.isDirectory && entry.name.includes(meetingId)) {
+                                meetingFolder = entry;
+                                console.log('找到会议文件夹：', entry.name);
+                                break;
                             }
-                        };
-                        reader.onerror = function(e) {
-                            console.error('读取文件内容失败：', e);
-                            tryReadFromStorage(filename);
-                        };
-                        reader.readAsDataURL(file);
+                        }
+
+                        if (!meetingFolder) {
+                            console.error('未找到当前会议的文件夹');
+                            showErrorMessage('未找到当前会议的文件夹');
+                            return;
+                        }
+
+                        // 递归查找文件
+                        findFileInDirectory(meetingFolder, filename + '.jpg');
                     }, function(error) {
-                        console.error('获取文件对象失败：', error);
-                        tryReadFromStorage(filename);
+                        console.error('读取meeting-files目录失败：', error);
+                        showErrorMessage('读取会议文件夹失败');
                     });
                 }, function(error) {
-                    console.error('文件不存在：', jpgFilename, error);
-                    tryReadFromStorage(filename);
+                    console.error('meeting-files目录不存在：', error);
+                    showErrorMessage('会议文件夹不存在');
                 });
             }, function(error) {
-                console.error('访问documents目录失败：', error);
-                tryReadFromStorage(filename);
+                console.error('获取文件系统失败：', error);
+                showErrorMessage('无法访问文件系统');
             });
-        }, function(error) {
-            console.error('获取文件系统失败：', error);
-            tryReadFromStorage(filename);
-        });
+        } catch (error) {
+            console.error('解析会议数据失败：', error);
+            showErrorMessage('解析会议数据失败');
+        }
     } else {
         showErrorMessage('未指定文件名');
     }

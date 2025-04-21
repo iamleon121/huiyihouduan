@@ -1,0 +1,5 @@
+                        # 删除文件的path和url信息，避免客户端使用错误的路径
+                        if 'path' in file_data:
+                            del file_data['path']
+                        if 'url' in file_data:
+                            del file_data['url']
