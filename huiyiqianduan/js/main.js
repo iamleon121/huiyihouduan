@@ -283,3 +283,45 @@ function openOptionPage() {
 }
 
 
+
+/**
+ * 监听网络状态并更新页面左下角指示灯颜色
+ * 绿色代表网络正常，红色代表网络断开
+ */
+function updateNetworkIndicator(isOnline) {
+    var indicator = document.getElementById('network-status-indicator');
+    if (!indicator) return;
+    if (isOnline) {
+        indicator.style.backgroundColor = '#4caf50';
+        indicator.style.boxShadow = '0 0 6px #4caf50';
+        indicator.title = '网络已连接';
+    } else {
+        indicator.style.backgroundColor = '#f44336';
+        indicator.style.boxShadow = '0 0 6px #f44336';
+        indicator.title = '网络未连接';
+    }
+}
+
+// 页面加载后初始化网络状态指示灯
+window.addEventListener('DOMContentLoaded', function() {
+    updateNetworkIndicator(navigator.onLine);
+});
+
+// 监听浏览器原生网络事件
+window.addEventListener('online', function() {
+    updateNetworkIndicator(true);
+});
+window.addEventListener('offline', function() {
+    updateNetworkIndicator(false);
+});
+
+// 若service页面有更精确的网络检测，可通过plus.webview通信机制通知main页面
+if (typeof plus !== 'undefined' && plus.webview) {
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'network-status') {
+            updateNetworkIndicator(event.data.online);
+        }
+    });
+}
+
+
