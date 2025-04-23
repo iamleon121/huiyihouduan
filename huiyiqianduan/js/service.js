@@ -313,6 +313,28 @@ const MeetingService = {
             if (token) {
                 console.log('成功提取到token:', token);
 
+                // 如果token是"none"，忽略这个更新，维持当前状态
+                if (token === "none") {
+                    console.log('收到token为"none"，忽略这个更新，维持当前状态');
+
+                    // 重置失败计数器，因为成功获取到有效会议状态
+                    const oldFailedCount = this.failedRequestCount;
+                    this.failedRequestCount = 0;
+                    console.log('成功获取有效会议状态，重置失败计数器，从', oldFailedCount, '重置为0');
+
+                    // 如果API连接状态之前是异常的，现在恢复正常
+                    if (!this.apiConnectionStatus) {
+                        this.apiConnectionStatus = true;
+                        console.log('成功获取有效会议状态，API连接已恢复正常');
+                        console.log('当前网络状态:', navigator.onLine ? '已连接' : '未连接', '，API连接已恢复正常');
+                        // 通知main页面更新状态
+                        this.notifyMainPageConnectionStatus(true);
+                    }
+
+                    // 忽略这个更新，不改变当前状态
+                    return;
+                }
+
                 // 重置失败计数器，因为成功获取到有效会议状态
                 const oldFailedCount = this.failedRequestCount;
                 this.failedRequestCount = 0;
