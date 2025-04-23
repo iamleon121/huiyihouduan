@@ -89,10 +89,11 @@ huiyiqianduan/
 ## 相关文档
 
 - [前端当前状态](./current_frontend_status.md)
+- [前端项目结构分析](./frontend_structure_analysis.md)
 - [前后端数据交互规范](./api_interaction.md)
 - [无线数据同步实现](./wireless_data_sync_implementation.md)
 - [用户界面设计指南](./ui_guidelines.md)
 - [开发计划](./development_plan.md)
 - [测试计划](./testing_plan.md)
 
-更新日期：2025年04月21日
+更新日期：2025年4月22日

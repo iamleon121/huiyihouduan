@@ -10,6 +10,8 @@
 - [API文档](./api_documentation.md) - API接口说明
 - [前端组件](./frontend_components.md) - 前端组件设计和实现
 - [上传目录指南](./uploads_directory_guide.md) - uploads目录结构和使用说明
+- [后端结构分析](./backend_structure_analysis.md) - 后端项目结构和模块分析
+- [后端分析总结](./backend_analysis_summary.md) - 后端项目架构和功能总结
 
 ### 开发规范与指南
 - [编码规范](./coding_standards.md) - Python/FastAPI编码规范和最佳实践
@@ -57,6 +59,7 @@
 
 ## 最近更新
 
+- 2024-05-15: 创建后端项目结构分析和总结文档
 - 2024-04-19: 完成会议管理页面分页功能移除，显示所有会议
 - 2024-04-19: 优化文档管理页面，保留客户端分页功能
 - 2024-04-19: 完成代码整理，移除无效测试代码和注释
@@ -82,4 +85,4 @@ passlib==1.7.4
 uvicorn main:app --reload
 ```
 
-更新日期：2024年04月19日
+更新日期：2025年04月22日
