@@ -285,41 +285,91 @@ function openOptionPage() {
 
 
 /**
- * 监听网络状态并更新页面左下角指示灯颜色
- * 绿色代表网络正常，红色代表网络断开
+ * 监听网络状态并更新“参加会议”按钮颜色
+ * 绿色代表网络正常，黄色代表网络断开
+ * 注意：这个函数保留为兼容旧版本，新代码应使用updateConnectionStatus
  */
-function updateNetworkIndicator(isOnline) {
-    var indicator = document.getElementById('network-status-indicator');
-    if (!indicator) return;
-    if (isOnline) {
-        indicator.style.backgroundColor = '#4caf50';
-        indicator.style.boxShadow = '0 0 6px #4caf50';
-        indicator.title = '网络已连接';
+function updateNetworkStatus(isOnline) {
+    console.log('调用旧版updateNetworkStatus函数，状态:', isOnline ? '正常' : '异常');
+    updateConnectionStatus(isOnline, isOnline); // 兼容模式，网络状态和API状态相同
+}
+
+/**
+ * 更新连接状态并更新“参加会议”按钮颜色
+ * 绿色代表全部正常，黄色代表有异常
+ * @param {boolean} isNetworkOnline - 网络是否连接
+ * @param {boolean} isApiConnected - API是否可访问
+ */
+function updateConnectionStatus(isNetworkOnline, isApiConnected) {
+    var joinButton = document.getElementById('join-meeting-btn');
+    if (!joinButton) {
+        console.error('找不到参加会议按钮');
+        return;
+    }
+
+    console.log('更新连接状态 - 网络:', isNetworkOnline ? '已连接' : '未连接',
+              'API:', isApiConnected ? '正常' : '异常');
+
+    // 获取当前按钮颜色
+    var currentColor = joinButton.style.backgroundColor;
+    var currentTitle = joinButton.title;
+
+    // 只有当网络连接且API可访问时，按钮才显示为绿色
+    if (isNetworkOnline && isApiConnected) {
+        // 全部正常时使用绿色
+        joinButton.style.backgroundColor = '#28f100c7';
+        joinButton.title = '网络和服务器连接正常';
+        console.log('按钮颜色已更新: ' + (currentColor !== '#28f100c7' ? currentColor + ' -> #28f100c7 (绿色)' : '保持绿色'));
+        console.log('按钮提示已更新: ' + (currentTitle !== '网络和服务器连接正常' ? currentTitle + ' -> 网络和服务器连接正常' : '保持不变'));
     } else {
-        indicator.style.backgroundColor = '#f44336';
-        indicator.style.boxShadow = '0 0 6px #f44336';
-        indicator.title = '网络未连接';
+        // 任一异常时使用黄色
+        joinButton.style.backgroundColor = '#ffae00e8';
+
+        // 设置不同的提示文本
+        var newTitle = '';
+        if (!isNetworkOnline) {
+            newTitle = '网络连接已断开';
+            joinButton.title = newTitle;
+        } else if (!isApiConnected) {
+            newTitle = '服务器连接异常';
+            joinButton.title = newTitle;
+            console.log('网络正常但API连接异常，按钮显示为黄色');
+        } else {
+            newTitle = '连接状态异常';
+            joinButton.title = newTitle;
+        }
+        console.log('按钮颜色已更新: ' + (currentColor !== '#ffae00e8' ? currentColor + ' -> #ffae00e8 (黄色)' : '保持黄色'));
+        console.log('按钮提示已更新: ' + (currentTitle !== newTitle ? currentTitle + ' -> ' + newTitle : '保持不变'));
     }
 }
 
-// 页面加载后初始化网络状态指示灯
+// 页面加载后初始化网络状态
 window.addEventListener('DOMContentLoaded', function() {
-    updateNetworkIndicator(navigator.onLine);
+    // 初始化时假设网络和API状态相同
+    updateConnectionStatus(navigator.onLine, navigator.onLine);
 });
 
 // 监听浏览器原生网络事件
 window.addEventListener('online', function() {
-    updateNetworkIndicator(true);
+    // 网络恢复时，保持API状态不变
+    var joinButton = document.getElementById('join-meeting-btn');
+    var isApiConnected = joinButton && joinButton.title !== '服务器连接异常';
+    updateConnectionStatus(true, isApiConnected);
 });
 window.addEventListener('offline', function() {
-    updateNetworkIndicator(false);
+    // 网络断开时，API一定不可用
+    updateConnectionStatus(false, false);
 });
 
 // 若service页面有更精确的网络检测，可通过plus.webview通信机制通知main页面
 if (typeof plus !== 'undefined' && plus.webview) {
     window.addEventListener('message', function(event) {
         if (event.data && event.data.type === 'network-status') {
-            updateNetworkIndicator(event.data.online);
+            // 兼容旧版消息格式
+            updateConnectionStatus(event.data.online, event.data.online);
+        } else if (event.data && event.data.type === 'connection-status') {
+            // 新版消息格式，包含网络和API状态
+            updateConnectionStatus(event.data.networkOnline, event.data.apiConnected);
         }
     });
 }

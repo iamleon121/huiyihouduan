@@ -10,6 +10,9 @@ const MeetingService = {
     isStatusFetching: false,
     statusTimer: null, // 状态获取定时器
     lastStatusFetchTime: null, // 上次获取状态的时间
+    failedRequestCount: 0, // 连续失败的请求次数
+    maxFailedRequests: 3, // 允许的最大连续失败次数
+    apiConnectionStatus: true, // API连接状态，true表示正常，false表示异常
 
     // 服务器配置
     serverBaseUrl: 'http://192.168.110.10:8000', // 默认服务器基础URL
@@ -35,12 +38,16 @@ const MeetingService = {
         window.addEventListener('online', () => {
             console.log('网络已连接，恢复数据获取');
             this.resumeDataFetch();
+            // 通知main页面网络状态变化
+            this.notifyMainPageNetworkStatus(true);
         });
 
         window.addEventListener('offline', () => {
             console.log('网络已断开，暂停数据获取');
             this.pauseDataFetch();
             this.triggerEvent('networkUnavailable');
+            // 通知main页面网络状态变化
+            this.notifyMainPageNetworkStatus(false);
         });
 
         // 从本地存储加载配置
@@ -64,6 +71,15 @@ const MeetingService = {
         // 立即开始获取会议状态
         console.log('初始化时获取会议状态');
         this.getMeetingStatus(); // 使用原来的方法名
+
+        // 初始化时通知main页面当前网络和API连接状态
+        setTimeout(() => {
+            // 初始化时假设 API 连接正常，在第一次请求后会更新
+            this.apiConnectionStatus = true;
+            this.failedRequestCount = 0;
+            // 使用新的综合状态通知函数
+            this.notifyMainPageConnectionStatus(this.apiConnectionStatus);
+        }, 1000); // 等待一秒，确保main页面已加载
 
         // 立即检查并打开main页面，无论网络状态如何
         console.log('初始化时检查并打开main页面 - 立即执行');
@@ -214,7 +230,8 @@ const MeetingService = {
                         xhr.responseText;
                     console.log(`[状态请求] 成功响应内容预览: ${responsePreview}`);
 
-                    // 请求成功，解析状态数据
+                    // 注意：不在这里重置失败计数器，而是在parseStatusData中成功提取到token后再重置
+                    // 解析状态数据
                     this.parseStatusData(xhr.responseText);
                 } else {
                     console.error(`[状态请求] 失败状态码: ${xhr.status}, 响应内容: ${xhr.responseText}`);
@@ -295,6 +312,20 @@ const MeetingService = {
             // 如果成功提取到token
             if (token) {
                 console.log('成功提取到token:', token);
+
+                // 重置失败计数器，因为成功获取到有效会议状态
+                const oldFailedCount = this.failedRequestCount;
+                this.failedRequestCount = 0;
+                console.log('成功获取有效会议状态，重置失败计数器，从', oldFailedCount, '重置为0');
+
+                // 如果API连接状态之前是异常的，现在恢复正常
+                if (!this.apiConnectionStatus) {
+                    this.apiConnectionStatus = true;
+                    console.log('成功获取有效会议状态，API连接已恢复正常');
+                    console.log('当前网络状态:', navigator.onLine ? '已连接' : '未连接', '，API连接已恢复正常');
+                    // 通知main页面更新状态
+                    this.notifyMainPageConnectionStatus(true);
+                }
 
                 // 创建标准格式的状态数据
                 const normalizedStatusData = {
@@ -382,9 +413,35 @@ const MeetingService = {
                 }
             } else {
                 console.error('无效的状态数据格式，无法提取token');
+
+                // 即使状态码是200，但没有有效的会议状态，也算失败
+                this.failedRequestCount++;
+                console.log('状态码为200但没有有效的会议状态，增加失败计数:', this.failedRequestCount, '/', this.maxFailedRequests);
+
+                // 如果连续失败次数超过限制，更新API连接状态
+                if (this.failedRequestCount >= this.maxFailedRequests && this.apiConnectionStatus) {
+                    this.apiConnectionStatus = false;
+                    console.log('连续', this.maxFailedRequests, '次请求未获取到有效会议状态，API连接状态更新为异常');
+                    console.log('当前网络状态:', navigator.onLine ? '已连接' : '未连接', '，但未获取到有效会议状态');
+                    // 通知main页面更新状态
+                    this.notifyMainPageConnectionStatus(false);
+                }
             }
         } catch (error) {
             console.error('解析状态数据失败:', error);
+
+            // 解析失败也算一次失败
+            this.failedRequestCount++;
+            console.log('解析状态数据失败，增加失败计数:', this.failedRequestCount, '/', this.maxFailedRequests);
+
+            // 如果连续失败次数超过限制，更新API连接状态
+            if (this.failedRequestCount >= this.maxFailedRequests && this.apiConnectionStatus) {
+                this.apiConnectionStatus = false;
+                console.log('连续', this.maxFailedRequests, '次请求未获取到有效会议状态，API连接状态更新为异常');
+                console.log('当前网络状态:', navigator.onLine ? '已连接' : '未连接', '，但解析状态数据失败');
+                // 通知main页面更新状态
+                this.notifyMainPageConnectionStatus(false);
+            }
         } finally {
             // 确保在请求完成后重置状态获取状态
             this.isStatusFetching = false;
@@ -401,6 +458,19 @@ const MeetingService = {
         // 如果是请求失败，输出状态码
         if (message === '获取状态失败' && error && error.status) {
             console.error('状态码:', error.status);
+        }
+
+        // 增加失败计数
+        this.failedRequestCount++;
+        console.log('连续失败请求次数:', this.failedRequestCount, '/', this.maxFailedRequests);
+
+        // 如果连续失败次数超过限制，更新API连接状态
+        if (this.failedRequestCount >= this.maxFailedRequests && this.apiConnectionStatus) {
+            this.apiConnectionStatus = false;
+            console.log('连续', this.maxFailedRequests, '次请求失败，API连接状态更新为异常');
+            console.log('当前网络状态:', navigator.onLine ? '已连接' : '未连接', '，但API连接异常');
+            // 通知main页面更新状态
+            this.notifyMainPageConnectionStatus(false);
         }
 
         this.triggerEvent('statusError', { error: message, details: error });
@@ -711,6 +781,84 @@ const MeetingService = {
             // 尝试使用浏览器原生方式跳转
             console.log('尝试使用浏览器原生方式跳转到main页面');
             window.location.href = 'main.html';
+        }
+    },
+
+    // 通知main页面网络状态变化
+    notifyMainPageNetworkStatus: function(isOnline) {
+        try {
+            // 获取main页面
+            const mainPage = plus.webview.getWebviewById('main');
+            if (mainPage) {
+                console.log('当前网络状态:', isOnline ? '已连接' : '未连接');
+                console.log('向main页面发送网络状态变化消息');
+
+                // 向main页面发送消息
+                const statusText = isOnline ? '已连接' : '未连接';
+                const jsCode = `
+                    console.log('收到网络状态更新消息: ${statusText}');
+                    if (typeof updateConnectionStatus === 'function') {
+                        // 使用新的综合状态更新函数
+                        updateConnectionStatus(${isOnline}, ${this.apiConnectionStatus});
+                        console.log('网络状态已更新为: ${statusText}, API状态: ${this.apiConnectionStatus ? '正常' : '异常'}');
+                    } else if (typeof updateNetworkStatus === 'function') {
+                        // 兼容旧的函数
+                        updateNetworkStatus(${isOnline && this.apiConnectionStatus});
+                        console.log('网络状态已更新为: ${statusText}');
+                    } else {
+                        console.error('状态更新函数不存在');
+                    }
+                `;
+
+                console.log('执行的JS代码:', jsCode);
+                mainPage.evalJS(jsCode);
+                console.log('消息已发送到main页面');
+            } else {
+                console.error('main页面不存在，无法发送网络状态消息');
+            }
+        } catch (error) {
+            console.error('通知main页面网络状态时出错:', error);
+        }
+    },
+
+    // 通知main页面API连接状态变化
+    notifyMainPageConnectionStatus: function(isConnected) {
+        try {
+            // 获取main页面
+            const mainPage = plus.webview.getWebviewById('main');
+            if (mainPage) {
+                // 获取当前网络状态
+                const isNetworkOnline = navigator.onLine;
+
+                console.log('当前网络状态:', isNetworkOnline ? '已连接' : '未连接');
+                console.log('当前API连接状态:', isConnected ? '正常' : '异常');
+                console.log('向main页面发送API连接状态变化消息');
+
+                // 向main页面发送消息
+                const statusText = isConnected ? '正常' : '异常';
+                const jsCode = `
+                    console.log('收到API连接状态更新消息: ${statusText}');
+                    if (typeof updateConnectionStatus === 'function') {
+                        // 使用新的综合状态更新函数
+                        updateConnectionStatus(${isNetworkOnline}, ${isConnected});
+                        console.log('网络状态: ${isNetworkOnline ? '已连接' : '未连接'}, API状态已更新为: ${statusText}');
+                    } else if (typeof updateNetworkStatus === 'function') {
+                        // 兼容旧的函数，使用API状态作为参数
+                        updateNetworkStatus(${isConnected});
+                        console.log('API状态已更新为: ${statusText}');
+                    } else {
+                        console.error('状态更新函数不存在');
+                    }
+                `;
+
+                console.log('执行的JS代码:', jsCode);
+                mainPage.evalJS(jsCode);
+                console.log('消息已发送到main页面');
+            } else {
+                console.error('main页面不存在，无法发送API连接状态消息');
+            }
+        } catch (error) {
+            console.error('通知main页面API连接状态时出错:', error);
         }
     },
 
