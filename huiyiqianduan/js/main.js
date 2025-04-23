@@ -205,7 +205,48 @@ function updateMeetingInfo(jsonData) {
         titleElement.textContent = jsonData.title;
     }
     if (introElement && jsonData.time) {
-        introElement.textContent = jsonData.time;
+        // 将时间格式从 YYYY-MM-DD HH:MM 转换为 YYYY年MM月DD日 HH:MM
+        let formattedTime = jsonData.time;
+
+        // 检查是否有日期部分
+        if (jsonData.time && jsonData.time.includes('-')) {
+            try {
+                // 分离日期和时间部分
+                let datePart = '';
+                let timePart = '';
+
+                if (jsonData.time.includes(' ')) {
+                    // 如果包含空格，则有时间部分
+                    const parts = jsonData.time.split(' ');
+                    datePart = parts[0];
+                    timePart = parts.length > 1 ? ' ' + parts[1] : '';
+                } else {
+                    // 只有日期部分
+                    datePart = jsonData.time;
+                }
+
+                // 处理日期部分
+                if (datePart) {
+                    const dateComponents = datePart.split('-');
+                    if (dateComponents.length === 3) {
+                        const year = dateComponents[0];
+                        // 对于月份和日期，如果是一位数，则去掉前导零
+                        const month = dateComponents[1].replace(/^0/, '');
+                        const day = dateComponents[2].replace(/^0/, '');
+
+                        // 组合成新的格式
+                        formattedTime = `${year}年${month}月${day}日${timePart}`;
+                        console.log('格式化后的时间:', formattedTime);
+                    }
+                }
+            } catch (error) {
+                console.error('格式化时间时出错:', error);
+                // 出错时使用原始时间
+                formattedTime = jsonData.time;
+            }
+        }
+
+        introElement.textContent = formattedTime;
     }
 }
 
@@ -236,10 +277,8 @@ document.addEventListener('visibilitychange', function() {
             if (storedData) {
                 const jsonData = JSON.parse(storedData);
                 if (jsonData && jsonData.title && jsonData.time) {
-                    const titleElement = document.querySelector('.meeting-title-text');
-                    const introElement = document.querySelector('.meeting-intro-text');
-                    if (titleElement) titleElement.textContent = jsonData.title;
-                    if (introElement) introElement.textContent = jsonData.time;
+                    // 直接调用现有的updateMeetingInfo函数来更新会议信息
+                    updateMeetingInfo(jsonData);
                     console.log('更新会议标题和时间成功');
                 } else {
                     console.error('无效的会议数据');

@@ -552,6 +552,12 @@ function fetchMeetingById(meetingId) {
         stopProgressAnimation();
         setProgress(50);
         startProgressAnimation(50, 70, 10000); // 从50%到70%，持续10秒
+
+        // 显示取消更新按钮
+        if (typeof showCancelButton === 'function') {
+            showCancelButton();
+            console.log('显示取消更新按钮');
+        }
     });
 
     // 上次输出的进度百分比
@@ -576,6 +582,12 @@ function fetchMeetingById(meetingId) {
         updateLoadingText('下载完成，准备解压文件...');
         stopProgressAnimation();
         setProgress(70);
+
+        // 隐藏取消更新按钮
+        if (typeof hideCancelButton === 'function') {
+            hideCancelButton();
+            console.log('下载完成，隐藏取消更新按钮');
+        }
     });
 
     LoadingService.addEventListener('downloadError', function(data) {
@@ -592,6 +604,12 @@ function fetchMeetingById(meetingId) {
         stopProgressAnimation();
         setProgress(70);
         startProgressAnimation(70, 90, 8000); // 从70%到90%，持续8秒
+
+        // 显示取消更新按钮
+        if (typeof showCancelButton === 'function') {
+            showCancelButton();
+            console.log('解压开始，显示取消更新按钮');
+        }
     });
 
     LoadingService.addEventListener('extractComplete', function(data) {
@@ -599,6 +617,12 @@ function fetchMeetingById(meetingId) {
         updateLoadingText('文件解压完成，准备返回主页面...');
         stopProgressAnimation();
         setProgress(100);
+
+        // 隐藏取消更新按钮
+        if (typeof hideCancelButton === 'function') {
+            hideCancelButton();
+            console.log('解压完成，隐藏取消更新按钮');
+        }
 
         // 自动返回主页面
         setTimeout(function() {
@@ -612,10 +636,30 @@ function fetchMeetingById(meetingId) {
         stopProgressAnimation();
         setProgress(100);
 
+        // 隐藏取消更新按钮
+        if (typeof hideCancelButton === 'function') {
+            hideCancelButton();
+            console.log('解压失败，隐藏取消更新按钮');
+        }
+
         // 即使解压失败也自动返回主页面
         setTimeout(function() {
             returnToMain();
         }, 1000); // 等待1秒后自动返回主页面
+    });
+
+    // 添加取消操作事件监听器
+    LoadingService.addEventListener('operationCancelled', function(data) {
+        console.log('操作已取消:', data.message);
+        updateLoadingText('操作已取消，准备返回主页面...');
+        stopProgressAnimation();
+        setProgress(0);
+
+        // 隐藏取消更新按钮
+        if (typeof hideCancelButton === 'function') {
+            hideCancelButton();
+            console.log('操作已取消，隐藏取消更新按钮');
+        }
     });
 
     // 触发数据获取

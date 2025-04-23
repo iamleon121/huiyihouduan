@@ -6,6 +6,10 @@ const LoadingService = {
     meetingData: null,
     isDataFetching: false,
 
+    // 取消操作相关变量
+    isCancelled: false,
+    downloadTask: null,
+
     // 服务器配置
     serverBaseUrl: 'http://192.168.110.10:8000', // 默认服务器基础URL
     meetingDataUrl: 'http://192.168.110.10:8000/data.json', // 默认会议数据接口
@@ -423,6 +427,9 @@ const LoadingService = {
             // 确保下载文件夹存在
             this.ensureDirectoryExists('_doc/download/')
                 .then(() => {
+                    // 重置取消标志
+                    this.isCancelled = false;
+
                     // 创建下载任务
                     const dtask = plus.downloader.createDownload(downloadUrl, {
                         filename: '_doc/download/meeting_' + meetingId + '.zip',
@@ -498,8 +505,12 @@ const LoadingService = {
                         }
                     });
 
+                    // 保存下载任务引用
+                    this.downloadTask = dtask;
+
                     // 开始下载任务
                     dtask.start();
+                    console.log('下载任务已启动');
                 });
         });
     },
@@ -530,6 +541,13 @@ const LoadingService = {
                 .then(() => {
                     // 使用plus.zip模块解压文件
                     try {
+                        // 检查是否已取消
+                        if (this.isCancelled) {
+                            console.log('操作已取消，不执行解压');
+                            reject(new Error('操作已取消'));
+                            return;
+                        }
+
                         console.log('准备解压文件:', zipPath, '到', extractPath);
 
                         // 直接使用plus.zip.decompress解压文件
@@ -539,6 +557,13 @@ const LoadingService = {
                         // 简化解压过程，直接调用decompress
                         plus.zip.decompress(zipPath, extractPath, status => {
                             console.log('解压返回状态码:', status, '当前时间:', new Date().toLocaleTimeString());
+
+                            // 检查是否已取消
+                            if (this.isCancelled) {
+                                console.log('操作已取消，不继续处理解压结果');
+                                reject(new Error('操作已取消'));
+                                return;
+                            }
 
                             // 检查状态码是否有效，接受更多的成功状态码
                             if (status === 0 || status === '0' || status === 200 || status === '200') {
@@ -913,6 +938,46 @@ const LoadingService = {
                 console.error(`事件处理器错误 (${eventName}):`, error);
             }
         });
+    },
+
+    // 取消当前操作
+    cancelOperation: function() {
+        console.log('收到取消操作请求');
+
+        // 设置取消标志
+        this.isCancelled = true;
+
+        // 取消下载任务
+        if (this.downloadTask) {
+            try {
+                console.log('取消下载任务');
+                this.downloadTask.abort();
+                this.downloadTask = null;
+                console.log('下载任务已取消');
+            } catch (error) {
+                console.error('取消下载任务失败:', error);
+            }
+        }
+
+        // 触发取消事件
+        this.triggerEvent('operationCancelled', { message: '操作已取消' });
+
+        // 返回主页面
+        setTimeout(function() {
+            // 如果在plus环境中，尝试调用returnToMain函数
+            if (typeof plus !== 'undefined' && plus.webview) {
+                const loadingView = plus.webview.getWebviewById('loading');
+                if (loadingView) {
+                    loadingView.evalJS('if (typeof returnToMain === "function") { returnToMain(); }');
+                } else {
+                    console.error('找不到loading页面');
+                }
+            } else {
+                console.log('非plus环境，无法返回主页面');
+            }
+        }, 1000); // 等待1秒后返回主页面
+
+        return true;
     }
 };
 

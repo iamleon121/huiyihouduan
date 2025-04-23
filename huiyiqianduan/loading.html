@@ -39,6 +39,8 @@
             </div>
             <div class="loading-text pulse">正在初始化系统...</div>
             <div class="error-text">加载过程中出现错误</div>
+            <!-- 取消更新按钮 -->
+            <button id="cancel-update-btn" class="cancel-update-btn" style="display: none;" onclick="cancelUpdate()">取消更新</button>
         </div>
     </div>
 
@@ -79,14 +81,31 @@
             }
         }
 
+        // 取消更新函数
+        function cancelUpdate() {
+            console.log('取消更新');
+            // 隐藏取消按钮
+            document.getElementById('cancel-update-btn').style.display = 'none';
+            // 更新加载文本
+            updateLoadingText('正在取消更新...');
+            // 触发取消事件
+            if (typeof LoadingService !== 'undefined') {
+                LoadingService.cancelOperation();
+                console.log('已触发取消操作');
+            } else {
+                console.error('LoadingService未定义，无法取消操作');
+                // 显示错误消息
+                showError('LoadingService未定义，无法取消操作');
+            }
+        }
+
         // 显示错误消息函数
         function showError(message) {
             const errorText = document.querySelector('.error-text');
             if (errorText) {
                 errorText.textContent = message || '加载过程中出现错误';
                 errorText.style.display = 'block';
-                // 显示重试按钮
-                document.querySelector('.retry-button').style.display = 'block';
+                // 不再显示重试按钮，因为我们已经移除了按钮
             }
         }
 
@@ -114,6 +133,24 @@
             }
         }
 
+        // 显示取消更新按钮
+        function showCancelButton() {
+            const cancelButton = document.getElementById('cancel-update-btn');
+            if (cancelButton) {
+                cancelButton.style.display = 'block';
+                console.log('取消更新按钮已显示');
+            }
+        }
+
+        // 隐藏取消更新按钮
+        function hideCancelButton() {
+            const cancelButton = document.getElementById('cancel-update-btn');
+            if (cancelButton) {
+                cancelButton.style.display = 'none';
+                console.log('取消更新按钮已隐藏');
+            }
+        }
+
         // 显示按钮函数
         function showButtons() {
             document.querySelector('.return-button').style.display = 'block';
@@ -136,11 +173,16 @@
             // 初始化加载文本
             updateLoadingText('正在初始化系统...');
 
-            // 按钮已经被移除，不需要初始化
+            // 隐藏取消更新按钮
+            hideCancelButton();
 
             // 隐藏错误消息
             hideError();
         });
+
+        // 将显示取消按钮函数添加到全局作用域
+        window.showCancelButton = showCancelButton;
+        window.hideCancelButton = hideCancelButton;
     </script>
 </body>
 </html>
