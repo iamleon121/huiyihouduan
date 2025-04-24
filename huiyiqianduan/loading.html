@@ -39,8 +39,8 @@
             </div>
             <div class="loading-text pulse">正在初始化系统...</div>
             <div class="error-text">加载过程中出现错误</div>
-            <!-- 取消更新按钮 -->
-            <button id="cancel-update-btn" class="cancel-update-btn" style="display: none;" onclick="cancelUpdate()">取消更新</button>
+            <!-- 取消更新按钮 - 默认显示 -->
+            <button id="cancel-update-btn" class="cancel-update-btn" onclick="cancelUpdate()">取消更新</button>
         </div>
     </div>
 
@@ -173,8 +173,8 @@
             // 初始化加载文本
             updateLoadingText('正在初始化系统...');
 
-            // 隐藏取消更新按钮
-            hideCancelButton();
+            // 取消按钮始终显示，不需要隐藏
+            // hideCancelButton();
 
             // 隐藏错误消息
             hideError();

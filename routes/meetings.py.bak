@@ -335,7 +335,7 @@ async def get_meeting_data(meeting_id: str, db: Session = Depends(get_db)):
                             del file_data['path']
                         if 'url' in file_data:
                             del file_data['url']
-
+                            
                             try:
                                 # 例如，从URL"/uploads/123456/agenda_1/abc123_file.pdf"中提取信息
                                 parts = file_url.split('/')
@@ -491,13 +491,15 @@ def get_meeting_status_token(db: Session = Depends(get_db)):
     此识别码才会更新。客户端可通过比较前后两次请求的识别码是否相同，
     来确定是否有新会议开始进行。
 
-    当没有任何会议处于"进行中"状态时，返回id为"none"，表示当前没有会议召开。
-
     返回:
         MeetingChangeStatus: 包含id字段和meetings字段的对象
-          - id: 会议状态变更识别码，如果没有进行中的会议则为"none"
+          - id: 会议状态变更识别码
           - meetings: 当前所有处于"进行中"状态的会议列表
     """
+    # 获取最新的会议变更识别码
+    token = crud.get_meeting_change_status_token(db)
+    print(f"[识别码查询] 当前会议状态识别码: {token}")
+
     # 查询所有处于"进行中"状态的会议
     in_progress_meetings = db.query(models.Meeting).filter(models.Meeting.status == "进行中").all()
 
@@ -516,15 +518,6 @@ def get_meeting_status_token(db: Session = Depends(get_db)):
         })
 
     print(f"[识别码查询] 当前进行中会议数量: {len(meetings_info)}")
-
-    # 如果没有进行中的会议，返回id为"none"
-    if not meetings_info:
-        print(f"[识别码查询] 没有进行中的会议，返回id为'none'")
-        token = "none"
-    else:
-        # 获取最新的会议变更识别码
-        token = crud.get_meeting_change_status_token(db)
-        print(f"[识别码查询] 当前会议状态识别码: {token}")
 
     # 确保数据库会话关闭，避免缓存问题
     db.close()
