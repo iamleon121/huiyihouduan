@@ -231,7 +231,8 @@ function updateMeetingTopics(jsonData) {
 
                     // 创建文本节点容器
                     const textSpan = document.createElement('span');
-                    textSpan.textContent = fileInfo.display_name || fileInfo.name;
+                    textSpan.innerHTML = fileInfo.display_name || fileInfo.name;
+                    textSpan.innerHTML += ' <span style="color: #4da6ff;">(点击打开)</span>'; // 添加淡蓝色的“（点击打开）”字样
                     textSpan.style.pointerEvents = 'auto'; // 只启用文本内容的点击事件
                     textSpan.style.cursor = 'pointer'; // 添加鼠标指针样式
 
@@ -323,7 +324,8 @@ function updateMeetingTopics(jsonData) {
 
                     // 创建文本节点容器
                     const textSpan = document.createElement('span');
-                    textSpan.textContent = fileName;
+                    textSpan.innerHTML = fileName;
+                    textSpan.innerHTML += ' <span style="color:rgb(29, 99, 168);">(点击打开)</span>'; // 添加淡蓝色的“（点击打开）”字样
                     textSpan.style.pointerEvents = 'auto'; // 只启用文本内容的点击事件
                     textSpan.style.cursor = 'pointer'; // 添加鼠标指针样式
 
