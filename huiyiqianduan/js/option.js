@@ -6,6 +6,7 @@ const OptionService = {
     defaultSettings: {
         server: '192.168.110.10',
         port: '8000',
+        serverCount: '1', // 默认服务器数量
         intertime: '10',
         titleText: '政协阜新市委员会', // 默认标题文字
         showClickHint: 'true' // 默认显示点击提示
@@ -78,6 +79,7 @@ const OptionService = {
             // 从UI获取设置值
             const serverUrlInput = document.getElementById('server-url');
             const serverPortInput = document.getElementById('server-port');
+            const serverCountInput = document.getElementById('server-count');
             const updateIntervalInput = document.getElementById('update-interval');
             const titleTextInput = document.getElementById('title-text');
             const showClickHintSelect = document.getElementById('show-click-hint');
@@ -90,6 +92,7 @@ const OptionService = {
             // 验证输入
             const server = serverUrlInput.value.trim();
             const port = serverPortInput ? serverPortInput.value.trim() : this.defaultSettings.port;
+            const serverCount = serverCountInput ? serverCountInput.value.trim() : this.defaultSettings.serverCount;
             const intertime = updateIntervalInput.value.trim();
             const titleText = titleTextInput ? titleTextInput.value.trim() : this.defaultSettings.titleText;
             const showClickHint = showClickHintSelect ? showClickHintSelect.value : this.defaultSettings.showClickHint;
@@ -107,6 +110,14 @@ const OptionService = {
                 }
             }
 
+            if (serverCount) {
+                const countNum = parseInt(serverCount);
+                if (isNaN(countNum) || countNum < 1 || countNum > 9) {
+                    alert('请输入有效的服务器数量（1-9）');
+                    return false;
+                }
+            }
+
             const updateInterval = parseInt(intertime);
             if (isNaN(updateInterval) || updateInterval < 5) {
                 alert('请输入有效的更新间隔（最小5秒）');
@@ -117,6 +128,7 @@ const OptionService = {
             this.currentSettings = {
                 server: server,
                 port: port,
+                serverCount: serverCount,
                 intertime: intertime,
                 titleText: titleText,
                 showClickHint: showClickHint
@@ -151,6 +163,7 @@ const OptionService = {
     updateSettingsUI: function() {
         const serverUrlInput = document.getElementById('server-url');
         const serverPortInput = document.getElementById('server-port');
+        const serverCountInput = document.getElementById('server-count');
         const updateIntervalInput = document.getElementById('update-interval');
         const titleTextInput = document.getElementById('title-text');
         const showClickHintSelect = document.getElementById('show-click-hint');
@@ -161,6 +174,10 @@ const OptionService = {
 
         if (serverPortInput && this.currentSettings.port) {
             serverPortInput.value = this.currentSettings.port;
+        }
+
+        if (serverCountInput && this.currentSettings.serverCount) {
+            serverCountInput.value = this.currentSettings.serverCount;
         }
 
         if (updateIntervalInput && this.currentSettings.intertime) {
@@ -287,6 +304,11 @@ const OptionService = {
     // 获取服务器端口
     getServerPort: function() {
         return (this.currentSettings && this.currentSettings.port) || this.defaultSettings.port;
+    },
+
+    // 获取服务器数量
+    getServerCount: function() {
+        return (this.currentSettings && this.currentSettings.serverCount) || this.defaultSettings.serverCount;
     },
 
     // 获取更新间隔（秒）
