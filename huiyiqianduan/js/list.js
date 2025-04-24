@@ -1,3 +1,24 @@
+// 从配置中获取是否显示点击提示的设置
+function getShowClickHintSetting() {
+    try {
+        if (typeof plus !== 'undefined' && plus.storage) {
+            const storedSettings = plus.storage.getItem('option');
+            if (storedSettings) {
+                const parsedSettings = JSON.parse(storedSettings);
+                if (parsedSettings && parsedSettings.option && parsedSettings.option.showClickHint !== undefined) {
+                    return parsedSettings.option.showClickHint;
+                }
+            }
+        }
+        // 默认显示点击提示
+        return 'true';
+    } catch (error) {
+        console.error('获取点击提示设置失败:', error);
+        // 出错时默认显示
+        return 'true';
+    }
+}
+
 // 显示加载状态
 function showLoadingState() {
     // 获取内容容器
@@ -232,7 +253,13 @@ function updateMeetingTopics(jsonData) {
                     // 创建文本节点容器
                     const textSpan = document.createElement('span');
                     textSpan.innerHTML = fileInfo.display_name || fileInfo.name;
-                    textSpan.innerHTML += ' <span style="color: #4da6ff;">(点击打开)</span>'; // 添加淡蓝色的“（点击打开）”字样
+
+                    // 根据配置决定是否显示点击提示
+                    const showClickHint = getShowClickHintSetting();
+                    if (showClickHint === 'true') {
+                        textSpan.innerHTML += ' <span style="color:rgb(45, 131, 218);">(点击打开)</span>'; // 添加淡蓝色的“（点击打开）”字样
+                    }
+
                     textSpan.style.pointerEvents = 'auto'; // 只启用文本内容的点击事件
                     textSpan.style.cursor = 'pointer'; // 添加鼠标指针样式
 
@@ -325,7 +352,13 @@ function updateMeetingTopics(jsonData) {
                     // 创建文本节点容器
                     const textSpan = document.createElement('span');
                     textSpan.innerHTML = fileName;
-                    textSpan.innerHTML += ' <span style="color:rgb(29, 99, 168);">(点击打开)</span>'; // 添加淡蓝色的“（点击打开）”字样
+
+                    // 根据配置决定是否显示点击提示
+                    const showClickHint = getShowClickHintSetting();
+                    if (showClickHint === 'true') {
+                        textSpan.innerHTML += ' <span style="color:rgb(29, 99, 168);">(点击打开)</span>'; // 添加淡蓝色的“（点击打开）”字样
+                    }
+
                     textSpan.style.pointerEvents = 'auto'; // 只启用文本内容的点击事件
                     textSpan.style.cursor = 'pointer'; // 添加鼠标指针样式
 
