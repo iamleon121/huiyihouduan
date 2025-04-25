@@ -144,6 +144,7 @@ function initMainPage() {
 - 服务器端口配置
 - 更新间隔设置
 - 标题文字设置
+- 点击提示显示配置
 - 配置保存和加载
 
 ```javascript
@@ -206,85 +207,112 @@ saveSettings: function() {
 
 ## 最近改进
 
-### 1. 优化多服务器下载机制
+### 1. 移除多服务器下载功能
 
-实现了严格的顺序下载逻辑，确保一次只有一个下载任务在执行，避免资源浪费和冲突：
+为了简化前端逻辑，我们移除了多服务器下载功能，恢复到单服务器下载模式：
 
 ```javascript
-// 从单个服务器尝试下载
-tryDownloadWithServer: function(server, meetingId, availableServers, resolve, reject) {
-    // 如果已经有一个下载成功，直接返回
-    if (this.isDownloadSucceeded) {
-        console.log('已有一个下载成功，不再尝试新的下载');
-        return;
-    }
+// 下载并解压会议ZIP压缩包
+downloadAndExtractMeetingPackage: function(meetingId) {
+    return new Promise((resolve, reject) => {
+        console.log('开始下载会议ZIP压缩包, ID:', meetingId);
 
-    // 构建下载URL
-    const downloadUrl = server.url + '/api/v1/meetings/' + meetingId + '/download-package';
-    console.log('尝试从服务器下载:', server.ip, '下载URL:', downloadUrl);
+        // 触发下载开始事件
+        this.triggerEvent('downloadStart', { meetingId: meetingId });
 
-    // 确保下载文件夹存在
-    this.ensureDirectoryExists('_doc/download/')
-        .then(() => {
-            // 重置取消标志
-            this.isCancelled = false;
+        // 构建下载URL
+        const downloadUrl = this.meetingPackageUrl + meetingId + '/download-package';
+        console.log('下载URL:', downloadUrl);
 
-            // 创建下载任务
-            const dtask = plus.downloader.createDownload(downloadUrl, {
-                filename: '_doc/download/meeting_' + meetingId + '.zip',
-                timeout: 30, // 超时时间，单位为秒
-                retry: 3 // 重试次数
-            }, (d, status) => {
-                // 在回调开始处检查下载成功标志
-                if (this.isDownloadSucceeded) {
-                    console.log('已有一个下载成功，忽略当前下载回调');
-                    return;
-                }
+        // 确保下载文件夹存在
+        this.ensureDirectoryExists('_doc/download/')
+            .then(() => {
+                // 重置取消标志
+                this.isCancelled = false;
 
-                if (status === 200) {
-                    console.log('下载成功:', d.filename);
+                // 创建下载任务
+                const dtask = plus.downloader.createDownload(downloadUrl, {
+                    filename: '_doc/download/meeting_' + meetingId + '.zip',
+                    timeout: 30, // 超时时间，单位为秒
+                    retry: 3 // 重试次数
+                }, (d, status) => {
+                    if (status === 200) {
+                        console.log('下载成功:', d.filename);
 
-                    // 设置下载成功标志
-                    this.isDownloadSucceeded = true;
+                        // 触发下载完成事件
+                        this.triggerEvent('downloadComplete', { meetingId: meetingId, filename: d.filename });
 
-                    // 取消所有其他下载任务
-                    this.cancelAllOtherDownloadTasks(dtask);
+                        // 触发解压开始事件
+                        this.triggerEvent('extractStart', { meetingId: meetingId, filename: d.filename });
 
-                    // 触发下载完成事件
-                    this.triggerEvent('downloadComplete', { meetingId: meetingId, filename: d.filename });
+                        // 清理下载文件夹中的其他压缩包
+                        console.log('开始清理下载文件夹，保留文件:', d.filename);
+                        this.cleanupDownloadFolder(d.filename)
+                            .then(() => {
+                                console.log('清理其他压缩包成功');
 
-                    // 后续处理...
-                }
+                                // 解压文件
+                                return this.extractZipFile(d.filename, meetingId);
+                            })
+                            .then(() => {
+                                console.log('解压成功');
+
+                                // 触发解压完成事件
+                                this.triggerEvent('extractComplete', { meetingId: meetingId });
+
+                                resolve();
+                            })
+                            .catch(error => {
+                                console.error('清理或解压失败:', error);
+
+                                // 触发解压失败事件
+                                this.triggerEvent('extractError', { meetingId: meetingId, error: error.message || String(error) });
+
+                                // 即使解压失败也算成功，不中断整体流程
+                                resolve();
+                            });
+                    } else {
+                        console.error('下载失败, 状态码:', status);
+
+                        // 触发下载失败事件
+                        this.triggerEvent('downloadError', { meetingId: meetingId, status: status });
+
+                        // 即使下载失败也算成功，不中断整体流程
+                        resolve();
+                    }
+                });
+
+                // 监听下载进度
+                let lastPercent = -1; // 上次触发事件的进度百分比
+                dtask.addEventListener('statechanged', (task, _status) => {
+                    if (task.state === 3) { // 下载进行中
+                        const totalSize = task.totalSize;
+                        const downloadedSize = task.downloadedSize;
+                        const percent = totalSize > 0 ? Math.round(downloadedSize / totalSize * 100) : 0;
+
+                        // 只在进度变化时触发事件，避免过多的日志输出
+                        if (percent !== lastPercent) {
+                            lastPercent = percent;
+
+                            // 触发下载进度事件
+                            this.triggerEvent('downloadProgress', {
+                                meetingId: meetingId,
+                                percent: percent,
+                                downloadedSize: downloadedSize,
+                                totalSize: totalSize
+                            });
+                        }
+                    }
+                });
+
+                // 保存下载任务引用
+                this.downloadTask = dtask;
+
+                // 开始下载任务
+                dtask.start();
+                console.log('下载任务已启动');
             });
-
-            // 监听下载进度
-            dtask.addEventListener('statechanged', (task, _status) => {
-                // 在事件处理开始处检查下载成功标志
-                if (this.isDownloadSucceeded) {
-                    console.log('已有一个下载成功，忽略当前事件');
-                    return;
-                }
-
-                // 下载进度处理...
-            });
-
-            // 保存当前下载任务
-            this.downloadTask = dtask;
-
-            // 添加到下载任务列表
-            this.allDownloadTasks.push(dtask);
-            console.log('当前下载任务列表数量:', this.allDownloadTasks.length);
-
-            // 再次检查下载成功标志
-            if (this.isDownloadSucceeded) {
-                console.log('已有一个下载成功，不启动新的下载任务');
-                return;
-            }
-
-            // 开始下载任务
-            dtask.start();
-            console.log('下载任务已启动');
-        });
+    });
 }
 ```
 
@@ -493,4 +521,4 @@ window.onload = function() {
 4. **增强安全性**: 实现更安全的数据传输和存储机制
 5. **性能优化**: 优化大文件处理和页面渲染性能
 
-更新日期：2025年04月24日
+更新日期：2025年04月25日

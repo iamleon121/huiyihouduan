@@ -79,7 +79,10 @@ huiyiqianduan/
 设置页面允许用户配置应用的基本参数，如服务器地址和更新间隔。主要功能包括：
 
 - 服务器地址配置
+- 服务器端口配置
 - 自动更新间隔设置
+- 标题文字设置
+- 点击提示显示配置
 - 设置保存和加载
 
 ## 开发计划
@@ -92,7 +95,7 @@ huiyiqianduan/
 - [前端项目结构分析](./frontend_structure_analysis.md)
 - [前后端数据交互规范](./api_interaction.md)
 - [无线数据同步实现](./wireless_data_sync_implementation.md)
-- [多服务器下载机制](./multi_server_download.md)
+- [多服务器下载机制](./multi_server_download.md) (已移除功能，文档保留作为参考)
 - [解压状态码处理逻辑优化](./decompression_status_handling.md)
 - [用户界面设计指南](./ui_guidelines.md)
 - [开发计划](./development_plan.md)

@@ -32,12 +32,12 @@ generateIpPool: function() {
     const ipPool = [];
     const serverCount = parseInt(this.serverCount) || 1;
     console.log('配置的服务器数量:', serverCount);
-    
+
     // 获取基础IP地址和端口
     const baseIp = this.serverIp;
     const port = this.serverPort;
     console.log('配置的服务器地址:', baseIp, '端口:', port);
-    
+
     // 解析IP地址
     const ipParts = baseIp.split('.');
     if (ipParts.length !== 4) {
@@ -49,17 +49,17 @@ generateIpPool: function() {
         });
         return ipPool;
     }
-    
+
     // 添加基础IP
     ipPool.push({
         ip: baseIp,
         url: 'http://' + baseIp + ':' + port
     });
-    
+
     // 根据服务器数量生成其他IP
     const baseIpPrefix = ipParts[0] + '.' + ipParts[1] + '.' + ipParts[2] + '.';
     const baseIpLast = parseInt(ipParts[3]);
-    
+
     for (let i = 1; i < serverCount; i++) {
         // 计算新的IP地址，最后一段递增
         const newIpLast = baseIpLast + i;
@@ -67,14 +67,14 @@ generateIpPool: function() {
         if (newIpLast > 254) {
             break;
         }
-        
+
         const newIp = baseIpPrefix + newIpLast;
         ipPool.push({
             ip: newIp,
             url: 'http://' + newIp + ':' + port
         });
     }
-    
+
     console.log('生成的IP集合:', ipPool);
     return ipPool;
 }
@@ -97,10 +97,10 @@ downloadAndExtractMeetingPackage: function(meetingId) {
         const ipPool = this.generateIpPool();
         // 创建可用IP集合的副本
         const availableIps = [...ipPool];
-        
+
         // 当前下载任务
         let currentTask = null;
-        
+
         // 尝试下载函数
         const attemptDownload = () => {
             // 如果没有可用的IP了，则失败
@@ -159,7 +159,7 @@ downloadAndExtractMeetingPackage: function(meetingId) {
                     console.log('下载任务已启动');
                 });
         };
-        
+
         // 开始尝试下载
         attemptDownload();
     });
@@ -200,17 +200,17 @@ tryDownloadWithServer: function(server, meetingId, availableServers, resolve, re
         console.log('已有一个下载成功，不再尝试新的下载');
         return;
     }
-    
+
     // 构建下载URL
     const downloadUrl = server.url + '/api/v1/meetings/' + meetingId + '/download-package';
     console.log('尝试从服务器下载:', server.ip, '下载URL:', downloadUrl);
-    
+
     // 确保下载文件夹存在
     this.ensureDirectoryExists('_doc/download/')
         .then(() => {
             // 重置取消标志
             this.isCancelled = false;
-            
+
             // 创建下载任务
             const dtask = plus.downloader.createDownload(downloadUrl, {
                 filename: '_doc/download/meeting_' + meetingId + '.zip',
@@ -222,29 +222,29 @@ tryDownloadWithServer: function(server, meetingId, availableServers, resolve, re
                     console.log('已有一个下载成功，忽略当前下载回调');
                     return;
                 }
-                
+
                 if (status === 200) {
                     console.log('下载成功:', d.filename);
-                    
+
                     // 设置下载成功标志
                     this.isDownloadSucceeded = true;
-                    
+
                     // 取消所有其他下载任务
                     this.cancelAllOtherDownloadTasks(dtask);
-                    
+
                     // 触发下载完成事件
                     this.triggerEvent('downloadComplete', { meetingId: meetingId, filename: d.filename });
-                    
+
                     // 后续处理...
                 } else {
                     console.error('从服务器', server.ip, '下载失败, 状态码:', status);
-                    
+
                     // 再次检查下载成功标志
                     if (this.isDownloadSucceeded) {
                         console.log('已有一个下载成功，不再尝试其他服务器');
                         return;
                     }
-                    
+
                     // 如果还有其他服务器可尝试，则尝试下一个
                     if (availableServers.length > 0) {
                         console.log('尝试从下一个服务器下载');
@@ -259,7 +259,7 @@ tryDownloadWithServer: function(server, meetingId, availableServers, resolve, re
                     }
                 }
             });
-            
+
             // 监听下载进度
             dtask.addEventListener('statechanged', (task, _status) => {
                 // 在事件处理开始处检查下载成功标志
@@ -267,18 +267,18 @@ tryDownloadWithServer: function(server, meetingId, availableServers, resolve, re
                     console.log('已有一个下载成功，忽略当前事件');
                     return;
                 }
-                
+
                 if (task.state === 3) { // 下载进行中
                     // 处理下载进度...
                 } else if (task.state === 4) { // 下载失败
                     console.error('从服务器', server.ip, '下载失败, 状态:', task.state);
-                    
+
                     // 再次检查下载成功标志
                     if (this.isDownloadSucceeded) {
                         console.log('已有一个下载成功，不再尝试其他服务器');
                         return;
                     }
-                    
+
                     // 如果还有其他服务器可尝试，则尝试下一个
                     if (availableServers.length > 0) {
                         console.log('尝试从下一个服务器下载');
@@ -293,20 +293,20 @@ tryDownloadWithServer: function(server, meetingId, availableServers, resolve, re
                     }
                 }
             });
-            
+
             // 保存当前下载任务
             this.downloadTask = dtask;
-            
+
             // 添加到下载任务列表
             this.allDownloadTasks.push(dtask);
             console.log('当前下载任务列表数量:', this.allDownloadTasks.length);
-            
+
             // 再次检查下载成功标志
             if (this.isDownloadSucceeded) {
                 console.log('已有一个下载成功，不启动新的下载任务');
                 return;
             }
-            
+
             // 开始下载任务
             dtask.start();
             console.log('下载任务已启动');
@@ -322,7 +322,7 @@ tryDownloadWithServer: function(server, meetingId, availableServers, resolve, re
 // 取消所有其他下载任务
 cancelAllOtherDownloadTasks: function(currentTask) {
     console.log('取消所有其他下载任务');
-    
+
     // 如果有当前下载任务，尝试取消
     if (this.downloadTask && this.downloadTask !== currentTask) {
         try {
@@ -333,7 +333,7 @@ cancelAllOtherDownloadTasks: function(currentTask) {
             console.error('取消当前下载任务失败:', error);
         }
     }
-    
+
     // 尝试取消所有下载任务列表中的任务
     for (let i = 0; i < this.allDownloadTasks.length; i++) {
         const task = this.allDownloadTasks[i];
@@ -346,7 +346,7 @@ cancelAllOtherDownloadTasks: function(currentTask) {
             }
         }
     }
-    
+
     // 清空下载任务列表，只保留当前任务
     this.allDownloadTasks = currentTask ? [currentTask] : [];
 }
@@ -361,10 +361,10 @@ cancelAllOtherDownloadTasks: function(currentTask) {
 downloadAndExtractMeetingPackage: function(meetingId) {
     return new Promise((resolve, reject) => {
         console.log('开始下载会议ZIP压缩包, ID:', meetingId);
-        
+
         // 重置下载成功标志
         this.isDownloadSucceeded = false;
-        
+
         // 清空下载任务列表
         this.allDownloadTasks = [];
 
@@ -374,24 +374,24 @@ downloadAndExtractMeetingPackage: function(meetingId) {
         // 生成IP集合
         const ipPool = this.generateIpPool();
         console.log('生成的IP集合:', ipPool.map(ip => ip.ip).join(','));
-        
+
         if (ipPool.length === 0) {
             console.error('没有可用的服务器IP');
             this.triggerEvent('downloadError', { meetingId: meetingId, status: 'no_servers' });
             resolve();
             return;
         }
-        
+
         // 随机打乱IP池顺序
         for (let i = ipPool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [ipPool[i], ipPool[j]] = [ipPool[j], ipPool[i]];
         }
-        
+
         // 选择第一个服务器开始下载
         const firstServer = ipPool.shift();
         const remainingServers = ipPool; // 剩余的服务器
-        
+
         // 使用辅助函数尝试下载
         this.tryDownloadWithServer(firstServer, meetingId, remainingServers, resolve, reject);
     });
@@ -427,4 +427,34 @@ downloadAndExtractMeetingPackage: function(meetingId) {
 4. **智能重试**：根据网络状况和服务器响应时间，动态调整重试策略
 5. **下载进度合并**：当切换服务器时，合并下载进度，提供更准确的进度显示
 
-更新日期：2025年04月24日
+## 版本回退与功能移除
+
+经过评估，我们决定回退多服务器下载功能，恢复到单服务器下载模式。这一决定基于以下考虑：
+
+1. **架构调整**：系统架构调整为使用分布式文件服务节点，而不是前端直接管理多服务器下载
+2. **简化前端逻辑**：移除前端的IP池生成和多服务器下载逻辑，简化前端代码
+3. **集中管理下载**：由后端分布式文件服务节点负责文件同步和分发，前端只需连接到单一服务器
+
+### 移除的功能
+
+1. **IP池生成功能**：移除了前端的IP池生成逻辑
+2. **多服务器下载逻辑**：移除了尝试多个服务器下载的逻辑
+3. **服务器数量配置**：从选项页面移除了服务器数量配置
+
+### 保留的功能
+
+1. **基本下载功能**：保留了基本的文件下载功能，但只使用单一服务器
+2. **下载进度显示**：保留了下载进度显示功能
+3. **解压和文件管理**：保留了文件解压和管理功能
+
+### 新的架构
+
+在新的架构中，分布式文件服务节点负责：
+
+1. 从主控服务器获取会议状态
+2. 同步下载会议文件
+3. 为前端提供文件下载服务
+
+前端只需连接到配置的单一服务器，无需关心多服务器下载逻辑。
+
+更新日期：2025年04月25日
