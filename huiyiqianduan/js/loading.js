@@ -458,6 +458,13 @@ function fetchMeetingById(meetingId) {
                 newMainView.addEventListener('loaded', function() {
                     console.log('错误恢复：新的main页面加载完成');
 
+                    try {
+                        // 在新页面中启用状态轮询
+                        newMainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("\u9519\u8bef\u6062\u590d\uff1a\u72b6\u6001\u8f6e\u8be2\u5df2\u5728\u65b0\u9875\u9762\u4e2d\u542f\u7528"); }');
+                    } catch (error) {
+                        console.error('错误恢复：在新页面中启用状态轮询失败：', error);
+                    }
+
                     // 显示新页面
                     newMainView.show('fade-in', 300);
 
@@ -472,6 +479,18 @@ function fetchMeetingById(meetingId) {
                 // 如果加载超时，也关闭当前页面
                 setTimeout(function() {
                     try {
+                        // 尝试获取main页面并恢复轮询
+                        const mainView = plus.webview.getWebviewById('main');
+                        if (mainView) {
+                            try {
+                                // 在main页面中启用状态轮询
+                                mainView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); console.log("\u9519\u8bef\u6062\u590d\uff1a\u8d85\u65f6\u5904\u7406\u4e2d\u6062\u590d\u8f6e\u8be2"); }');
+                            } catch (error) {
+                                console.error('错误恢复：超时处理中启用状态轮询失败：', error);
+                            }
+                        }
+
+                        // 关闭loading页面
                         const currentWebview = plus.webview.currentWebview();
                         if (currentWebview) {
                             console.log('错误恢复：超时关闭loading页面');
@@ -484,9 +503,21 @@ function fetchMeetingById(meetingId) {
             } catch (e) {
                 console.error('尝试直接打开新页面也失败:', e);
 
-                // 即使打开新页面失败，也尝试关闭loading页面
+                // 即使打开新页面失败，也尝试恢复轮询并关闭loading页面
                 try {
                     setTimeout(function() {
+                        // 尝试获取service页面并恢复轮询
+                        try {
+                            const serviceView = plus.webview.getWebviewById('service');
+                            if (serviceView) {
+                                console.log('最后尝试通知service模块恢复轮询');
+                                serviceView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); }');
+                            }
+                        } catch (error) {
+                            console.error('最后尝试恢复轮询失败:', error);
+                        }
+
+                        // 关闭loading页面
                         const currentWebview = plus.webview.currentWebview();
                         if (currentWebview) {
                             console.log('最后尝试关闭loading页面');
@@ -777,6 +808,19 @@ document.addEventListener('plusready', function plusReadyHandler() {
     // 移除事件监听器，确保只执行一次
     document.removeEventListener('plusready', plusReadyHandler);
 
+    // 通知service模块暂停轮询
+    try {
+        const serviceView = plus.webview.getWebviewById('service');
+        if (serviceView) {
+            console.log('通知service模块暂停轮询');
+            serviceView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.pauseDataFetch(); }');
+        } else {
+            console.log('未找到service页面，无法通知暂停轮询');
+        }
+    } catch (error) {
+        console.error('通知service暂停轮询失败:', error);
+    }
+
     // 检查并管理loading页面，确保只有一个实例
     const cleaned = checkAndManageLoadingPage(true); // 保留当前页面
     if (cleaned) {
@@ -792,8 +836,14 @@ document.addEventListener('plusready', function plusReadyHandler() {
         // 获取service页面
         const serviceView = plus.webview.getWebviewById('service');
         if (serviceView) {
+            // 通知service模块恢复轮询
+            console.log('通知service模块恢复轮询');
+            serviceView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.resumeDataFetch(); }');
+
             // 在service页面中执行监测页面关闭的方法
             serviceView.evalJS('if (typeof MeetingService !== "undefined") { MeetingService.monitorPageClosing(); }');
+        } else {
+            console.log('未找到service页面，无法通知恢复轮询');
         }
     });
 

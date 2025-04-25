@@ -484,7 +484,10 @@ const MeetingService = {
 
         // 增加失败计数
         this.failedRequestCount++;
-        console.log('连续失败请求次数:', this.failedRequestCount, '/', this.maxFailedRequests);
+        // 只在达到或超过最大失败次数时输出日志
+        if (this.failedRequestCount >= this.maxFailedRequests) {
+            console.log('连续失败请求次数:', this.failedRequestCount, '/', this.maxFailedRequests);
+        }
 
         // 如果连续失败次数超过限制，更新API连接状态
         if (this.failedRequestCount >= this.maxFailedRequests && this.apiConnectionStatus) {
@@ -539,16 +542,13 @@ const MeetingService = {
                 const now = new Date();
                 if (this.lastStatusFetchTime) {
                     const actualInterval = now - this.lastStatusFetchTime;
-                    const timestamp = now.toISOString();
-                    console.log(`[状态定时器] ${timestamp} - 设定间隔: ${this.updateInterval}ms, 实际间隔: ${actualInterval}ms, 偏差: ${actualInterval - this.updateInterval}ms`);
 
                     // 如果实际间隔与设定间隔相差超过2秒，记录警告
                     if (Math.abs(actualInterval - this.updateInterval) > 2000) {
                         console.warn(`[状态定时器] 警告: 实际间隔(${actualInterval}ms)与设定间隔(${this.updateInterval}ms)相差过大!`);
                     }
                 } else {
-                    const timestamp = now.toISOString();
-                    console.log(`[状态定时器] ${timestamp} - 首次触发, 设定间隔: ${this.updateInterval}ms`);
+                    // 首次触发不输出日志
                 }
                 this.lastStatusFetchTime = now;
                 this.getMeetingStatus(); // 使用原来的方法名
