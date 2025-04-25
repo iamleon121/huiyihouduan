@@ -565,28 +565,14 @@ const LoadingService = {
                                 return;
                             }
 
-                            // 检查状态码是否有效，接受更多的成功状态码
+                            // 更合理的状态码处理
                             if (status === 0 || status === '0' || status === 200 || status === '200') {
-                                console.log('解压成功，路径:', extractPath);
-
-                                // 保存当前会议文件夹路径到本地存储
-                                plus.storage.setItem('currentMeetingFolder', extractPath);
-
-                                // 删除下载的ZIP文件
-                                plus.io.resolveLocalFileSystemURL(zipPath, entry => {
-                                    entry.remove(() => {
-                                        console.log('ZIP文件已删除:', zipPath);
-                                        resolve(); // 成功完成所有操作
-                                    }, error => {
-                                        console.error('删除ZIP文件失败:', error);
-                                        // 即使删除失败也算成功
-                                        resolve();
-                                    });
-                                }, error => {
-                                    console.error('解析ZIP文件路径失败:', error);
-                                    // 即使解析失败也算成功
-                                    resolve();
-                                });
+                                console.log('解压成功，状态码有效，路径:', extractPath);
+                                this.handleDecompressionSuccess(zipPath, extractPath, resolve);
+                            } else if (status === undefined || status === null || status === '') {
+                                // 在某些设备上，成功时可能不返回状态码
+                                console.log('解压状态码为空，假定解压成功，路径:', extractPath);
+                                this.handleDecompressionSuccess(zipPath, extractPath, resolve);
                             } else {
                                 console.error('解压失败, 状态码:', status);
                                 // 即使解压失败也算成功，不中断整体流程
@@ -657,7 +643,7 @@ const LoadingService = {
 
     // 清理下载文件夹中的其他压缩包
     cleanupDownloadFolder: function(keepFilePath) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             console.log('清理下载文件夹中的其他压缩包，保留:', keepFilePath);
 
             try {
@@ -734,7 +720,7 @@ const LoadingService = {
 
     // 清空目标文件夹
     cleanTargetFolder: function(folderPath) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             console.log('尝试清空目标文件夹:', folderPath);
 
             // 检查目标文件夹是否存在
@@ -812,9 +798,31 @@ const LoadingService = {
         });
     },
 
+    // 处理解压成功的方法
+    handleDecompressionSuccess: function(zipPath, extractPath, resolve) {
+        // 保存当前会议文件夹路径到本地存储
+        plus.storage.setItem('currentMeetingFolder', extractPath);
+
+        // 删除下载的ZIP文件
+        plus.io.resolveLocalFileSystemURL(zipPath, entry => {
+            entry.remove(() => {
+                console.log('ZIP文件已删除:', zipPath);
+                resolve(); // 成功完成所有操作
+            }, error => {
+                console.error('删除ZIP文件失败:', error);
+                // 即使删除失败也算成功
+                resolve();
+            });
+        }, error => {
+            console.error('解析ZIP文件路径失败:', error);
+            // 即使解析失败也算成功
+            resolve();
+        });
+    },
+
     // 清空所有会议文件夹
     cleanAllMeetingFolders: function(basePath) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             console.log('清空所有会议文件夹:', basePath);
 
             plus.io.resolveLocalFileSystemURL(basePath, entry => {
