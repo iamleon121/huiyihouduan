@@ -630,7 +630,7 @@ function fetchMeetingById(meetingId) {
     });
 
     LoadingService.addEventListener('extractStart', function(data) {
-        console.log('开始解压文件:', data.filename);
+        console.log('开始解压会议文件...');
         updateLoadingText('正在解压会议文件...');
         stopProgressAnimation();
         setProgress(70);
@@ -644,7 +644,7 @@ function fetchMeetingById(meetingId) {
     });
 
     LoadingService.addEventListener('extractComplete', function(data) {
-        console.log('解压完成:', data.meetingId);
+        console.log('会议文件解压完成');
         updateLoadingText('文件解压完成，准备返回主页面...');
         stopProgressAnimation();
         setProgress(100);

@@ -518,13 +518,11 @@ const LoadingService = {
     // 解压ZIP文件
     extractZipFile: function(zipPath, meetingId) {
         return new Promise((resolve, reject) => {
-            console.log('开始解压ZIP文件:', zipPath);
-
             // 创建会议文件夹路径
             const meetingFolderPath = '_doc/meeting_files/';
             const extractPath = meetingFolderPath + 'meeting_' + meetingId + '/';
 
-            console.log('解压目标路径:', extractPath);
+            console.log('准备解压文件到:', extractPath);
 
             // 确保目标文件夹存在
             this.ensureDirectoryExists(meetingFolderPath)
@@ -548,15 +546,12 @@ const LoadingService = {
                             return;
                         }
 
-                        console.log('准备解压文件:', zipPath, '到', extractPath);
-
                         // 直接使用plus.zip.decompress解压文件
-                        console.log('开始调用plus.zip.decompress解压文件');
-                        console.log('当前时间:', new Date().toLocaleTimeString());
+                        console.log('开始解压文件...');
 
                         // 简化解压过程，直接调用decompress
                         plus.zip.decompress(zipPath, extractPath, status => {
-                            console.log('解压返回状态码:', status, '当前时间:', new Date().toLocaleTimeString());
+                            console.log('解压完成，状态码:', status);
 
                             // 检查是否已取消
                             if (this.isCancelled) {
