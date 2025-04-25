@@ -93,8 +93,9 @@ huiyiqianduan/
 - [前后端数据交互规范](./api_interaction.md)
 - [无线数据同步实现](./wireless_data_sync_implementation.md)
 - [多服务器下载机制](./multi_server_download.md)
+- [解压状态码处理逻辑优化](./decompression_status_handling.md)
 - [用户界面设计指南](./ui_guidelines.md)
 - [开发计划](./development_plan.md)
 - [测试计划](./testing_plan.md)
 
-更新日期：2025年4月24日
+更新日期：2025年4月25日
