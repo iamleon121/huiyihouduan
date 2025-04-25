@@ -206,7 +206,89 @@ saveSettings: function() {
 
 ## 最近改进
 
-### 1. 增强loading页面功能
+### 1. 优化多服务器下载机制
+
+实现了严格的顺序下载逻辑，确保一次只有一个下载任务在执行，避免资源浪费和冲突：
+
+```javascript
+// 从单个服务器尝试下载
+tryDownloadWithServer: function(server, meetingId, availableServers, resolve, reject) {
+    // 如果已经有一个下载成功，直接返回
+    if (this.isDownloadSucceeded) {
+        console.log('已有一个下载成功，不再尝试新的下载');
+        return;
+    }
+
+    // 构建下载URL
+    const downloadUrl = server.url + '/api/v1/meetings/' + meetingId + '/download-package';
+    console.log('尝试从服务器下载:', server.ip, '下载URL:', downloadUrl);
+
+    // 确保下载文件夹存在
+    this.ensureDirectoryExists('_doc/download/')
+        .then(() => {
+            // 重置取消标志
+            this.isCancelled = false;
+
+            // 创建下载任务
+            const dtask = plus.downloader.createDownload(downloadUrl, {
+                filename: '_doc/download/meeting_' + meetingId + '.zip',
+                timeout: 30, // 超时时间，单位为秒
+                retry: 3 // 重试次数
+            }, (d, status) => {
+                // 在回调开始处检查下载成功标志
+                if (this.isDownloadSucceeded) {
+                    console.log('已有一个下载成功，忽略当前下载回调');
+                    return;
+                }
+
+                if (status === 200) {
+                    console.log('下载成功:', d.filename);
+
+                    // 设置下载成功标志
+                    this.isDownloadSucceeded = true;
+
+                    // 取消所有其他下载任务
+                    this.cancelAllOtherDownloadTasks(dtask);
+
+                    // 触发下载完成事件
+                    this.triggerEvent('downloadComplete', { meetingId: meetingId, filename: d.filename });
+
+                    // 后续处理...
+                }
+            });
+
+            // 监听下载进度
+            dtask.addEventListener('statechanged', (task, _status) => {
+                // 在事件处理开始处检查下载成功标志
+                if (this.isDownloadSucceeded) {
+                    console.log('已有一个下载成功，忽略当前事件');
+                    return;
+                }
+
+                // 下载进度处理...
+            });
+
+            // 保存当前下载任务
+            this.downloadTask = dtask;
+
+            // 添加到下载任务列表
+            this.allDownloadTasks.push(dtask);
+            console.log('当前下载任务列表数量:', this.allDownloadTasks.length);
+
+            // 再次检查下载成功标志
+            if (this.isDownloadSucceeded) {
+                console.log('已有一个下载成功，不启动新的下载任务');
+                return;
+            }
+
+            // 开始下载任务
+            dtask.start();
+            console.log('下载任务已启动');
+        });
+}
+```
+
+### 2. 增强loading页面功能
 
 重新设计了loading页面，移除了底部按钮，并增加了自动下载和解压会议文件的功能：
 
@@ -400,6 +482,8 @@ window.onload = function() {
 2. **多设备同步**: 当多个设备同时使用时，可能会出现数据不一致的情况
 3. **大文件处理**: 大型会议文件的下载和显示可能会导致性能问题
 4. **缓存管理**: 本地缓存的文件可能会占用大量存储空间，需要更好的缓存管理策略
+5. **解压状态码处理**: 当前解压状态码处理逻辑有问题，导致即使解压成功也会先报告“解压失败”然后再报告“解压成功”
+6. **事件处理器错误**: 在某些情况下会出现“Cannot read properties of null (reading 'style')”错误，需要添加更多的防御性检查
 
 ## 下一步计划
 
@@ -409,4 +493,4 @@ window.onload = function() {
 4. **增强安全性**: 实现更安全的数据传输和存储机制
 5. **性能优化**: 优化大文件处理和页面渲染性能
 
-更新日期：2025年04月22日
+更新日期：2025年04月24日
