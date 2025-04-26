@@ -349,20 +349,19 @@ function updateConnectionStatus(isNetworkOnline, isApiConnected) {
     console.log('更新连接状态 - 网络:', isNetworkOnline ? '已连接' : '未连接',
               'API:', isApiConnected ? '正常' : '异常');
 
-    // 获取当前按钮颜色
-    var currentColor = joinButton.style.backgroundColor;
+    // 获取当前按钮提示文本
     var currentTitle = joinButton.title;
 
-    // 只有当网络连接且API可访问时，按钮才显示为绿色
+    // 只有当网络连接且API可访问时，按钮才显示为橙色渐变
     if (isNetworkOnline && isApiConnected) {
-        // 全部正常时使用绿色
-        joinButton.style.backgroundColor = '#28f100c7';
+        // 全部正常时使用黄色渐变（已与异常状态对调）
+        joinButton.style.background = 'linear-gradient(135deg, #FFD54F, #FF8F00)';
         joinButton.title = '网络和服务器连接正常';
-        console.log('按钮颜色已更新: ' + (currentColor !== '#28f100c7' ? currentColor + ' -> #28f100c7 (绿色)' : '保持绿色'));
+        console.log('按钮颜色已更新为黄色渐变(正常状态)');
         console.log('按钮提示已更新: ' + (currentTitle !== '网络和服务器连接正常' ? currentTitle + ' -> 网络和服务器连接正常' : '保持不变'));
     } else {
-        // 任一异常时使用黄色
-        joinButton.style.backgroundColor = '#ffae00e8';
+        // 任一异常时使用橙色渐变（已与正常状态对调）
+        joinButton.style.background = 'linear-gradient(135deg, #F9A825, #D35400)';
 
         // 设置不同的提示文本
         var newTitle = '';
@@ -372,12 +371,12 @@ function updateConnectionStatus(isNetworkOnline, isApiConnected) {
         } else if (!isApiConnected) {
             newTitle = '服务器连接异常';
             joinButton.title = newTitle;
-            console.log('网络正常但API连接异常，按钮显示为黄色');
+            console.log('网络正常但API连接异常，按钮显示为橙色渐变');
         } else {
             newTitle = '连接状态异常';
             joinButton.title = newTitle;
         }
-        console.log('按钮颜色已更新: ' + (currentColor !== '#ffae00e8' ? currentColor + ' -> #ffae00e8 (黄色)' : '保持黄色'));
+        console.log('按钮颜色已更新为橙色渐变(异常状态)');
         console.log('按钮提示已更新: ' + (currentTitle !== newTitle ? currentTitle + ' -> ' + newTitle : '保持不变'));
     }
 }

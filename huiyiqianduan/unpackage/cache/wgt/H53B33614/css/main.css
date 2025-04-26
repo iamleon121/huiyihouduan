@@ -138,7 +138,7 @@ body {
     padding: 15px 50px;
     font-size: 24px;
     color: white;
-    background-color: #28f100c7; /*#ffae00e8 黄色 #28f100c7 绿色*/
+    background: linear-gradient(135deg, #FFD54F, #FF8F00); /* 黄色渐变(正常连接，已与异常状态对调) */
     border: none;
     border-radius: 8px;
     cursor: pointer;

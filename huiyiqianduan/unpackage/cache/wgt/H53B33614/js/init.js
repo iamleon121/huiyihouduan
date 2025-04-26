@@ -124,9 +124,9 @@ document.addEventListener('plusready', function() {
             const defaultOption = {
                 option: {
                     server: '192.168.110.10',
-                    port: '8000',
+                    port: '80',
                     intertime: '10',
-                    titleText: '政协阜新市委员会' // 默认标题文字
+                    titleText: '中国人民政治协商会议阜新市委员会' // 默认标题文字
                 }
             };
             plus.storage.setItem('option', JSON.stringify(defaultOption));

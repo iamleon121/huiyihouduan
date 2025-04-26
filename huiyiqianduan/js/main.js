@@ -97,6 +97,56 @@ document.addEventListener('plusready', function() {
     if (logoElement) {
         logoElement.style.display = '';
         console.log('plusready事件中确保图标显示');
+
+        // 添加隐藏的退出功能 - 连续点击logo图标3次退出应用
+        // 初始化点击计数器和时间戳
+        let logoClickCount = 0;
+        let logoFirstClickTime = 0;
+
+        // 为logo图标添加点击事件监听
+        logoElement.addEventListener('click', function() {
+            const currentTime = new Date().getTime();
+
+            // 如果是第一次点击或者距离第一次点击已超过3秒，重置计数和时间戳
+            if (logoClickCount === 0) {
+                // 第一次点击，开始计时
+                logoClickCount = 1;
+                logoFirstClickTime = currentTime;
+
+                // 设置3秒后的超时处理，如果没有完成3次点击，重置计数器
+                setTimeout(function() {
+                    if (logoClickCount < 3) {
+                        logoClickCount = 0;
+                        logoFirstClickTime = 0;
+                    }
+                }, 3000);
+            } else if ((currentTime - logoFirstClickTime) <= 3000) {
+                // 在3秒内的连续点击，增加计数
+                logoClickCount++;
+
+                // 如果点击次数达到3次，退出应用
+                if (logoClickCount >= 3) {
+                    // 重置计数器和时间戳
+                    logoClickCount = 0;
+                    logoFirstClickTime = 0;
+
+                    // 退出应用
+                    exitApplication();
+                }
+            } else {
+                // 超过3秒，这次点击成为新的第一次点击
+                logoClickCount = 1;
+                logoFirstClickTime = currentTime;
+
+                // 设置新的3秒超时处理
+                setTimeout(function() {
+                    if (logoClickCount < 3) {
+                        logoClickCount = 0;
+                        logoFirstClickTime = 0;
+                    }
+                }, 3000);
+            }
+        });
     }
 
     if (logoTextElement) {
@@ -349,20 +399,19 @@ function updateConnectionStatus(isNetworkOnline, isApiConnected) {
     console.log('更新连接状态 - 网络:', isNetworkOnline ? '已连接' : '未连接',
               'API:', isApiConnected ? '正常' : '异常');
 
-    // 获取当前按钮颜色
-    var currentColor = joinButton.style.backgroundColor;
+    // 获取当前按钮提示文本
     var currentTitle = joinButton.title;
 
-    // 只有当网络连接且API可访问时，按钮才显示为绿色
+    // 只有当网络连接且API可访问时，按钮才显示为橙色渐变
     if (isNetworkOnline && isApiConnected) {
-        // 全部正常时使用绿色
-        joinButton.style.backgroundColor = '#28f100c7';
+        // 全部正常时使用黄色渐变（已与异常状态对调）
+        joinButton.style.background = 'linear-gradient(135deg, #FFD54F, #FF8F00)';
         joinButton.title = '网络和服务器连接正常';
-        console.log('按钮颜色已更新: ' + (currentColor !== '#28f100c7' ? currentColor + ' -> #28f100c7 (绿色)' : '保持绿色'));
+        console.log('按钮颜色已更新为黄色渐变(正常状态)');
         console.log('按钮提示已更新: ' + (currentTitle !== '网络和服务器连接正常' ? currentTitle + ' -> 网络和服务器连接正常' : '保持不变'));
     } else {
-        // 任一异常时使用黄色
-        joinButton.style.backgroundColor = '#ffae00e8';
+        // 任一异常时使用橙色渐变（已与正常状态对调）
+        joinButton.style.background = 'linear-gradient(135deg, #F9A825, #D35400)';
 
         // 设置不同的提示文本
         var newTitle = '';
@@ -372,12 +421,12 @@ function updateConnectionStatus(isNetworkOnline, isApiConnected) {
         } else if (!isApiConnected) {
             newTitle = '服务器连接异常';
             joinButton.title = newTitle;
-            console.log('网络正常但API连接异常，按钮显示为黄色');
+            console.log('网络正常但API连接异常，按钮显示为橙色渐变');
         } else {
             newTitle = '连接状态异常';
             joinButton.title = newTitle;
         }
-        console.log('按钮颜色已更新: ' + (currentColor !== '#ffae00e8' ? currentColor + ' -> #ffae00e8 (黄色)' : '保持黄色'));
+        console.log('按钮颜色已更新为橙色渐变(异常状态)');
         console.log('按钮提示已更新: ' + (currentTitle !== newTitle ? currentTitle + ' -> ' + newTitle : '保持不变'));
     }
 }
@@ -413,4 +462,54 @@ if (typeof plus !== 'undefined' && plus.webview) {
     });
 }
 
+/**
+ * 退出应用函数 - 由隐藏的logo点击功能触发
+ */
+function exitApplication() {
+    console.log('检测到连续点击logo图标3次，准备退出应用');
 
+    if (typeof plus !== 'undefined') {
+        // 使用确认对话框询问用户是否确定退出
+        plus.nativeUI.confirm('确认退出应用？', function(e) {
+            if (e.index > 0) { // 用户点击了"确定"
+                console.log('用户确认退出，正在关闭应用...');
+
+                try {
+                    // 关闭所有页面
+                    const webviews = plus.webview.all();
+                    for (let i = 0; i < webviews.length; i++) {
+                        if (webviews[i].id !== plus.runtime.appid) {
+                            webviews[i].close("none");
+                        }
+                    }
+
+                    // 先退出应用
+                    plus.runtime.quit();
+
+                    // 如果应用仍在运行，尝试强制退出
+                    setTimeout(function() {
+                        console.log('尝试强制退出应用...');
+                        // 在Android上使用exitApp方法
+                        if (plus.os.name.toLowerCase() === 'android') {
+                            plus.runtime.quit();
+                            plus.android.importClass("android.os.Process");
+                            android.os.Process.killProcess(android.os.Process.myPid());
+                        } else if (plus.os.name.toLowerCase() === 'ios') {
+                            // 在iOS上尝试另一种退出方式
+                            plus.runtime.quit();
+                        }
+                    }, 500);
+                } catch (error) {
+                    console.error('退出应用时出错:', error);
+                    // 如果出错，仍然尝试标准退出
+                    plus.runtime.quit();
+                }
+            } else {
+                console.log('用户取消退出');
+            }
+        }, '退出程序', ['取消', '确定']);
+    } else {
+        console.log('非plus环境，无法退出应用');
+        alert('在浏览器环境中无法退出应用');
+    }
+}
