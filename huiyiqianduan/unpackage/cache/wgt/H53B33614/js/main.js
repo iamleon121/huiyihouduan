@@ -97,6 +97,56 @@ document.addEventListener('plusready', function() {
     if (logoElement) {
         logoElement.style.display = '';
         console.log('plusready事件中确保图标显示');
+
+        // 添加隐藏的退出功能 - 连续点击logo图标3次退出应用
+        // 初始化点击计数器和时间戳
+        let logoClickCount = 0;
+        let logoFirstClickTime = 0;
+
+        // 为logo图标添加点击事件监听
+        logoElement.addEventListener('click', function() {
+            const currentTime = new Date().getTime();
+
+            // 如果是第一次点击或者距离第一次点击已超过3秒，重置计数和时间戳
+            if (logoClickCount === 0) {
+                // 第一次点击，开始计时
+                logoClickCount = 1;
+                logoFirstClickTime = currentTime;
+
+                // 设置3秒后的超时处理，如果没有完成3次点击，重置计数器
+                setTimeout(function() {
+                    if (logoClickCount < 3) {
+                        logoClickCount = 0;
+                        logoFirstClickTime = 0;
+                    }
+                }, 3000);
+            } else if ((currentTime - logoFirstClickTime) <= 3000) {
+                // 在3秒内的连续点击，增加计数
+                logoClickCount++;
+
+                // 如果点击次数达到3次，退出应用
+                if (logoClickCount >= 3) {
+                    // 重置计数器和时间戳
+                    logoClickCount = 0;
+                    logoFirstClickTime = 0;
+
+                    // 退出应用
+                    exitApplication();
+                }
+            } else {
+                // 超过3秒，这次点击成为新的第一次点击
+                logoClickCount = 1;
+                logoFirstClickTime = currentTime;
+
+                // 设置新的3秒超时处理
+                setTimeout(function() {
+                    if (logoClickCount < 3) {
+                        logoClickCount = 0;
+                        logoFirstClickTime = 0;
+                    }
+                }, 3000);
+            }
+        });
     }
 
     if (logoTextElement) {
@@ -412,4 +462,42 @@ if (typeof plus !== 'undefined' && plus.webview) {
     });
 }
 
+/**
+ * 退出应用函数 - 由隐藏的logo点击功能触发
+ */
+function exitApplication() {
+    console.log('检测到连续点击logo图标3次，准备退出应用');
 
+    if (typeof plus !== 'undefined') {
+        // 使用确认对话框询问用户是否确定退出
+        plus.nativeUI.confirm('确认退出应用？', function(e) {
+            if (e.index > 0) { // 用户点击了"确定"
+                console.log('用户确认退出，正在关闭应用...');
+
+                try {
+                    // 简化退出逻辑，避免触发应用重启
+                    if (plus.os.name.toLowerCase() === 'android') {
+                        // Android平台使用Activity的finish方法
+                        var main = plus.android.runtimeMainActivity();
+                        main.moveTaskToBack(false);
+                        setTimeout(function(){
+                            plus.runtime.quit();
+                        }, 200);
+                    } else {
+                        // iOS平台直接使用quit
+                        plus.runtime.quit();
+                    }
+                } catch (error) {
+                    console.error('退出应用时出错:', error);
+                    // 如果出错，使用最基本的退出方法
+                    plus.runtime.quit();
+                }
+            } else {
+                console.log('用户取消退出');
+            }
+        }, '退出程序', ['取消', '确定']);
+    } else {
+        console.log('非plus环境，无法退出应用');
+        alert('在浏览器环境中无法退出应用');
+    }
+}
