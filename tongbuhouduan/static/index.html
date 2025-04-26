@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分布式文件服务节点控制台</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>分布式文件服务节点控制台</h1>
+            <div class="node-id">节点ID: <span id="nodeId">加载中...</span></div>
+        </header>
+
+        <section class="status-card">
+            <h2>节点状态</h2>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">运行状态</div>
+                    <div class="status-value" id="runningStatus">
+                        <span class="status-indicator"></span>
+                        <span class="status-text">未知</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">连接状态</div>
+                    <div class="status-value" id="connectionStatus">
+                        <span class="status-indicator"></span>
+                        <span class="status-text">未知</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">最近同步</div>
+                    <div class="status-value" id="lastSync">未同步</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">同步状态</div>
+                    <div class="status-value" id="syncStatus">未知</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="config-panel">
+            <h2>配置设置</h2>
+            <form id="configForm">
+                <div class="form-group">
+                    <label for="mainServerIp">主控服务器IP</label>
+                    <input type="text" id="mainServerIp" name="mainServerIp" placeholder="例如: 192.168.110.10" value="192.168.110.10">
+                </div>
+                <div class="form-group">
+                    <label for="mainServerPort">主控服务器端口</label>
+                    <input type="number" id="mainServerPort" name="mainServerPort" placeholder="例如: 80" min="1" max="65535" value="80">
+                </div>
+                <div class="form-group">
+                    <label for="syncInterval">同步间隔 (秒)</label>
+                    <input type="number" id="syncInterval" name="syncInterval" min="10" max="3600" value="10">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">保存配置</button>
+                    <button type="button" class="btn btn-secondary" id="resetConfig">重置</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="control-panel">
+            <h2>服务控制</h2>
+            <div class="control-buttons">
+                <button id="startService" class="btn btn-success">启动服务</button>
+                <button id="stopService" class="btn btn-danger">停止服务</button>
+            </div>
+        </section>
+
+        <section class="data-stats">
+            <h2>数据统计</h2>
+            <div class="stats-grid">
+                <div class="stats-item">
+                    <div class="stats-label">已同步会议</div>
+                    <div class="stats-value" id="meetingCount">0</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-label">存储空间</div>
+                    <div class="stats-value" id="storageUsage">0 MB</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-label">活动会议</div>
+                    <div class="stats-value" id="activeMeeting">无</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-label">运行时长</div>
+                    <div class="stats-value" id="uptime">0分钟</div>
+                </div>
+            </div>
+        </section>
+
+        <div id="notification" class="notification hidden">
+            <span id="notificationMessage"></span>
+            <button id="closeNotification">&times;</button>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
