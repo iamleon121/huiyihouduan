@@ -475,33 +475,21 @@ function exitApplication() {
                 console.log('用户确认退出，正在关闭应用...');
 
                 try {
-                    // 关闭所有页面
-                    const webviews = plus.webview.all();
-                    for (let i = 0; i < webviews.length; i++) {
-                        if (webviews[i].id !== plus.runtime.appid) {
-                            webviews[i].close("none");
-                        }
+                    // 简化退出逻辑，避免触发应用重启
+                    if (plus.os.name.toLowerCase() === 'android') {
+                        // Android平台使用Activity的finish方法
+                        var main = plus.android.runtimeMainActivity();
+                        main.moveTaskToBack(false);
+                        setTimeout(function(){
+                            plus.runtime.quit();
+                        }, 200);
+                    } else {
+                        // iOS平台直接使用quit
+                        plus.runtime.quit();
                     }
-
-                    // 先退出应用
-                    plus.runtime.quit();
-
-                    // 如果应用仍在运行，尝试强制退出
-                    setTimeout(function() {
-                        console.log('尝试强制退出应用...');
-                        // 在Android上使用exitApp方法
-                        if (plus.os.name.toLowerCase() === 'android') {
-                            plus.runtime.quit();
-                            plus.android.importClass("android.os.Process");
-                            android.os.Process.killProcess(android.os.Process.myPid());
-                        } else if (plus.os.name.toLowerCase() === 'ios') {
-                            // 在iOS上尝试另一种退出方式
-                            plus.runtime.quit();
-                        }
-                    }, 500);
                 } catch (error) {
                     console.error('退出应用时出错:', error);
-                    // 如果出错，仍然尝试标准退出
+                    // 如果出错，使用最基本的退出方法
                     plus.runtime.quit();
                 }
             } else {
