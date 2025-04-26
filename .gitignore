@@ -37,19 +37,34 @@ develop-eggs/
 # 日志文件
 *.log
 
+# 分布式文件服务节点临时文件
+/tongbuhouduan/storage/download/*
+/tongbuhouduan/storage/meeting_files/*
+!/tongbuhouduan/storage/download/.gitkeep
+!/tongbuhouduan/storage/meeting_files/.gitkeep
+
 # 本地配置文件
 .env
 .env.local
 
+# 数据库文件
+*.db-journal
+*.sqlite
+*.sqlite3
+
 # IDE配置
 .idea/
 .vscode/
+.trae/
 *.swp
 *.swo
 
 # 系统文件
 .DS_Store
 Thumbs.db
+
+# Git相关
+.git-rewrite/
 
 # 上传文件目录
 # 根据要求，我们需要跟踪uploads文件夹
@@ -74,5 +89,16 @@ Thumbs.db
 /*.png
 /*.zip
 
-# 但包含huiyiqianduan目录中的所有文件
+# 前端相关忽略规则
+# 忽略前端构建和缓存文件
+/huiyiqianduan/unpackage/*
+!/huiyiqianduan/unpackage/.gitkeep
+
+# 忽略HBuilder配置文件
+/huiyiqianduan/.hbuilderx/
+
+# 忽略node_modules
+/huiyiqianduan/node_modules/
+
+# 但包含huiyiqianduan目录中的其他文件
 !huiyiqianduan/**
