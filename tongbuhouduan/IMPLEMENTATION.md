@@ -213,25 +213,180 @@ async def register_node(node_info: dict):
 
 #### 2. 下载重定向API
 
+主控服务器实现：
+
 ```python
 from fastapi.responses import RedirectResponse
 
 @router.get("/{meeting_id}/download-package")
-async def download_meeting_package(meeting_id: str):
-    """下载会议包，如果有可用节点则重定向到节点"""
+async def download_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
+    """
+    下载会议的JPG文件包，如果有可用节点则重定向到节点
+
+    Args:
+        meeting_id: 会议ID
+
+    Returns:
+        RedirectResponse: 重定向到分布式节点
+        或
+        StreamingResponse: ZIP文件流响应（如果没有可用节点）
+    """
+    # 查询指定会议
+    meeting = crud.get_meeting(db, meeting_id=meeting_id)
+
+    # 如果会议不存在，返回404错误
+    if not meeting:
+        raise HTTPException(status_code=404, detail=f"会议 {meeting_id} 不存在")
+
+    # 如果会议不是进行中状态，返回404错误
+    if meeting.status != "进行中":
+        raise HTTPException(status_code=404, detail=f"会议 {meeting_id} 不是进行中状态")
+
     # 获取可用的分布式节点
+    print(f"[下载API] 开始获取可用节点...")
     available_nodes = await get_available_nodes()
+    print(f"[下载API] 可用节点数量: {len(available_nodes)}, 节点列表: {available_nodes}")
 
     if available_nodes:
         # 选择一个分布式节点
         selected_node = select_node(available_nodes)
-        node_url = f"http://{selected_node}/api/v1/meetings/{meeting_id}/download-package"
+        print(f"[下载API] 选择的节点: {selected_node}")
 
-        # 返回重定向响应
-        return RedirectResponse(url=node_url)
+        # 构建重定向URL
+        node_url = f"http://{selected_node}/api/v1/meetings/{meeting_id}/download-package"
+        print(f"[下载API] 重定向URL: {node_url}")
+
+        # 记录重定向信息
+        print(f"[下载重定向] 会议 {meeting_id} 的下载请求重定向到节点: {selected_node}")
+
+        # 返回重定向响应，使用状态码302确保客户端跟随重定向
+        print(f"[下载API] 返回重定向响应: {node_url}")
+        return RedirectResponse(url=node_url, status_code=302)
     else:
         # 如果没有可用节点，使用本地文件
-        return await download_local_package(meeting_id)
+        print(f"[下载本地] 没有可用节点，使用本地文件提供会议 {meeting_id} 的下载")
+        return await download_local_package(meeting_id, db)
+```
+
+分布式节点实现：
+
+```python
+@app.get("/api/v1/meetings/{meeting_id}/download-package")
+async def download_meeting_package(meeting_id: str):
+    """提供会议包下载，与主控服务器API兼容"""
+    global service_running
+
+    if not service_running:
+        raise HTTPException(status_code=503, detail="服务未运行")
+
+    # 构建本地存储路径
+    package_path = os.path.join(STORAGE_PATH, f"meeting_{meeting_id}", "package.zip")
+
+    # 检查会议包是否存在
+    if not os.path.exists(package_path):
+        # 如果本地没有，尝试从主控服务器同步
+        synced = await sync_meeting_data(meeting_id)
+        if not synced or not os.path.exists(package_path):
+            raise HTTPException(status_code=404, detail="Meeting package not found")
+
+    # 提供文件下载
+    return FileResponse(
+        path=package_path,
+        filename=f"meeting_{meeting_id}.zip",
+        media_type="application/zip"
+    )
+
+@app.get("/api/meetings/{meeting_id}/download")
+async def download_meeting_frontend_compatible(meeting_id: str):
+    """提供会议包下载，与前端下载链接兼容
+
+    此端点与前端页面的下载链接格式匹配，便于重定向测试
+    """
+    # 直接调用主控API兼容的下载函数
+    return await download_meeting_package(meeting_id)
+```
+
+#### 3. 重定向测试工具
+
+为了测试和调试重定向功能，我们实现了一系列测试工具：
+
+```python
+@app.get("/api/redirect-test/info")
+async def redirect_test_info():
+    """
+    获取重定向测试信息
+
+    返回当前节点的信息和可能的重定向端点信息，用于调试重定向功能
+    """
+    # 获取本机IP地址
+    node_ip = get_node_ip()
+
+    # 获取节点端口
+    node_port = config.get("nodePort", 8001)
+
+    # 获取主控服务器地址
+    main_server = f"http://{config.get('mainServerIp', '127.0.0.1')}:{config.get('mainServerPort', 80)}"
+
+    # 构建可能的重定向端点
+    redirect_endpoints = [
+        {
+            "name": "会议包下载 (主控API兼容)",
+            "endpoint": "/api/v1/meetings/{meeting_id}/download-package",
+            "description": "与主控服务器API兼容的会议包下载端点",
+            "full_url": f"http://{node_ip}:{node_port}/api/v1/meetings/{{meeting_id}}/download-package"
+        },
+        {
+            "name": "会议包下载 (前端兼容)",
+            "endpoint": "/api/meetings/{meeting_id}/download",
+            "description": "与前端页面下载链接匹配的会议包下载端点",
+            "full_url": f"http://{node_ip}:{node_port}/api/meetings/{{meeting_id}}/download"
+        }
+    ]
+
+    # 返回调试信息
+    return {
+        "node_info": {
+            "ip_address": node_ip,
+            "port": node_port,
+            "full_address": f"{node_ip}:{node_port}"
+        },
+        "main_server": main_server,
+        "redirect_endpoints": redirect_endpoints,
+        "note": "将 {meeting_id} 替换为实际的会议ID以构建完整的URL"
+    }
+
+@app.get("/api/redirect-test/test/{meeting_id}")
+async def redirect_test(meeting_id: str, target_type: str = "v1"):
+    """
+    测试重定向功能
+
+    接收一个会议ID，然后返回一个重定向响应，将请求重定向到分布式节点的下载端点
+
+    参数:
+        meeting_id: 会议ID
+        target_type: 重定向目标类型，可选值：
+            - v1: 重定向到 /api/v1/meetings/{meeting_id}/download-package
+            - frontend: 重定向到 /api/meetings/{meeting_id}/download
+    """
+    # 获取本机IP地址
+    node_ip = get_node_ip()
+
+    # 获取节点端口
+    node_port = config.get("nodePort", 8001)
+
+    # 构建重定向URL
+    if target_type == "v1":
+        redirect_url = f"http://{node_ip}:{node_port}/api/v1/meetings/{meeting_id}/download-package"
+    elif target_type == "frontend":
+        redirect_url = f"http://{node_ip}:{node_port}/api/meetings/{meeting_id}/download"
+    else:
+        raise HTTPException(status_code=400, detail=f"无效的重定向目标类型: {target_type}")
+
+    # 记录重定向信息
+    logger.info(f"测试重定向: 会议 {meeting_id} 重定向到 {redirect_url}")
+
+    # 返回重定向响应
+    return RedirectResponse(url=redirect_url, status_code=302)
 ```
 
 ## 部署配置

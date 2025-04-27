@@ -67,9 +67,19 @@
 
 ### 2. 文件下载流程
 
+#### 直接链接方式
+
 1. 前端向主控服务器请求会议数据
 2. 主控服务器在响应中包含指向分布式节点的文件下载链接
 3. 前端使用这些链接直接从分布式节点下载文件
+
+#### HTTP重定向方式
+
+1. 前端向主控服务器发送文件下载请求
+2. 主控服务器验证请求并选择一个分布式节点
+3. 主控服务器返回HTTP 302重定向响应，将请求重定向到选定的分布式节点
+4. 前端浏览器自动跟随重定向，向分布式节点发送新的下载请求
+5. 分布式节点处理请求并返回文件内容
 
 ### 3. 节点管理流程
 
@@ -81,7 +91,7 @@
 
 ### 1. 主控服务器实现
 
-主控服务器需要实现两个关键功能：
+主控服务器需要实现三个关键功能：
 
 #### A. 提供会议数据API，但下载链接指向分布式节点
 
@@ -90,10 +100,10 @@
 async def get_meeting_data(meeting_id: str):
     # 获取会议数据
     meeting_data = await get_meeting_from_database(meeting_id)
-    
+
     # 获取可用的分布式节点
     available_nodes = await get_available_nodes()
-    
+
     if not available_nodes:
         # 如果没有可用节点，使用主控端自身的下载链接
         download_url = f"{BASE_URL}/api/v1/meetings/{meeting_id}/download-package"
@@ -101,10 +111,10 @@ async def get_meeting_data(meeting_id: str):
         # 选择一个分布式节点（可以实现负载均衡算法）
         selected_node = select_node(available_nodes)
         download_url = f"http://{selected_node}/api/v1/meetings/{meeting_id}/download-package"
-    
+
     # 在会议数据中添加下载链接
     meeting_data["download_url"] = download_url
-    
+
     return meeting_data
 ```
 
@@ -117,11 +127,50 @@ async def sync_meeting_data(meeting_id: str, request: Request):
     client_ip = request.client.host
     if client_ip not in AUTHORIZED_NODES:
         raise HTTPException(status_code=403, detail="Unauthorized sync attempt")
-    
+
     # 获取完整的会议数据（包括文件）
     meeting_data = await get_complete_meeting_data(meeting_id)
-    
+
     return meeting_data
+```
+
+#### C. 实现HTTP重定向下载机制
+
+```python
+@router.get("/{meeting_id}/download-package")
+async def download_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
+    """
+    下载会议的JPG文件包，如果有可用节点则重定向到节点
+    """
+    # 查询指定会议
+    meeting = crud.get_meeting(db, meeting_id=meeting_id)
+
+    # 如果会议不存在，返回404错误
+    if not meeting:
+        raise HTTPException(status_code=404, detail=f"会议 {meeting_id} 不存在")
+
+    # 如果会议不是进行中状态，返回404错误
+    if meeting.status != "进行中":
+        raise HTTPException(status_code=404, detail=f"会议 {meeting_id} 不是进行中状态")
+
+    # 获取可用的分布式节点
+    available_nodes = await get_available_nodes()
+
+    if available_nodes:
+        # 选择一个分布式节点
+        selected_node = select_node(available_nodes)
+
+        # 构建重定向URL
+        node_url = f"http://{selected_node}/api/v1/meetings/{meeting_id}/download-package"
+
+        # 记录重定向信息
+        logger.info(f"会议 {meeting_id} 的下载请求重定向到节点: {selected_node}")
+
+        # 返回重定向响应，使用状态码302确保客户端跟随重定向
+        return RedirectResponse(url=node_url, status_code=302)
+    else:
+        # 如果没有可用节点，使用本地文件
+        return await download_local_package(meeting_id, db)
 ```
 
 ### 2. 分布式服务器实现
@@ -136,7 +185,7 @@ async def sync_meeting_data():
         try:
             # 获取当前活跃会议ID
             active_meeting = await get_active_meeting_id()
-            
+
             if active_meeting:
                 # 从主控端同步会议数据
                 async with aiohttp.ClientSession() as session:
@@ -151,7 +200,7 @@ async def sync_meeting_data():
                             logger.info(f"Successfully synced meeting {active_meeting}")
                         else:
                             logger.error(f"Failed to sync meeting: HTTP {response.status}")
-            
+
             # 等待下一次同步
             await asyncio.sleep(SYNC_INTERVAL)
         except Exception as e:
@@ -164,21 +213,77 @@ async def sync_meeting_data():
 ```python
 @app.get("/api/v1/meetings/{meeting_id}/download-package")
 async def download_meeting_package(meeting_id: str):
-    # 检查本地是否有会议包
-    package_path = f"storage/meetings/{meeting_id}/package.zip"
-    
+    """提供会议包下载，与主控服务器API兼容"""
+    global service_running
+
+    if not service_running:
+        raise HTTPException(status_code=503, detail="服务未运行")
+
+    # 构建本地存储路径
+    package_path = os.path.join(STORAGE_PATH, f"meeting_{meeting_id}", "package.zip")
+
+    # 检查会议包是否存在
     if not os.path.exists(package_path):
-        # 如果本地没有，尝试从主控端同步
-        success = await sync_specific_meeting(meeting_id)
-        if not success:
+        # 如果本地没有，尝试从主控服务器同步
+        synced = await sync_meeting_data(meeting_id)
+        if not synced or not os.path.exists(package_path):
             raise HTTPException(status_code=404, detail="Meeting package not found")
-    
+
     # 提供文件下载
     return FileResponse(
         path=package_path,
         filename=f"meeting_{meeting_id}.zip",
         media_type="application/zip"
     )
+```
+
+#### C. 提供与前端下载链接兼容的端点
+
+```python
+@app.get("/api/meetings/{meeting_id}/download")
+async def download_meeting_frontend_compatible(meeting_id: str):
+    """提供会议包下载，与前端下载链接兼容
+
+    此端点与前端页面的下载链接格式匹配，便于重定向测试
+    """
+    # 直接调用主控API兼容的下载函数
+    return await download_meeting_package(meeting_id)
+```
+
+#### D. 提供重定向测试工具
+
+```python
+@app.get("/api/redirect-test/info")
+async def redirect_test_info():
+    """获取重定向测试信息"""
+    # 获取本机IP地址
+    node_ip = get_node_ip()
+
+    # 获取节点端口
+    node_port = config.get("nodePort", 8001)
+
+    # 构建可能的重定向端点
+    redirect_endpoints = [
+        {
+            "name": "会议包下载 (主控API兼容)",
+            "endpoint": "/api/v1/meetings/{meeting_id}/download-package",
+            "full_url": f"http://{node_ip}:{node_port}/api/v1/meetings/{{meeting_id}}/download-package"
+        },
+        {
+            "name": "会议包下载 (前端兼容)",
+            "endpoint": "/api/meetings/{meeting_id}/download",
+            "full_url": f"http://{node_ip}:{node_port}/api/meetings/{{meeting_id}}/download"
+        }
+    ]
+
+    # 返回调试信息
+    return {
+        "node_info": {
+            "ip_address": node_ip,
+            "port": node_port
+        },
+        "redirect_endpoints": redirect_endpoints
+    }
 ```
 
 ## 部署建议

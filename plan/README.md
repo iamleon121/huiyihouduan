@@ -32,6 +32,7 @@
 - [任务清单](./tasks_todo.md) - 当前任务状态和未来计划
 - [重构日志](./refactoring_log.md) - 重构过程的详细记录
 - [异步重构日志](./refactoring_log_async.md) - 异步功能重构的详细记录
+- [重定向实现状态](./redirect_implementation_status.md) - HTTP重定向功能的实现状态和测试结果
 
 ### 未来规划
 - [未来改进](./future_improvements.md) - 系统未来改进和功能扩展计划

@@ -207,20 +207,82 @@
 
 ```python
 @router.get("/{meeting_id}/download-package")
-async def download_meeting_package(meeting_id: str):
+async def download_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
+    """
+    下载会议的JPG文件包，如果有可用节点则重定向到节点
+
+    Args:
+        meeting_id: 会议ID
+
+    Returns:
+        RedirectResponse: 重定向到分布式节点
+        或
+        StreamingResponse: ZIP文件流响应（如果没有可用节点）
+    """
+    # 查询指定会议
+    meeting = crud.get_meeting(db, meeting_id=meeting_id)
+
+    # 如果会议不存在，返回404错误
+    if not meeting:
+        raise HTTPException(status_code=404, detail=f"会议 {meeting_id} 不存在")
+
+    # 如果会议不是进行中状态，返回404错误
+    if meeting.status != "进行中":
+        raise HTTPException(status_code=404, detail=f"会议 {meeting_id} 不是进行中状态")
+
     # 获取可用的分布式节点
     available_nodes = await get_available_nodes()
-    
+
     if available_nodes:
         # 选择一个分布式节点
         selected_node = select_node(available_nodes)
+
+        # 构建重定向URL
         node_url = f"http://{selected_node}/api/v1/meetings/{meeting_id}/download-package"
-        
-        # 返回重定向响应
-        return RedirectResponse(url=node_url)
+
+        # 记录重定向信息
+        print(f"[下载重定向] 会议 {meeting_id} 的下载请求重定向到节点: {selected_node}")
+
+        # 返回重定向响应，使用状态码302确保客户端跟随重定向
+        return RedirectResponse(url=node_url, status_code=302)
     else:
         # 如果没有可用节点，使用本地文件
-        return await download_local_package(meeting_id)
+        return await download_local_package(meeting_id, db)
+```
+
+分布式节点实现了与主控服务器兼容的下载端点，以及与前端下载链接兼容的端点：
+
+```python
+@app.get("/api/v1/meetings/{meeting_id}/download-package")
+async def download_meeting_package(meeting_id: str):
+    """提供会议包下载，与主控服务器API兼容"""
+    global service_running
+
+    if not service_running:
+        raise HTTPException(status_code=503, detail="服务未运行")
+
+    # 构建本地存储路径
+    package_path = os.path.join(STORAGE_PATH, f"meeting_{meeting_id}", "package.zip")
+
+    # 检查会议包是否存在
+    if not os.path.exists(package_path):
+        # 如果本地没有，尝试从主控服务器同步
+        synced = await sync_meeting_data(meeting_id)
+        if not synced or not os.path.exists(package_path):
+            raise HTTPException(status_code=404, detail="Meeting package not found")
+
+    # 提供文件下载
+    return FileResponse(
+        path=package_path,
+        filename=f"meeting_{meeting_id}.zip",
+        media_type="application/zip"
+    )
+
+@app.get("/api/meetings/{meeting_id}/download")
+async def download_meeting_frontend_compatible(meeting_id: str):
+    """提供会议包下载，与前端下载链接兼容"""
+    # 直接调用主控API兼容的下载函数
+    return await download_meeting_package(meeting_id)
 ```
 
 ### 2. 节点管理机制
@@ -235,14 +297,14 @@ nodes_registry = {}
 async def register_node(node_info: dict):
     node_id = node_info.get("node_id")
     address = node_info.get("address")
-    
+
     # 添加到注册表
     nodes_registry[node_id] = {
         "address": address,
         "status": "online",
         "last_seen": time.time()
     }
-    
+
     return {"status": "success"}
 ```
 
@@ -255,23 +317,23 @@ async def sync_meeting_data(meeting_id):
     # 创建会议目录
     meeting_dir = os.path.join(STORAGE_PATH, "meeting_files", meeting_id)
     os.makedirs(meeting_dir, exist_ok=True)
-    
+
     # 获取会议包
     package_path = os.path.join(meeting_dir, "package.zip")
-    
+
     # 从主控服务器下载会议包
     session = await get_http_session()
     async with session.get(f"{MAIN_SERVER_URL}/api/v1/meetings/{meeting_id}/download-package-direct") as response:
         if response.status == 200:
             # 读取响应内容
             content = await response.read()
-            
+
             # 保存到文件
             with open(package_path, "wb") as f:
                 f.write(content)
-            
+
             return True
-    
+
     return False
 ```
 
@@ -284,7 +346,7 @@ def select_node(nodes):
     """选择最佳节点"""
     # 简单实现：随机选择
     return random.choice(nodes)
-    
+
     # 更复杂的实现可以考虑负载、响应时间等因素
 ```
 
