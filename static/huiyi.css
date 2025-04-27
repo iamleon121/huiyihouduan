@@ -1708,3 +1708,164 @@ html, body {
         padding: 10px 12px;
     }
 }
+
+/* 节点管理页面样式 */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.stats-item {
+    background-color: var(--light-grey);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 5px var(--shadow-color);
+    transition: transform 0.2s ease;
+}
+
+.stats-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px var(--shadow-color);
+}
+
+.stats-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+.stats-label {
+    font-size: 14px;
+    color: var(--text-color-light);
+}
+
+.node-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.node-card {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    background-color: var(--light-grey);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.node-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px var(--shadow-color);
+}
+
+.node-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.node-id {
+    font-weight: bold;
+    font-size: 16px;
+    color: var(--text-color);
+}
+
+.node-status {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.status-online {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.status-offline {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.node-info {
+    margin-top: 15px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.info-label {
+    color: var(--text-color-light);
+}
+
+.no-nodes, .no-meeting {
+    text-align: center;
+    padding: 30px;
+    color: var(--text-color-light);
+    font-style: italic;
+    background-color: var(--light-grey);
+    border-radius: var(--border-radius);
+    margin-top: 15px;
+}
+
+/* 会议信息卡片样式 */
+.meeting-info {
+    background-color: var(--light-grey);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin-top: 15px;
+    box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+.meeting-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.meeting-title {
+    font-weight: bold;
+    font-size: 18px;
+    color: var(--text-color);
+}
+
+.meeting-id {
+    font-size: 14px;
+    color: var(--text-color-light);
+}
+
+.meeting-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.meeting-detail-item {
+    margin-bottom: 10px;
+}
+
+.meeting-detail-label {
+    font-size: 14px;
+    color: var(--text-color-light);
+    margin-bottom: 5px;
+}
+
+.meeting-detail-value {
+    font-weight: bold;
+    color: var(--text-color);
+}

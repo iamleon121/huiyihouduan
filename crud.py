@@ -99,6 +99,10 @@ def get_meetings(db: Session):
     # return db.query(models.Meeting).options(joinedload(models.Meeting.agenda_items)).all()
     return db.query(models.Meeting).all()
 
+def get_meetings_by_status(db: Session, status: str):
+    """获取指定状态的会议列表"""
+    return db.query(models.Meeting).filter(models.Meeting.status == status).all()
+
 def create_meeting(db: Session, meeting: schemas.MeetingCreate):
     """创建新会议"""
     # 检查会议是否至少有一个议程项

@@ -153,25 +153,25 @@ async def sync_meeting_data(meeting_id):
     """同步指定会议的数据"""
     try:
         logger.info(f"开始同步会议数据: {meeting_id}")
-        
+
         # 创建会议目录
         meeting_dir = os.path.join(STORAGE_PATH, "meeting_files", meeting_id)
         os.makedirs(meeting_dir, exist_ok=True)
-        
+
         # 获取会议包
         package_path = os.path.join(meeting_dir, "package.zip")
-        
+
         # 从主控服务器下载会议包
         session = await get_http_session()
         async with session.get(f"{MAIN_SERVER_URL}/api/v1/meetings/{meeting_id}/download-package-direct") as response:
             if response.status == 200:
                 # 读取响应内容
                 content = await response.read()
-                
+
                 # 保存到文件
                 with open(package_path, "wb") as f:
                     f.write(content)
-                
+
                 logger.info(f"会议 {meeting_id} 同步完成，包大小: {len(content)} 字节")
                 return True
             else:
@@ -190,14 +190,14 @@ async def download_meeting_package(meeting_id: str):
     """提供会议包下载，与主控服务器API兼容"""
     # 构建本地存储路径
     package_path = os.path.join(STORAGE_PATH, "meeting_files", meeting_id, "package.zip")
-    
+
     # 检查会议包是否存在
     if not os.path.exists(package_path):
         # 如果本地没有，尝试从主控服务器同步
         synced = await sync_meeting_data(meeting_id)
         if not synced or not os.path.exists(package_path):
             raise HTTPException(status_code=404, detail="Meeting package not found")
-    
+
     # 提供文件下载
     return FileResponse(
         path=package_path,
@@ -244,37 +244,12 @@ python start.py --host 0.0.0.0 --port 8001 --main-server http://主控服务器I
 
 ### 验证部署
 
-1. 检查节点是否成功启动：
-   ```
-   curl http://节点IP:8001/health
-   ```
-
-2. 检查节点是否已在主控服务器注册：
+1. 检查节点是否已在主控服务器注册：
    ```
    curl http://主控服务器IP:8000/api/v1/nodes/list
    ```
 
 ## API参考
-
-### 健康检查
-
-```
-GET /health
-```
-
-返回节点的健康状态信息。
-
-**响应示例**：
-```json
-{
-  "status": "healthy",
-  "node_id": "node-1234",
-  "timestamp": 1619712345.6789,
-  "main_server": "http://192.168.1.100:8000",
-  "storage_path": "./storage",
-  "sync_interval": 300
-}
-```
 
 ### 文件下载
 

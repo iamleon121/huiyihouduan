@@ -125,25 +125,25 @@ async def sync_meeting_data(meeting_id):
     """同步指定会议的数据"""
     try:
         logger.info(f"开始同步会议数据: {meeting_id}")
-        
+
         # 创建会议目录
         meeting_dir = os.path.join(STORAGE_PATH, "meeting_files", meeting_id)
         os.makedirs(meeting_dir, exist_ok=True)
-        
+
         # 获取会议包
         package_path = os.path.join(meeting_dir, "package.zip")
-        
+
         # 从主控服务器下载会议包
         session = await get_http_session()
         async with session.get(f"{MAIN_SERVER_URL}/api/v1/meetings/{meeting_id}/download-package-direct") as response:
             if response.status == 200:
                 # 读取响应内容
                 content = await response.read()
-                
+
                 # 保存到文件
                 with open(package_path, "wb") as f:
                     f.write(content)
-                
+
                 logger.info(f"会议 {meeting_id} 同步完成，包大小: {len(content)} 字节")
                 return True
             else:
@@ -162,14 +162,14 @@ async def download_meeting_package(meeting_id: str):
     """提供会议包下载，与主控服务器API兼容"""
     # 构建本地存储路径
     package_path = os.path.join(STORAGE_PATH, "meeting_files", meeting_id, "package.zip")
-    
+
     # 检查会议包是否存在
     if not os.path.exists(package_path):
         # 如果本地没有，尝试从主控服务器同步
         synced = await sync_meeting_data(meeting_id)
         if not synced or not os.path.exists(package_path):
             raise HTTPException(status_code=404, detail="Meeting package not found")
-    
+
     # 提供文件下载
     return FileResponse(
         path=package_path,
@@ -180,19 +180,7 @@ async def download_meeting_package(meeting_id: str):
 
 #### 5. 健康检查API
 
-```python
-@app.get("/health")
-async def health_check():
-    """健康检查端点"""
-    return {
-        "status": "healthy",
-        "node_id": NODE_ID,
-        "timestamp": time.time(),
-        "main_server": MAIN_SERVER_URL,
-        "storage_path": STORAGE_PATH,
-        "sync_interval": SYNC_INTERVAL
-    }
-```
+已移除健康检查API，简化系统架构。
 
 ### 主控服务器修改
 
@@ -209,17 +197,17 @@ async def register_node(node_info: dict):
     """注册分布式节点"""
     node_id = node_info.get("node_id")
     address = node_info.get("address")
-    
+
     if not node_id or not address:
         raise HTTPException(status_code=400, detail="Missing node_id or address")
-    
+
     # 添加到注册表
     nodes_registry[node_id] = {
         "address": address,
         "status": "online",
         "last_seen": time.time()
     }
-    
+
     return {"status": "success", "message": f"Node {node_id} registered"}
 ```
 
@@ -233,12 +221,12 @@ async def download_meeting_package(meeting_id: str):
     """下载会议包，如果有可用节点则重定向到节点"""
     # 获取可用的分布式节点
     available_nodes = await get_available_nodes()
-    
+
     if available_nodes:
         # 选择一个分布式节点
         selected_node = select_node(available_nodes)
         node_url = f"http://{selected_node}/api/v1/meetings/{meeting_id}/download-package"
-        
+
         # 返回重定向响应
         return RedirectResponse(url=node_url)
     else:
@@ -289,11 +277,7 @@ python start.py --host 0.0.0.0 --port 8001 --main-server http://主控服务器I
    curl http://主控服务器IP:8000/api/v1/nodes/list
    ```
 
-2. **健康检查测试**：
-   ```bash
-   # 检查节点健康状态
-   curl http://节点IP:8001/health
-   ```
+# 已移除健康检查测试
 
 3. **下载重定向测试**：
    ```bash

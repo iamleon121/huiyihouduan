@@ -1,11 +1,12 @@
 // 全局变量
-let serviceRunning = false;
+let serviceRunning = true; // 默认服务启动
 let connectionStatus = false;
 let startTime = null;
 let configData = {
     mainServerIp: '192.168.110.10',
     mainServerPort: 80,
-    syncInterval: 10
+    syncInterval: 10,
+    nodePort: 8001
 };
 
 // 页面加载完成后执行
@@ -18,6 +19,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 定时更新状态
     setInterval(updateStatus, 10000);
+
+    // 自动启动服务
+    setTimeout(function() {
+        if (serviceRunning) {
+            startService();
+        }
+    }, 1000);
 });
 
 // 初始化页面
@@ -45,14 +53,9 @@ function bindEvents() {
         resetConfig();
     });
 
-    // 启动服务按钮
-    document.getElementById('startService').addEventListener('click', function() {
-        startService();
-    });
-
-    // 停止服务按钮
-    document.getElementById('stopService').addEventListener('click', function() {
-        stopService();
+    // 切换服务按钮
+    document.getElementById('toggleService').addEventListener('click', function() {
+        toggleService();
     });
 
     // 关闭通知按钮
@@ -84,6 +87,7 @@ function fetchConfig() {
 function updateConfigForm() {
     document.getElementById('mainServerIp').value = configData.mainServerIp || '192.168.110.10';
     document.getElementById('mainServerPort').value = configData.mainServerPort || 80;
+    document.getElementById('nodePort').value = configData.nodePort || 8001;
     document.getElementById('syncInterval').value = configData.syncInterval || 10;
 }
 
@@ -91,6 +95,7 @@ function updateConfigForm() {
 function saveConfig() {
     const mainServerIp = document.getElementById('mainServerIp').value.trim();
     const mainServerPort = parseInt(document.getElementById('mainServerPort').value);
+    const nodePort = parseInt(document.getElementById('nodePort').value);
     const syncInterval = parseInt(document.getElementById('syncInterval').value);
 
     if (!mainServerIp) {
@@ -99,13 +104,19 @@ function saveConfig() {
     }
 
     if (isNaN(mainServerPort) || mainServerPort < 1 || mainServerPort > 65535) {
-        showNotification('请输入有效的端口号(1-65535)', 'warning');
+        showNotification('请输入有效的主控服务器端口号(1-65535)', 'warning');
+        return;
+    }
+
+    if (isNaN(nodePort) || nodePort < 1 || nodePort > 65535) {
+        showNotification('请输入有效的节点服务端口号(1-65535)', 'warning');
         return;
     }
 
     const newConfig = {
         mainServerIp,
         mainServerPort,
+        nodePort,
         syncInterval
     };
 
@@ -140,6 +151,7 @@ function resetConfig() {
 
 // 获取节点状态
 function fetchStatus() {
+    console.log("开始获取状态...");
     fetch('/api/status')
         .then(response => {
             if (!response.ok) {
@@ -148,6 +160,7 @@ function fetchStatus() {
             return response.json();
         })
         .then(data => {
+            console.log("获取状态成功:", data);
             updateStatusData(data);
         })
         .catch(error => {
@@ -163,11 +176,28 @@ function updateStatusData(data) {
     // 更新节点ID
     document.getElementById('nodeId').textContent = data.node_id || '未知';
 
+    // 更新节点IP地址和端口
+    try {
+        // 直接从状态数据中获取节点IP和端口
+        const nodeIp = data.node_ip || '未知';
+        const nodePort = data.node_port || 8001;
+        document.getElementById('nodeIp').textContent = `${nodeIp}:${nodePort}`;
+    } catch (e) {
+        console.error('获取节点IP地址出错:', e);
+        document.getElementById('nodeIp').textContent = '未知';
+    }
+
     // 更新运行状态
     serviceRunning = data.running || false;
 
     // 更新连接状态
-    connectionStatus = data.connected || false;
+    // 如果同步状态为"同步成功"，则认为连接正常
+    const syncStatus = data.sync_status || '未知';
+    const syncSuccessful = syncStatus === '同步成功';
+
+    // 使用服务器返回的连接状态或根据同步状态判断
+    connectionStatus = data.connected || syncSuccessful;
+    console.log("连接状态:", connectionStatus, "同步状态:", syncStatus);
 
     // 更新最近同步时间
     if (data.last_sync) {
@@ -178,7 +208,20 @@ function updateStatusData(data) {
     }
 
     // 更新同步状态
-    document.getElementById('syncStatus').textContent = data.sync_status || '未知';
+    document.getElementById('syncStatus').textContent = syncStatus;
+    console.log("同步状态:", syncStatus);
+
+    // 根据同步状态设置样式
+    const syncStatusEl = document.getElementById('syncStatus');
+    if (syncStatus.includes('失败') || syncStatus.includes('出错')) {
+        syncStatusEl.className = 'status-text error';
+    } else if (syncStatus === '同步中') {
+        syncStatusEl.className = 'status-text warning';
+    } else if (syncStatus === '同步成功') {
+        syncStatusEl.className = 'status-text success';
+    } else {
+        syncStatusEl.className = 'status-text';
+    }
 
     // 更新会议数量
     document.getElementById('meetingCount').textContent = data.meeting_count || 0;
@@ -186,8 +229,9 @@ function updateStatusData(data) {
     // 更新存储空间
     document.getElementById('storageUsage').textContent = formatBytes(data.storage_usage || 0);
 
-    // 更新活动会议
-    document.getElementById('activeMeeting').textContent = data.active_meeting || '无';
+    // 更新会议列表
+    console.log("会议数据:", data.active_meetings);
+    updateMeetingsList(data.active_meetings || []);
 
     // 更新运行时长
     if (data.start_time) {
@@ -227,9 +271,15 @@ function updateUI() {
         connectionText.textContent = '未连接';
     }
 
-    // 更新按钮状态
-    document.getElementById('startService').disabled = serviceRunning;
-    document.getElementById('stopService').disabled = !serviceRunning;
+    // 更新切换按钮状态和文本
+    const toggleButton = document.getElementById('toggleService');
+    if (serviceRunning) {
+        toggleButton.className = 'btn btn-danger';
+        toggleButton.textContent = '停止服务';
+    } else {
+        toggleButton.className = 'btn btn-success';
+        toggleButton.textContent = '启动服务';
+    }
 }
 
 // 启动服务
@@ -276,6 +326,15 @@ function stopService() {
             showNotification(error.message, 'error');
             console.error('停止服务错误:', error);
         });
+}
+
+// 切换服务状态
+function toggleService() {
+    if (serviceRunning) {
+        stopService();
+    } else {
+        startService();
+    }
 }
 
 // 更新状态
@@ -341,4 +400,104 @@ function formatBytes(bytes, decimals = 2) {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+// 更新会议列表
+function updateMeetingsList(meetings) {
+    const container = document.getElementById('meetingsContainer');
+
+    console.log("更新会议列表:", meetings);
+
+    if (!meetings || meetings.length === 0) {
+        console.log("没有会议数据");
+        container.innerHTML = '<div class="no-meetings">暂无会议数据</div>';
+        return;
+    }
+
+    // 确保meetings是数组
+    if (!Array.isArray(meetings)) {
+        console.error("会议数据不是数组:", meetings);
+        container.innerHTML = '<div class="no-meetings">会议数据格式错误</div>';
+        return;
+    }
+
+    // 按状态对会议进行排序：活动会议在前，已同步会议在后
+    meetings.sort((a, b) => {
+        // 首先按状态排序
+        if (a.status === 'active' && b.status !== 'active') return -1;
+        if (a.status !== 'active' && b.status === 'active') return 1;
+
+        // 如果状态相同，则按同步时间倒序排序（最新的在前）
+        const timeA = a.sync_time || 0;
+        const timeB = b.sync_time || 0;
+        return timeB - timeA;
+    });
+
+    let html = '';
+
+    meetings.forEach(meeting => {
+        // 获取同步时间
+        const syncTime = meeting.sync_time ? new Date(meeting.sync_time * 1000).toLocaleString() : '未知';
+
+        // 获取文件数量
+        const fileCount = meeting.file_count || '未知';
+
+        // 获取会议大小
+        const meetingSize = meeting.size ? formatBytes(meeting.size) : '未知';
+
+        // 获取会议状态
+        const status = meeting.status || 'synced';
+        const statusText = status === 'active' ? '活动' : '已同步';
+        const statusClass = status === 'active' ? 'active' : 'synced';
+
+        html += `
+            <div class="meeting-card">
+                <div class="meeting-header">
+                    <div class="meeting-title">${meeting.title || '未命名会议'}</div>
+                    <div class="meeting-status ${statusClass}">${statusText}</div>
+                </div>
+                <div class="meeting-info">
+                    <div class="meeting-info-item">
+                        <span class="meeting-info-label">会议ID:</span>
+                        <span class="meeting-info-value">${meeting.id}</span>
+                    </div>
+                    <div class="meeting-info-item">
+                        <span class="meeting-info-label">同步时间:</span>
+                        <span class="meeting-info-value">${syncTime}</span>
+                    </div>
+                    <div class="meeting-info-item">
+                        <span class="meeting-info-label">文件数量:</span>
+                        <span class="meeting-info-value">${fileCount}</span>
+                    </div>
+                    <div class="meeting-info-item">
+                        <span class="meeting-info-label">会议大小:</span>
+                        <span class="meeting-info-value">${meetingSize}</span>
+                    </div>
+                </div>
+                <div class="meeting-actions">
+                    <button class="btn btn-primary meeting-action-btn" onclick="downloadMeetingPackage('${meeting.id}')">
+                        下载会议包
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+
+
+// 下载会议包
+function downloadMeetingPackage(meetingId) {
+    // 创建一个临时链接并点击它来触发下载
+    const downloadUrl = `/api/meetings/${meetingId}/download`;
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `meeting-${meetingId}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    showNotification('开始下载会议包', 'success');
 }

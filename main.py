@@ -20,9 +20,10 @@ async def lifespan(app: FastAPI):
     """
     应用生命周期管理器
 
-    在FastAPI应用启动时创建两个后台任务，并在应用关闭时清理资源。
+    在FastAPI应用启动时创建后台任务，并在应用关闭时清理资源。
     1. FileService.background_cleanup_task: 定期清理临时文件
     2. FileService.background_cleanup_meetings_task: 定期清理孤立的会议文件夹
+    3. 节点管理器后台任务: 定期检查节点状态
 
     同时初始化会议变更状态识别码，确保系统正常运行。
     """
@@ -32,6 +33,10 @@ async def lifespan(app: FastAPI):
     # 创建任务并保存引用，以便在应用关闭时取消
     cleanup_task = asyncio.create_task(FileService.background_cleanup_task())
     meetings_cleanup_task = asyncio.create_task(FileService.background_cleanup_meetings_task())
+
+    # 启动节点管理器后台任务
+    start_background_tasks()
+    print(f"[{datetime.now()}] 分布式节点管理服务已启动")
 
     # 初始化会议变更状态识别码
     with SessionLocal() as db:
@@ -56,11 +61,14 @@ async def lifespan(app: FastAPI):
     print(f"[{datetime.now()}] 应用已安全关闭")
 
 # 导入路由模块
-from routes.meetings import router as meetings_router
-from routes.documents import router as documents_router
-from routes.users import router as users_router
-from routes.maintenance import router as maintenance_router
-from routes.pdf_conversion import router as pdf_conversion_router
+from routes import (
+    meetings_router, documents_router, users_router,
+    maintenance_router, pdf_conversion_router,
+    nodes_router, meetings_download_router, meetings_status_router
+)
+
+# 导入节点管理器
+from node_manager import start_background_tasks
 
 # 获取项目根目录
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -79,6 +87,9 @@ app.include_router(documents_router)
 app.include_router(users_router)
 app.include_router(maintenance_router)
 app.include_router(pdf_conversion_router)
+app.include_router(nodes_router)
+app.include_router(meetings_download_router)
+app.include_router(meetings_status_router)
 
 # 确保文件上传目录存在
 UPLOAD_DIR = os.path.join(project_root, "uploads")
@@ -139,6 +150,17 @@ async def serve_huiyi_page(request: Request):
         content='<html><head><meta http-equiv="refresh" content="0;URL=\'static/huiyi-meeting.html\'"></head></html>',
         status_code=200
     )
+
+@app.get("/nodes", response_class=HTMLResponse)
+async def serve_nodes_page(request: Request):
+    """提供分布式节点管理页面 - 重定向到新的节点管理页面"""
+    # 重定向到新的节点管理页面
+    return HTMLResponse(
+        content='<html><head><meta http-equiv="refresh" content="0;URL=\'static/huiyi-nodes.html\'"></head></html>',
+        status_code=200
+    )
+
+# 移除健康检查端点
 
 # 注意：所有API路由已移动到routes目录下的相应模块中
 # - 会议相关路由：routes/meetings.py
