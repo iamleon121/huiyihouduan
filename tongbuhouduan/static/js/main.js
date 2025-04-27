@@ -89,6 +89,18 @@ function updateConfigForm() {
     document.getElementById('mainServerPort').value = configData.mainServerPort || 80;
     document.getElementById('nodePort').value = configData.nodePort || 8001;
     document.getElementById('syncInterval').value = configData.syncInterval || 10;
+
+    // 设置心跳间隔
+    const heartbeatInterval = configData.heartbeat && configData.heartbeat.interval
+        ? configData.heartbeat.interval
+        : 30;
+    document.getElementById('heartbeatInterval').value = heartbeatInterval;
+
+    // 设置清理配置
+    const cleanup = configData.cleanup || {};
+    document.getElementById('cleanupEnabled').checked = cleanup.enabled !== false; // 默认为true
+    document.getElementById('cleanOnStartup').checked = cleanup.cleanOnStartup !== false; // 默认为true
+    document.getElementById('cleanEndedMeetings').checked = cleanup.cleanEndedMeetings !== false; // 默认为true
 }
 
 // 保存配置
@@ -97,6 +109,7 @@ function saveConfig() {
     const mainServerPort = parseInt(document.getElementById('mainServerPort').value);
     const nodePort = parseInt(document.getElementById('nodePort').value);
     const syncInterval = parseInt(document.getElementById('syncInterval').value);
+    const heartbeatInterval = parseInt(document.getElementById('heartbeatInterval').value);
 
     if (!mainServerIp) {
         showNotification('请输入主控服务器IP', 'warning');
@@ -113,11 +126,30 @@ function saveConfig() {
         return;
     }
 
+    if (isNaN(heartbeatInterval) || heartbeatInterval < 10 || heartbeatInterval > 300) {
+        showNotification('请输入有效的心跳间隔(10-300秒)', 'warning');
+        return;
+    }
+
+    // 获取清理配置
+    const cleanupEnabled = document.getElementById('cleanupEnabled').checked;
+    const cleanOnStartup = document.getElementById('cleanOnStartup').checked;
+    const cleanEndedMeetings = document.getElementById('cleanEndedMeetings').checked;
+
     const newConfig = {
         mainServerIp,
         mainServerPort,
         nodePort,
-        syncInterval
+        syncInterval,
+        heartbeat: {
+            interval: heartbeatInterval,
+            timeout: heartbeatInterval * 3 // 超时时间设为心跳间隔的3倍
+        },
+        cleanup: {
+            enabled: cleanupEnabled,
+            cleanOnStartup: cleanOnStartup,
+            cleanEndedMeetings: cleanEndedMeetings
+        }
     };
 
     fetch('/api/config', {
@@ -501,3 +533,6 @@ function downloadMeetingPackage(meetingId) {
 
     showNotification('开始下载会议包', 'success');
 }
+
+// 注意：单独的心跳间隔更新函数已移除
+// 心跳间隔现在与其他配置一起保存

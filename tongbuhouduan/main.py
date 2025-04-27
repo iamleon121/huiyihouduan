@@ -14,7 +14,7 @@ import logging
 import logging.handlers
 import time
 import socket
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,7 +23,8 @@ import uvicorn
 # 导入配置模块
 from config import (
     load_config, save_config, get_main_server_url,
-    get_storage_config, get_network_config, get_logging_config, get_heartbeat_config
+    get_storage_config, get_network_config, get_logging_config,
+    get_heartbeat_config, get_cleanup_config
 )
 
 # 配置日志
@@ -48,6 +49,9 @@ async def lifespan(_: FastAPI):
 
     # 初始化存储目录
     init_storage()
+
+    # 启动时清理非活动会议文件
+    asyncio.create_task(clean_inactive_meetings_on_startup())
 
     # 启动心跳任务
     asyncio.create_task(send_heartbeat())
@@ -149,8 +153,98 @@ def init_config():
 # 初始化存储目录
 def init_storage():
     """初始化存储目录"""
-    os.makedirs(os.path.join(STORAGE_PATH, "meeting_files"), exist_ok=True)
-    os.makedirs(os.path.join(STORAGE_PATH, "download"), exist_ok=True)
+    # 只创建存储根目录，不再创建子目录
+    os.makedirs(STORAGE_PATH, exist_ok=True)
+    # 注释: 之前的代码创建了两个子目录:
+    # 1. meeting_files - 用于存储会议文件，但与直接在STORAGE_PATH下创建的meeting_{id}目录冗余
+    # 2. download - 完全未使用的目录
+
+# 启动时清理非活动会议文件
+async def clean_inactive_meetings_on_startup():
+    """启动时清理非活动会议文件
+
+    在节点启动时，获取当前活动会议列表，清理不在活动列表中的会议文件。
+    根据配置决定是否执行清理。
+    """
+    # 获取清理配置
+    cleanup_config = get_cleanup_config(config)
+
+    # 检查是否启用自动清理和启动时清理
+    if not cleanup_config.get("enabled", True) or not cleanup_config.get("cleanOnStartup", True):
+        logger.info("根据配置，跳过启动时清理非活动会议文件")
+        return
+
+    logger.info("开始启动时清理非活动会议文件...")
+
+    try:
+        # 等待一段时间，确保配置和网络连接已经初始化
+        await asyncio.sleep(5)
+
+        # 获取当前活动会议列表
+        status = await get_meeting_status()
+        if not status:
+            logger.warning("无法获取会议状态，跳过启动时清理")
+            return
+
+        # 获取当前活动会议列表
+        current_active_meetings = status.get("active_meetings", [])
+
+        # 兼容旧版API，检查是否使用单一会议ID
+        if status.get("active_meeting") and not current_active_meetings:
+            active_meeting_id = status.get("active_meeting")
+            if active_meeting_id:
+                logger.info(f"使用旧版API，单一会议ID: {active_meeting_id}")
+                current_active_meetings = [{"id": active_meeting_id, "title": "活动会议"}]
+
+        # 确保活动会议列表是一个列表
+        if current_active_meetings and not isinstance(current_active_meetings, list):
+            if isinstance(current_active_meetings, dict):
+                current_active_meetings = [current_active_meetings]
+            else:
+                current_active_meetings = []
+
+        # 获取当前活动会议ID列表
+        active_meeting_ids = set()
+        for meeting in current_active_meetings:
+            if isinstance(meeting, dict) and "id" in meeting:
+                active_meeting_ids.add(meeting["id"])
+            elif isinstance(meeting, str):
+                active_meeting_ids.add(meeting)
+
+        logger.info(f"当前活动会议ID列表: {active_meeting_ids}")
+
+        # 获取本地存储的所有会议ID
+        local_meeting_ids = set()
+
+        # 检查会议目录（只检查meeting_前缀的目录）
+        for item in os.listdir(STORAGE_PATH):
+            if item.startswith("meeting_") and os.path.isdir(os.path.join(STORAGE_PATH, item)):
+                meeting_id = item[8:]  # 去掉"meeting_"前缀
+                local_meeting_ids.add(meeting_id)
+
+        logger.info(f"本地存储的会议ID列表: {local_meeting_ids}")
+
+        # 找出需要清理的会议ID
+        meetings_to_clean = local_meeting_ids - active_meeting_ids
+
+        if not meetings_to_clean:
+            logger.info("没有需要清理的非活动会议文件")
+            return
+
+        logger.info(f"需要清理的非活动会议: {meetings_to_clean}")
+
+        # 清理非活动会议文件
+        for meeting_id in meetings_to_clean:
+            logger.info(f"准备清除非活动会议的文件: {meeting_id}")
+            success = await clean_meeting_files(meeting_id)
+            if success:
+                logger.info(f"已成功清除会议 {meeting_id} 的文件")
+            else:
+                logger.warning(f"清除会议 {meeting_id} 的文件失败")
+
+        logger.info("启动时清理非活动会议文件完成")
+    except Exception as e:
+        logger.error(f"启动时清理非活动会议文件出错: {str(e)}")
 
 # HTTP会话管理
 async def get_http_session():
@@ -232,6 +326,7 @@ async def send_heartbeat():
     global service_running, config
 
     # 获取心跳配置
+    # 每次循环都重新获取配置，确保使用最新的心跳间隔
     heartbeat_config = get_heartbeat_config(config)
     heartbeat_interval = heartbeat_config["interval"]
 
@@ -295,6 +390,10 @@ async def send_heartbeat():
                     logger.error(f"心跳发送失败，已尝试 {retry_count} 次")
 
                 # 服务运行时，按配置的间隔发送心跳
+                # 每次循环重新获取心跳间隔，确保使用最新的配置
+                heartbeat_config = get_heartbeat_config(config)
+                heartbeat_interval = heartbeat_config["interval"]
+                logger.debug(f"使用心跳间隔: {heartbeat_interval}秒")
                 await asyncio.sleep(heartbeat_interval)
             else:
                 logger.debug("服务未运行，暂停心跳发送")
@@ -304,6 +403,13 @@ async def send_heartbeat():
             logger.error(f"心跳发送出错: {str(e)}")
             # 出错时，根据服务状态决定等待时间
             if service_running:
+                # 重新获取心跳间隔
+                try:
+                    heartbeat_config = get_heartbeat_config(config)
+                    heartbeat_interval = heartbeat_config["interval"]
+                except Exception:
+                    # 如果获取失败，使用默认值
+                    heartbeat_interval = 30
                 await asyncio.sleep(heartbeat_interval)  # 保持与正常心跳间隔一致
             else:
                 await asyncio.sleep(300)  # 服务停止时，每5分钟检查一次服务状态
@@ -372,16 +478,12 @@ async def sync_meeting_data(meeting_id):
         storage_config = get_storage_config(config)
         storage_path = storage_config["path"]
 
-        # 创建会议目录（两个位置都创建，确保兼容性）
-        meeting_dir = os.path.join(storage_path, "meeting_files", meeting_id)
-        os.makedirs(meeting_dir, exist_ok=True)
-
-        # 同时创建另一个会议目录，用于前端显示
+        # 创建会议目录（只使用一个位置，避免存储冗余）
         meeting_folder = os.path.join(storage_path, f"meeting_{meeting_id}")
         os.makedirs(meeting_folder, exist_ok=True)
 
-        # 获取会议包
-        package_path = os.path.join(meeting_dir, "package.zip")
+        # 获取会议包路径
+        package_path = os.path.join(meeting_folder, "package.zip")
 
         # 从主控服务器下载会议包，支持重试
         session = await get_http_session()
@@ -399,14 +501,17 @@ async def sync_meeting_data(meeting_id):
                         # 读取响应内容
                         content = await response.read()
 
-                        # 保存到文件
-                        with open(package_path, "wb") as f:
-                            f.write(content)
+                        # 确保目录存在
+                        os.makedirs(os.path.dirname(package_path), exist_ok=True)
 
-                        # 同时保存一份到另一个目录
-                        package_folder_path = os.path.join(meeting_folder, "package.zip")
-                        with open(package_folder_path, "wb") as f:
-                            f.write(content)
+                        # 保存到文件（只保存一份）
+                        try:
+                            with open(package_path, "wb") as f:
+                                f.write(content)
+                            logger.info(f"成功保存会议包到: {package_path}")
+                        except Exception as write_error:
+                            logger.error(f"保存会议包到 {package_path} 失败: {str(write_error)}")
+                            raise  # 重新抛出异常，让外层捕获
 
                         # 更新同步状态
                         last_sync_time = time.time()
@@ -424,7 +529,20 @@ async def sync_meeting_data(meeting_id):
                 if attempt < retry_count - 1:
                     await asyncio.sleep(retry_delay)
             except Exception as e:
-                logger.warning(f"下载会议包出错: {str(e)}，尝试 {attempt+1}/{retry_count}")
+                # 检查错误类型，如果是文件操作错误，提供更详细的日志
+                if isinstance(e, (IOError, OSError)):
+                    logger.warning(f"下载会议包文件操作出错: {str(e)}，尝试 {attempt+1}/{retry_count}")
+                else:
+                    logger.warning(f"下载会议包出错: {str(e)}，尝试 {attempt+1}/{retry_count}")
+
+                # 如果是最后一次尝试，记录更详细的错误信息
+                if attempt == retry_count - 1:
+                    logger.error(f"下载会议包最终失败: {str(e)}")
+                    # 检查目录是否存在
+                    meeting_dir = os.path.join(storage_path, "meeting_files", meeting_id)
+                    meeting_folder = os.path.join(storage_path, f"meeting_{meeting_id}")
+                    logger.info(f"会议目录状态检查 - 主目录: {os.path.exists(meeting_dir)}, 前端目录: {os.path.exists(meeting_folder)}")
+
                 if attempt < retry_count - 1:
                     await asyncio.sleep(retry_delay)
 
@@ -442,15 +560,15 @@ async def sync_meeting_data(meeting_id):
 # 同步会议
 async def sync_meetings():
     """定期同步所有活动会议"""
-    global service_running, last_meeting_token, active_meetings, config
+    global service_running, last_meeting_token, active_meetings, config, SYNC_INTERVAL
 
-    # 获取同步间隔
-    sync_interval = config.get("syncInterval", 10)
+    # 使用全局变量SYNC_INTERVAL作为同步间隔
+    # 这样当配置更新时，轮询间隔也会立即更新
 
     # 获取网络配置
     # 网络配置将在需要时获取
 
-    logger.info(f"同步服务启动，间隔: {sync_interval}秒")
+    logger.info(f"同步服务启动，间隔: {SYNC_INTERVAL}秒")
 
     while True:
         try:
@@ -461,7 +579,7 @@ async def sync_meetings():
                 status = await get_meeting_status()
                 if not status:
                     logger.warning("无法获取会议状态，将在下次同步时重试")
-                    await asyncio.sleep(sync_interval)
+                    await asyncio.sleep(SYNC_INTERVAL)
                     continue
 
                 # 获取会议状态识别码
@@ -506,7 +624,7 @@ async def sync_meetings():
                 # 检查会议状态是否变化
                 if current_token == last_meeting_token and set(current_meeting_ids) == set([m["id"] for m in active_meetings]):
                     logger.info(f"会议状态未变化，跳过同步 (Token: {current_token})")
-                    await asyncio.sleep(sync_interval)
+                    await asyncio.sleep(SYNC_INTERVAL)
                     continue
 
                 # 更新会议状态识别码
@@ -530,6 +648,22 @@ async def sync_meetings():
                     # 从活动会议列表中移除已结束的会议
                     active_meetings = [m for m in active_meetings if m["id"] not in ended_meetings]
 
+                    # 获取清理配置
+                    cleanup_config = get_cleanup_config(config)
+
+                    # 检查是否启用自动清理和清理已结束会议
+                    if cleanup_config.get("enabled", True) and cleanup_config.get("cleanEndedMeetings", True):
+                        # 清除已结束会议的文件
+                        for meeting_id in ended_meetings:
+                            logger.info(f"准备清除已结束会议的文件: {meeting_id}")
+                            success = await clean_meeting_files(meeting_id)
+                            if success:
+                                logger.info(f"已成功清除会议 {meeting_id} 的文件")
+                            else:
+                                logger.warning(f"清除会议 {meeting_id} 的文件失败")
+                    else:
+                        logger.info("根据配置，跳过清理已结束会议的文件")
+
                 # 同步新会议
                 for meeting_id in new_meetings:
                     logger.info(f"开始同步新会议: {meeting_id}")
@@ -549,8 +683,8 @@ async def sync_meetings():
                     active_meetings = []
 
                 # 等待下一次同步
-                logger.info(f"同步完成，{sync_interval}秒后进行下一次同步")
-                await asyncio.sleep(sync_interval)
+                logger.info(f"同步完成，{SYNC_INTERVAL}秒后进行下一次同步")
+                await asyncio.sleep(SYNC_INTERVAL)
             else:
                 logger.debug("服务未运行，暂停同步会议")
                 # 服务未运行时，等待较长时间再检查，避免频繁轮询
@@ -559,9 +693,144 @@ async def sync_meetings():
             logger.error(f"同步过程出错: {str(e)}")
             # 出错时，根据服务状态决定等待时间
             if service_running:
-                await asyncio.sleep(sync_interval)
+                await asyncio.sleep(SYNC_INTERVAL)
             else:
                 await asyncio.sleep(60)  # 服务停止时，每分钟检查一次服务状态
+
+# 重启时清理非活动会议文件
+async def clean_inactive_meetings_on_restart():
+    """重启服务时清理非活动会议文件
+
+    在服务重新启动时，获取当前活动会议列表，清理不在活动列表中的会议文件。
+    根据配置决定是否执行清理。
+    """
+    # 获取清理配置
+    cleanup_config = get_cleanup_config(config)
+
+    # 检查是否启用自动清理和启动时清理
+    if not cleanup_config.get("enabled", True) or not cleanup_config.get("cleanOnStartup", True):
+        logger.info("根据配置，跳过重启时清理非活动会议文件")
+        return
+
+    logger.info("开始重启时清理非活动会议文件...")
+
+    try:
+        # 等待一段时间，确保网络连接已经初始化
+        await asyncio.sleep(2)
+
+        # 获取当前活动会议列表
+        status = await get_meeting_status()
+        if not status:
+            logger.warning("无法获取会议状态，跳过重启时清理")
+            return
+
+        # 获取当前活动会议列表
+        current_active_meetings = status.get("active_meetings", [])
+
+        # 兼容旧版API，检查是否使用单一会议ID
+        if status.get("active_meeting") and not current_active_meetings:
+            active_meeting_id = status.get("active_meeting")
+            if active_meeting_id:
+                logger.info(f"使用旧版API，单一会议ID: {active_meeting_id}")
+                current_active_meetings = [{"id": active_meeting_id, "title": "活动会议"}]
+
+        # 确保活动会议列表是一个列表
+        if current_active_meetings and not isinstance(current_active_meetings, list):
+            if isinstance(current_active_meetings, dict):
+                current_active_meetings = [current_active_meetings]
+            else:
+                current_active_meetings = []
+
+        # 获取当前活动会议ID列表
+        active_meeting_ids = set()
+        for meeting in current_active_meetings:
+            if isinstance(meeting, dict) and "id" in meeting:
+                active_meeting_ids.add(meeting["id"])
+            elif isinstance(meeting, str):
+                active_meeting_ids.add(meeting)
+
+        logger.info(f"重启时清理: 当前活动会议ID列表: {active_meeting_ids}")
+
+        # 获取本地存储的所有会议ID
+        local_meeting_ids = set()
+
+        # 检查会议目录（只检查meeting_前缀的目录）
+        for item in os.listdir(STORAGE_PATH):
+            if item.startswith("meeting_") and os.path.isdir(os.path.join(STORAGE_PATH, item)):
+                meeting_id = item[8:]  # 去掉"meeting_"前缀
+                local_meeting_ids.add(meeting_id)
+
+        logger.info(f"重启时清理: 本地存储的会议ID列表: {local_meeting_ids}")
+
+        # 找出需要清理的会议ID
+        meetings_to_clean = local_meeting_ids - active_meeting_ids
+
+        if not meetings_to_clean:
+            logger.info("重启时清理: 没有需要清理的非活动会议文件")
+            return
+
+        logger.info(f"重启时清理: 需要清理的非活动会议: {meetings_to_clean}")
+
+        # 清理非活动会议文件
+        for meeting_id in meetings_to_clean:
+            logger.info(f"重启时清理: 准备清除非活动会议的文件: {meeting_id}")
+            success = await clean_meeting_files(meeting_id)
+            if success:
+                logger.info(f"重启时清理: 已成功清除会议 {meeting_id} 的文件")
+            else:
+                logger.warning(f"重启时清理: 清除会议 {meeting_id} 的文件失败")
+
+        logger.info("重启时清理非活动会议文件完成")
+    except Exception as e:
+        logger.error(f"重启时清理非活动会议文件出错: {str(e)}")
+
+# 清除会议文件
+async def clean_meeting_files(meeting_id):
+    """清除指定会议的文件
+
+    清除会议文件：
+    STORAGE_PATH/meeting_{meeting_id}
+
+    返回：
+    - 成功清除返回True
+    - 失败返回False
+    """
+    import shutil
+    success = True
+
+    try:
+        # 清除会议文件
+        meeting_folder = os.path.join(STORAGE_PATH, f"meeting_{meeting_id}")
+        if os.path.exists(meeting_folder):
+            if os.path.isdir(meeting_folder):
+                try:
+                    # 计算会议目录大小，用于日志记录
+                    total_size = 0
+                    for root, _, files in os.walk(meeting_folder):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            if os.path.isfile(file_path):
+                                try:
+                                    total_size += os.path.getsize(file_path)
+                                except OSError:
+                                    # 如果无法获取文件大小，忽略错误继续
+                                    pass
+
+                    # 删除目录及其内容
+                    shutil.rmtree(meeting_folder)
+                    logger.info(f"已清除会议文件: {meeting_folder}, 释放空间: {total_size} 字节")
+                except Exception as e:
+                    logger.error(f"清除会议目录 {meeting_folder} 出错: {str(e)}")
+                    success = False
+            else:
+                logger.warning(f"会议目录 {meeting_folder} 不是一个目录，跳过清理")
+        else:
+            logger.info(f"会议目录 {meeting_folder} 不存在，无需清理")
+    except Exception as e:
+        logger.error(f"处理会议目录 {meeting_id} 时出错: {str(e)}")
+        success = False
+
+    return success
 
 # 获取存储使用情况
 def get_storage_usage():
@@ -570,20 +839,22 @@ def get_storage_usage():
     meeting_count = 0
 
     try:
-        # 遍历会议文件目录
-        meeting_files_dir = os.path.join(STORAGE_PATH, "meeting_files")
-        if os.path.exists(meeting_files_dir):
-            for meeting_id in os.listdir(meeting_files_dir):
-                meeting_dir = os.path.join(meeting_files_dir, meeting_id)
-                if os.path.isdir(meeting_dir):
-                    meeting_count += 1
+        # 遍历存储根目录，查找meeting_前缀的目录
+        for item in os.listdir(STORAGE_PATH):
+            if item.startswith("meeting_") and os.path.isdir(os.path.join(STORAGE_PATH, item)):
+                meeting_count += 1
+                meeting_dir = os.path.join(STORAGE_PATH, item)
 
-                    # 计算会议目录大小
-                    for root, _, files in os.walk(meeting_dir):
-                        for file in files:
-                            file_path = os.path.join(root, file)
-                            if os.path.isfile(file_path):
+                # 计算会议目录大小
+                for root, _, files in os.walk(meeting_dir):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        if os.path.isfile(file_path):
+                            try:
                                 total_size += os.path.getsize(file_path)
+                            except OSError:
+                                # 如果无法获取文件大小，忽略错误继续
+                                pass
     except Exception as e:
         logger.error(f"获取存储使用情况出错: {str(e)}")
 
@@ -597,6 +868,64 @@ def get_storage_usage():
 async def get_config_api():
     """获取当前配置"""
     return config
+
+@app.post("/api/config/heartbeat")
+async def update_heartbeat_interval(request: Request):
+    """更新心跳间隔
+
+    注意：此API已被弃用，心跳间隔现在与其他配置一起保存。
+    保留此API是为了保持兼容性。
+
+    支持两种请求格式：
+    1. 直接发送整数值
+    2. 发送JSON对象：{"interval": 30}
+    """
+    global config
+
+    # 从请求体中获取心跳间隔
+    interval = None
+    try:
+        # 读取请求体
+        body_bytes = await request.body()
+        body_text = body_bytes.decode('utf-8')
+
+        # 尝试解析为JSON
+        try:
+            import json
+            body = json.loads(body_text)
+            if isinstance(body, int):
+                interval = body
+            elif isinstance(body, dict) and "interval" in body:
+                interval = body["interval"]
+            else:
+                # 尝试将整个body作为整数
+                interval = int(body_text)
+        except json.JSONDecodeError:
+            # 如果不是JSON，尝试直接解析为整数
+            interval = int(body_text)
+    except Exception as e:
+        logger.error(f"解析心跳间隔请求出错: {str(e)}")
+        raise HTTPException(status_code=400, detail="无效的心跳间隔请求格式")
+
+    # 验证心跳间隔
+    if interval is None or not isinstance(interval, int) or not (10 <= interval <= 300):
+        raise HTTPException(status_code=400, detail="心跳间隔必须在10-300秒之间")
+
+    # 确保心跳配置存在
+    if "heartbeat" not in config:
+        config["heartbeat"] = {"interval": 30, "timeout": 90}
+
+    # 更新心跳间隔
+    config["heartbeat"]["interval"] = interval
+
+    # 保存配置
+    if not save_config(config):
+        raise HTTPException(status_code=500, detail="保存配置失败")
+
+    # 记录配置变更
+    logger.info(f"心跳间隔已更新: {interval}秒")
+
+    return {"status": "success", "message": f"心跳间隔已更新为 {interval} 秒"}
 
 @app.post("/api/config")
 async def update_config_api(new_config: dict):
@@ -622,6 +951,15 @@ async def update_config_api(new_config: dict):
 
     # 更新配置（保留节点ID）
     new_config["nodeId"] = config["nodeId"]
+
+    # 确保心跳配置存在
+    if "heartbeat" not in new_config:
+        new_config["heartbeat"] = old_config.get("heartbeat", {
+            "interval": 30,
+            "timeout": 90
+        })
+
+    # 更新配置
     config = new_config
 
     # 保存配置
@@ -631,6 +969,9 @@ async def update_config_api(new_config: dict):
     # 更新全局变量
     MAIN_SERVER_URL = get_main_server_url(config)
     SYNC_INTERVAL = config["syncInterval"]
+
+    # 记录配置变更
+    logger.info(f"配置已更新: 同步间隔={SYNC_INTERVAL}秒, 心跳间隔={get_heartbeat_config(config)['interval']}秒")
 
     # 处理配置变更
     await handle_config_change(old_config, config)
@@ -649,6 +990,18 @@ async def handle_config_change(old_config, new_config):
         await unregister_node()  # 从旧服务器注销
         await register_node()    # 向新服务器注册
 
+    # 检查同步间隔是否变更
+    old_sync_interval = old_config.get("syncInterval", 10)
+    new_sync_interval = new_config.get("syncInterval", 10)
+    if old_sync_interval != new_sync_interval:
+        logger.info(f"同步间隔变更: {old_sync_interval}秒 -> {new_sync_interval}秒")
+
+    # 检查心跳间隔是否变更
+    old_heartbeat = old_config.get("heartbeat", {}).get("interval", 10)
+    new_heartbeat = new_config.get("heartbeat", {}).get("interval", 10)
+    if old_heartbeat != new_heartbeat:
+        logger.info(f"心跳间隔变更: {old_heartbeat}秒 -> {new_heartbeat}秒")
+
 @app.post("/api/service/start")
 async def start_service():
     """启动服务"""
@@ -663,6 +1016,10 @@ async def start_service():
 
     # 向主控服务器注册节点
     await register_node()
+
+    # 启动时清理非活动会议文件
+    # 创建一个任务，避免阻塞API响应
+    asyncio.create_task(clean_inactive_meetings_on_restart())
 
     return {"status": "success", "message": "服务已启动"}
 
@@ -778,48 +1135,53 @@ async def get_status():
 
             meetings_with_details.append(meeting_detail)
 
-    # 然后检查本地存储的会议
-    meeting_files_dir = os.path.join(STORAGE_PATH, "meeting_files")
-    if os.path.exists(meeting_files_dir):
-        for meeting_id in os.listdir(meeting_files_dir):
+    # 然后检查本地存储的非活动会议
+    for item in os.listdir(STORAGE_PATH):
+        if item.startswith("meeting_") and os.path.isdir(os.path.join(STORAGE_PATH, item)):
+            meeting_id = item[8:]  # 去掉"meeting_"前缀
+
             # 跳过已经添加的活动会议
             if meeting_id in active_meeting_ids:
                 continue
 
-            meeting_dir = os.path.join(meeting_files_dir, meeting_id)
-            if os.path.isdir(meeting_dir):
-                # 获取会议大小和文件数量
-                meeting_size = 0
-                file_count = 0
-                for root, _, files in os.walk(meeting_dir):
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        if os.path.isfile(file_path):
+            meeting_dir = os.path.join(STORAGE_PATH, item)
+
+            # 获取会议大小和文件数量
+            meeting_size = 0
+            file_count = 0
+            for root, _, files in os.walk(meeting_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    if os.path.isfile(file_path):
+                        try:
                             meeting_size += os.path.getsize(file_path)
                             file_count += 1
+                        except OSError:
+                            # 如果无法获取文件大小，忽略错误继续
+                            pass
 
-                # 尝试获取会议标题
-                title = "未命名会议"
-                try:
-                    # 尝试从包中提取会议标题
-                    package_path = os.path.join(meeting_dir, "package.zip")
-                    if os.path.exists(package_path):
-                        # 这里简化处理，实际上可以从包中提取会议信息
-                        title = f"已同步会议 {meeting_id[:8]}"
-                except:
-                    pass
+            # 尝试获取会议标题
+            title = "未命名会议"
+            try:
+                # 尝试从包中提取会议标题
+                package_path = os.path.join(meeting_dir, "package.zip")
+                if os.path.exists(package_path):
+                    # 这里简化处理，实际上可以从包中提取会议信息
+                    title = f"已同步会议 {meeting_id[:8]}"
+            except:
+                pass
 
-                # 创建会议详细信息
-                meeting_detail = {
-                    "id": meeting_id,
-                    "title": title,
-                    "sync_time": os.path.getmtime(meeting_dir),  # 使用文件夹修改时间作为同步时间
-                    "size": meeting_size,
-                    "file_count": file_count,
-                    "status": "synced"
-                }
+            # 创建会议详细信息
+            meeting_detail = {
+                "id": meeting_id,
+                "title": title,
+                "sync_time": os.path.getmtime(meeting_dir),  # 使用文件夹修改时间作为同步时间
+                "size": meeting_size,
+                "file_count": file_count,
+                "status": "synced"
+            }
 
-                meetings_with_details.append(meeting_detail)
+            meetings_with_details.append(meeting_detail)
 
     return {
         "node_id": NODE_ID,
@@ -833,8 +1195,8 @@ async def get_status():
         "sync_status": last_sync_status,
         "active_meetings": meetings_with_details,
         "meeting_count": storage_info["meeting_count"],
-        "storage_usage": storage_info["total_size"],
-        "meeting_token": last_meeting_token
+        "storage_usage": storage_info["total_size"]
+        # 移除 meeting_token 字段，避免前端访问 /token 接口
     }
 
 # 移除健康检查端点
@@ -848,7 +1210,7 @@ async def download_meeting_package(meeting_id: str):
         raise HTTPException(status_code=503, detail="服务未运行")
 
     # 构建本地存储路径
-    package_path = os.path.join(STORAGE_PATH, "meeting_files", meeting_id, "package.zip")
+    package_path = os.path.join(STORAGE_PATH, f"meeting_{meeting_id}", "package.zip")
 
     # 检查会议包是否存在
     if not os.path.exists(package_path):
@@ -878,12 +1240,8 @@ async def download_meeting_package_zip(meeting_id: str):
     if not service_running:
         raise HTTPException(status_code=503, detail="服务未运行")
 
-    # 首先尝试使用meeting_files目录中的package.zip
-    package_path = os.path.join(STORAGE_PATH, "meeting_files", meeting_id, "package.zip")
-
-    # 如果不存在，尝试使用meeting_{meeting_id}目录中的package.zip
-    if not os.path.exists(package_path):
-        package_path = os.path.join(STORAGE_PATH, f"meeting_{meeting_id}", "package.zip")
+    # 使用meeting_{meeting_id}目录中的package.zip
+    package_path = os.path.join(STORAGE_PATH, f"meeting_{meeting_id}", "package.zip")
 
     # 如果仍然不存在，尝试从主控服务器同步
     if not os.path.exists(package_path):
@@ -892,9 +1250,7 @@ async def download_meeting_package_zip(meeting_id: str):
 
         # 同步后再次检查文件是否存在
         if synced:
-            package_path = os.path.join(STORAGE_PATH, "meeting_files", meeting_id, "package.zip")
-            if not os.path.exists(package_path):
-                package_path = os.path.join(STORAGE_PATH, f"meeting_{meeting_id}", "package.zip")
+            package_path = os.path.join(STORAGE_PATH, f"meeting_{meeting_id}", "package.zip")
 
         # 如果仍然不存在，返回404错误
         if not synced or not os.path.exists(package_path):

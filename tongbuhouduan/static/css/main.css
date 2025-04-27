@@ -156,6 +156,40 @@ input[type="number"] {
     font-size: 14px;
 }
 
+/* 复选框样式 */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: normal;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.help-text {
+    margin-top: 4px;
+    margin-left: 24px;
+    font-size: 12px;
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+/* 输入框带按钮 */
+.input-with-button {
+    display: flex;
+    gap: 10px;
+}
+
+.input-with-button input {
+    flex: 1;
+}
+
+.input-with-button button {
+    white-space: nowrap;
+}
+
 input[type="text"]:focus,
 input[type="number"]:focus {
     border-color: #3498db;

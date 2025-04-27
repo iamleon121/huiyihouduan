@@ -44,6 +44,11 @@ DEFAULT_CONFIG = {
     "heartbeat": {
         "interval": 10,  # 心跳间隔（秒）
         "timeout": 30  # 心跳超时时间（秒）
+    },
+    "cleanup": {
+        "enabled": True,  # 是否启用自动清理
+        "cleanOnStartup": True,  # 启动时清理
+        "cleanEndedMeetings": True  # 清理已结束的会议
     }
 }
 
@@ -121,3 +126,7 @@ def get_logging_config(config):
 def get_heartbeat_config(config):
     """获取心跳配置"""
     return config.get("heartbeat", DEFAULT_CONFIG["heartbeat"])
+
+def get_cleanup_config(config):
+    """获取清理配置"""
+    return config.get("cleanup", DEFAULT_CONFIG["cleanup"])

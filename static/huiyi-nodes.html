@@ -319,7 +319,8 @@
             // 加载当前进行中的会议信息
             async function loadActiveMeeting() {
                 try {
-                    const response = await fetch('/api/v1/meetings/status/token');
+                    // 使用节点专用的API端点，而不是移动客户端的/token端点
+                    const response = await fetch('/api/v1/meetings/status/node');
                     if (!response.ok) {
                         throw new Error('获取会议状态失败');
                     }
@@ -327,8 +328,9 @@
                     const data = await response.json();
                     const container = document.getElementById('activeMeetingInfo');
 
-                    // 检查是否有会议
-                    if (!data.meetings || data.meetings.length === 0) {
+                    // 检查是否有会议 - 适配节点API返回的active_meetings字段
+                    const meetings = data.active_meetings || [];
+                    if (meetings.length === 0) {
                         container.innerHTML = '<div class="no-meeting">暂无进行中的会议</div>';
                         return;
                     }
@@ -337,23 +339,10 @@
                     let meetingsHtml = '';
 
                     // 遍历所有会议
-                    for (const meeting of data.meetings) {
-                        // 如果没有status字段，添加一个默认值
-                        if (!meeting.status) {
-                            meeting.status = "进行中";
-                        }
-
-                        // 格式化会议时间
-                        let formattedTime = "未设置";
-                        if (meeting.time) {
-                            try {
-                                const meetingTime = new Date(meeting.time);
-                                formattedTime = meetingTime.toLocaleString();
-                            } catch (e) {
-                                console.error("解析会议时间出错:", e);
-                                formattedTime = meeting.time || "未设置"; // 如果解析失败，直接显示原始时间
-                            }
-                        }
+                    for (const meeting of meetings) {
+                        // 节点API只返回id和title，设置默认值
+                        const status = "进行中"; // 节点API只返回进行中的会议
+                        const formattedTime = "当前进行中"; // 简化显示，不显示具体时间
 
                         // 构建单个会议的HTML
                         meetingsHtml += `
@@ -369,7 +358,7 @@
                                     </div>
                                     <div class="meeting-detail-item">
                                         <div class="meeting-detail-label">状态</div>
-                                        <div class="meeting-detail-value">${meeting.status || '进行中'}</div>
+                                        <div class="meeting-detail-value">${status}</div>
                                     </div>
                                     <div class="meeting-detail-item">
                                         <div class="meeting-detail-label">下载链接</div>

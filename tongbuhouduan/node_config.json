@@ -2,30 +2,15 @@
     "mainServerIp": "127.0.0.1",
     "mainServerPort": 8000,
     "nodePort": 8001,
-    "syncInterval": 10,
-    "nodeId": "node-2a330d7f",
-    "storage": {
-        "path": "./storage",
-        "maxSize": 10737418240,
-        "cleanupThreshold": 0.9,
-        "autoCleanup": true
-    },
-    "network": {
-        "maxConcurrentDownloads": 3,
-        "downloadTimeout": 300,
-        "connectionTimeout": 10,
-        "retryCount": 3,
-        "retryDelay": 5
-    },
-    "logging": {
-        "level": "INFO",
-        "fileEnabled": true,
-        "filePath": "./logs/node.log",
-        "maxFileSize": 10485760,
-        "backupCount": 5
-    },
+    "syncInterval": 30,
     "heartbeat": {
-        "interval": 10,
-        "timeout": 30
-    }
+        "interval": 30,
+        "timeout": 90
+    },
+    "cleanup": {
+        "enabled": true,
+        "cleanOnStartup": true,
+        "cleanEndedMeetings": true
+    },
+    "nodeId": "node-2a330d7f"
 }

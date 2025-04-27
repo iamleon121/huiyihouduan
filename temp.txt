@@ -1,0 +1,24 @@
+﻿
+> @app.post("/api/config/heartbeat")
+  async def update_heartbeat_interval(interval: int):
+      """鏇存柊蹇冭烦闂撮殧"""
+      global config
+  
+      # 楠岃瘉蹇冭烦闂撮殧
+      if not (10 <= interval <= 300):
+          raise HTTPException(status_code=400, detail="蹇冭烦闂撮殧蹇呴』鍦?0-300绉掍箣闂?)
+  
+      # 纭繚蹇冭烦閰嶇疆瀛樺湪
+      if "heartbeat" not in config:
+          config["heartbeat"] = {"interval": 30, "timeout": 90}
+  
+      # 鏇存柊蹇冭烦闂撮殧
+      config["heartbeat"]["interval"] = interval
+  
+      # 淇濆瓨閰嶇疆
+      if not save_config(config):
+          raise HTTPException(status_code=500, detail="淇濆瓨閰嶇疆澶辫触")
+  
+      # 璁板綍閰嶇疆鍙樻洿
+
+

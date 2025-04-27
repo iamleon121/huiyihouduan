@@ -77,6 +77,34 @@
                     <label for="syncInterval">同步间隔 (秒)</label>
                     <input type="number" id="syncInterval" name="syncInterval" min="10" max="3600" value="10">
                 </div>
+                <div class="form-group">
+                    <label for="heartbeatInterval">心跳间隔 (秒)</label>
+                    <input type="number" id="heartbeatInterval" name="heartbeatInterval" min="10" max="300" value="30">
+                </div>
+
+                <h3>清理配置</h3>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="cleanupEnabled" name="cleanupEnabled" checked>
+                        启用自动清理
+                    </label>
+                    <p class="help-text">总开关，控制是否启用所有自动清理功能</p>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="cleanOnStartup" name="cleanOnStartup" checked>
+                        启动时清理非活动会议
+                    </label>
+                    <p class="help-text">节点启动时自动清理不在活动列表中的会议文件</p>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="cleanEndedMeetings" name="cleanEndedMeetings" checked>
+                        自动清理已结束会议
+                    </label>
+                    <p class="help-text">当会议结束时自动清理会议文件</p>
+                </div>
+
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">保存配置</button>
                     <button type="button" class="btn btn-secondary" id="resetConfig">重置</button>

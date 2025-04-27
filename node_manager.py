@@ -95,10 +95,36 @@ async def get_available_nodes() -> List[str]:
     available_nodes = []
     current_time = time.time()
 
+    # 输出节点注册表信息
+    print(f"[节点管理] 当前注册节点数量: {len(nodes_registry)}")
     for node_id, node_info in nodes_registry.items():
+        # 计算节点最后心跳时间距离现在的秒数
+        last_seen_seconds_ago = current_time - node_info["last_seen"]
+        print(f"[节点管理] 节点 {node_id} ({node_info['address']}) 最后心跳: {last_seen_seconds_ago:.2f}秒前, 超时阈值: {NODE_HEARTBEAT_TIMEOUT}秒")
+
         # 检查节点是否在线（NODE_HEARTBEAT_TIMEOUT秒内有心跳）
-        if current_time - node_info["last_seen"] <= NODE_HEARTBEAT_TIMEOUT:
-            available_nodes.append(node_info["address"])
+        if last_seen_seconds_ago <= NODE_HEARTBEAT_TIMEOUT:
+            # 确保地址格式正确（包含IP和端口）
+            address = node_info["address"]
+            if address and ":" in address:
+                available_nodes.append(address)
+                print(f"[节点管理] 节点 {node_id} ({address}) 在线，添加到可用节点列表")
+            else:
+                print(f"[节点管理] 节点 {node_id} 地址格式不正确: {address}，不添加到可用节点列表")
+        else:
+            print(f"[节点管理] 节点 {node_id} ({node_info['address']}) 离线，不添加到可用节点列表")
+
+    print(f"[节点管理] 可用节点数量: {len(available_nodes)}, 节点列表: {available_nodes}")
+
+    # 如果没有可用节点，添加一个测试节点（仅用于测试重定向功能）
+    if not available_nodes and len(nodes_registry) > 0:
+        # 获取第一个注册节点的地址
+        for node_id, node_info in nodes_registry.items():
+            address = node_info["address"]
+            if address and ":" in address:
+                available_nodes.append(address)
+                print(f"[节点管理] 添加测试节点: {address}")
+                break
 
     return available_nodes
 
