@@ -584,11 +584,16 @@ function fetchMeetingById(meetingId) {
         setProgress(50);
         startProgressAnimation(50, 70, 10000); // 从50%到70%，持续10秒
 
-        // 取消按钮始终显示，不需要显示
-        // if (typeof showCancelButton === 'function') {
-        //     showCancelButton();
-        //     console.log('显示取消更新按钮');
-        // }
+        // 显示下载信息区域
+        const downloadInfo = document.querySelector('.download-info');
+        if (downloadInfo) {
+            downloadInfo.style.display = 'block';
+        }
+
+        // 重置下载节点和大小信息
+        document.getElementById('current-node').textContent = '-';
+        document.getElementById('downloaded-size').textContent = '0';
+        document.getElementById('total-size').textContent = '0';
     });
 
     // 上次输出的进度百分比
@@ -597,7 +602,7 @@ function fetchMeetingById(meetingId) {
     LoadingService.addEventListener('downloadProgress', function(data) {
         // 只在进度变化超过5%时输出日志，避免过多的日志输出
         if (data.percent - lastLoggedPercent >= 5 || data.percent === 100) {
-            console.log('下载进度:', data.percent + '%');
+            console.log('下载进度:', data.percent + '%', '节点:', data.node || '未知');
             lastLoggedPercent = data.percent;
         }
 
@@ -605,20 +610,46 @@ function fetchMeetingById(meetingId) {
         const mappedProgress = 50 + (data.percent / 100 * 20);
         stopProgressAnimation();
         setProgress(mappedProgress);
-        updateLoadingText('正在下载会议文件...');
+        updateLoadingText(`正在下载会议文件... ${data.percent}%`);
+
+        // 更新下载节点和大小信息
+        if (data.node) {
+            document.getElementById('current-node').textContent = data.node;
+        }
+
+        if (data.downloadedSize !== undefined && data.totalSize !== undefined) {
+            // 格式化文件大小
+            const downloadedSizeFormatted = formatFileSize(data.downloadedSize);
+            const totalSizeFormatted = formatFileSize(data.totalSize);
+
+            document.getElementById('downloaded-size').textContent = downloadedSizeFormatted;
+            document.getElementById('total-size').textContent = totalSizeFormatted;
+        }
+    });
+
+    // 添加重试事件监听器
+    LoadingService.addEventListener('downloadRetry', function(data) {
+        console.log('下载重试:', data);
+        updateLoadingText(`从节点 ${data.previousNode} 下载失败，正在切换到节点 ${data.nextNode}...`);
+
+        // 更新下载节点信息
+        document.getElementById('current-node').textContent = data.nextNode || '-';
+
+        // 重置下载大小信息
+        document.getElementById('downloaded-size').textContent = '0';
     });
 
     LoadingService.addEventListener('downloadComplete', function(data) {
-        console.log('下载完成:', data.filename);
+        console.log('下载完成:', data.filename, '节点:', data.node || '未知');
         updateLoadingText('下载完成，准备解压文件...');
         stopProgressAnimation();
         setProgress(70);
 
-        // 取消按钮始终显示，不需要隐藏
-        // if (typeof hideCancelButton === 'function') {
-        //     hideCancelButton();
-        //     console.log('下载完成，隐藏取消更新按钮');
-        // }
+        // 隐藏下载信息区域
+        const downloadInfo = document.querySelector('.download-info');
+        if (downloadInfo) {
+            downloadInfo.style.display = 'none';
+        }
     });
 
     LoadingService.addEventListener('downloadError', function(data) {
@@ -627,6 +658,14 @@ function fetchMeetingById(meetingId) {
         // 不中断整体流程，继续处理
         stopProgressAnimation();
         setProgress(70);
+
+        // 如果是最终失败（所有节点都尝试过），隐藏下载信息区域
+        if (data.message && data.message.includes('所有节点下载尝试均失败')) {
+            const downloadInfo = document.querySelector('.download-info');
+            if (downloadInfo) {
+                downloadInfo.style.display = 'none';
+            }
+        }
     });
 
     LoadingService.addEventListener('extractStart', function(data) {
@@ -781,6 +820,17 @@ function hideError() {
     if (errorText) {
         errorText.style.display = 'none';
     }
+}
+
+// 格式化文件大小函数
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+
+    // 保留两位小数，并去除末尾的0
+    return (bytes / Math.pow(1024, i)).toFixed(2).replace(/\.0+$|(\.[0-9]*[1-9])0+$/, '$1') + ' ' + units[i];
 }
 
 // 显示按钮函数（现在什么也不做，因为我们已经移除了按钮）

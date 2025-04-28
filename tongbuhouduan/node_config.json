@@ -1,11 +1,11 @@
 {
     "mainServerIp": "127.0.0.1",
-    "mainServerPort": 8000,
-    "nodePort": 8001,
-    "syncInterval": 30,
+    "mainServerPort": 8001,
+    "nodePort": 8000,
+    "syncInterval": 10,
     "heartbeat": {
-        "interval": 30,
-        "timeout": 90
+        "interval": 10,
+        "timeout": 30
     },
     "cleanup": {
         "enabled": true,
