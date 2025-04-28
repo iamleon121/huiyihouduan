@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse, JSONResponse
+from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from sqlalchemy.orm import Session
 import os
 import io
@@ -8,22 +8,20 @@ import time
 from database import get_db
 import crud
 from services.meeting_service import MeetingService
-from node_manager import get_available_nodes, select_node
+from node_manager import get_available_nodes
 
 router = APIRouter(prefix="/api/v1/meetings", tags=["meetings_download"])
 
 @router.get("/{meeting_id}/download-package")
 async def download_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
     """
-    下载会议的JPG文件包，如果有可用节点则重定向到节点
+    下载会议的JPG文件包
 
     Args:
         meeting_id: 会议ID
 
     Returns:
-        RedirectResponse: 重定向到分布式节点
-        或
-        StreamingResponse: ZIP文件流响应（如果没有可用节点）
+        StreamingResponse: ZIP文件流响应
     """
     # 查询指定会议
     meeting = crud.get_meeting(db, meeting_id=meeting_id)
@@ -50,45 +48,33 @@ async def download_meeting_package(meeting_id: str, db: Session = Depends(get_db
         if not meeting.package_path:
             raise HTTPException(status_code=500, detail="生成会议压缩包失败")
 
-    # 获取可用的分布式节点
+    # 获取可用的分布式节点（仅用于日志记录）
     print(f"[下载API] 开始获取可用节点...")
     available_nodes = await get_available_nodes()
     print(f"[下载API] 可用节点数量: {len(available_nodes)}, 节点列表: {available_nodes}")
 
+    # 记录节点信息（仅用于日志记录）
+    # 构建节点信息提示
+    nodes_info = f"[下载端点信息] 会议 {meeting_id} 可通过以下端点下载:"
+
+    # 添加主控服务器信息
+    host = "localhost:8000"  # 默认值，实际运行时可能不同
+    nodes_info += f"\n - {host} (http://{host}/api/v1/meetings/{meeting_id}/download-package)"
+
+    # 添加分布式节点信息
     if available_nodes:
-        # 选择一个分布式节点
-        selected_node = select_node(available_nodes)
-        print(f"[下载API] 选择的节点: {selected_node}")
+        for node in available_nodes:
+            nodes_info += f"\n - {node} (http://{node}/api/v1/meetings/{meeting_id}/download-package)"
 
-        # 构建重定向URL
-        node_url = f"http://{selected_node}/api/v1/meetings/{meeting_id}/download-package"
-        print(f"[下载API] 重定向URL: {node_url}")
+    # 添加查看详细信息的提示
+    nodes_info += f"\n[提示] 查看所有下载端点: /api/v1/meetings/{meeting_id}/download-nodes-info"
 
-        # 记录重定向信息
-        print(f"[下载重定向] 会议 {meeting_id} 的下载请求重定向到节点: {selected_node}")
+    # 打印节点信息
+    print(nodes_info)
 
-        # 构建节点信息提示
-        nodes_info = f"[节点信息] 会议 {meeting_id} 可通过以下节点下载:"
-        nodes_info += f"\n - 选中节点: {selected_node} (http://{selected_node}/api/v1/meetings/{meeting_id}/download-package)"
-
-        # 添加其他可用节点信息
-        for i, node in enumerate(available_nodes):
-            if node != selected_node:  # 跳过已选中的节点
-                nodes_info += f"\n - 备用节点{i+1}: {node} (http://{node}/api/v1/meetings/{meeting_id}/download-package)"
-
-        # 添加查看详细信息的提示
-        nodes_info += f"\n[提示] 查看详细节点信息: /api/v1/meetings/{meeting_id}/download-nodes-info"
-
-        # 打印节点信息
-        print(nodes_info)
-
-        # 返回重定向响应，使用状态码302确保客户端跟随重定向
-        print(f"[下载API] 返回重定向响应: {node_url}")
-        return RedirectResponse(url=node_url, status_code=302)
-    else:
-        # 如果没有可用节点，使用本地文件
-        print(f"[下载本地] 没有可用节点，使用本地文件提供会议 {meeting_id} 的下载")
-        return await download_local_package(meeting_id, db)
+    # 直接从本地提供文件下载，不进行重定向
+    print(f"[下载本地] 使用本地文件提供会议 {meeting_id} 的下载")
+    return await download_local_package(meeting_id, db)
 
 @router.get("/{meeting_id}/download-package-direct")
 async def download_meeting_package_direct(meeting_id: str, db: Session = Depends(get_db)):
@@ -146,16 +132,16 @@ async def download_local_package(meeting_id: str, db: Session):
 @router.get("/{meeting_id}/download-nodes-info")
 async def get_download_nodes_info(meeting_id: str, request: Request, db: Session = Depends(get_db)):
     """
-    获取可用于下载指定会议文件的节点信息
+    获取可用于下载指定会议文件的所有端点信息
 
-    此API用于获取可用于下载指定会议文件的分布式节点信息，包括节点地址和下载URL。
-    主要用于调试和监控目的，可以帮助管理员了解文件下载的分发情况。
+    此API用于获取可用于下载指定会议文件的所有端点信息，包括主控服务器和分布式节点。
+    返回简化的端点列表，每个端点只包含IP和下载URL。
 
     Args:
         meeting_id: 会议ID
 
     Returns:
-        JSONResponse: 包含可用节点信息的JSON响应
+        JSONResponse: 包含所有下载端点信息的JSON响应
     """
     # 查询指定会议
     meeting = crud.get_meeting(db, meeting_id=meeting_id)
@@ -187,28 +173,22 @@ async def get_download_nodes_info(meeting_id: str, request: Request, db: Session
 
     # 获取主控服务器地址（从请求中提取）
     host = request.headers.get("host", "localhost")
-    scheme = request.headers.get("x-forwarded-proto", "http")
-    main_server_url = f"{scheme}://{host}"
 
-    # 准备响应数据
-    response_data = {
-        "meeting_id": meeting_id,
-        "meeting_title": meeting.title,
-        "main_server": {
-            "url": main_server_url,
-            "download_url": f"{main_server_url}/api/v1/meetings/{meeting_id}/download-package-direct"
-        },
-        "available_nodes": [],
-        "total_nodes": len(available_nodes)
-    }
+    # 准备响应数据 - 简化的下载端点列表
+    download_endpoints = []
+
+    # 添加主控服务器下载端点
+    download_endpoints.append({
+        "ip": host,
+        "download_url": f"http://{host}/api/v1/meetings/{meeting_id}/download-package"
+    })
 
     # 添加可用节点信息
     for node in available_nodes:
-        node_url = f"http://{node}"
-        response_data["available_nodes"].append({
-            "address": node,
-            "download_url": f"{node_url}/api/v1/meetings/{meeting_id}/download-package"
+        download_endpoints.append({
+            "ip": node,
+            "download_url": f"http://{node}/api/v1/meetings/{meeting_id}/download-package"
         })
 
     # 返回JSON响应
-    return JSONResponse(content=response_data)
+    return JSONResponse(content=download_endpoints)

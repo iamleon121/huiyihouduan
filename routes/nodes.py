@@ -29,6 +29,7 @@ class NodeHeartbeat(BaseModel):
     address: str  # 添加节点地址字段，用于自动重新注册
     status: str = "online"
     active_meetings: List[MeetingInfo] = []  # 活动会议列表
+    synced_meetings: List[str] = []  # 已同步的会议ID列表
 
 class NodeUnregistration(BaseModel):
     node_id: str
@@ -58,7 +59,7 @@ async def api_unregister_node(node_data: NodeUnregistration):
 async def api_node_heartbeat(heartbeat: NodeHeartbeat):
     """接收节点心跳
 
-    如果节点存在，则更新节点的最后心跳时间和活动会议信息。
+    如果节点存在，则更新节点的最后心跳时间、活动会议信息和已同步会议信息。
     如果节点不存在，则自动重新注册该节点。
     """
     # 提取活动会议信息
@@ -67,8 +68,11 @@ async def api_node_heartbeat(heartbeat: NodeHeartbeat):
         for meeting in heartbeat.active_meetings
     ] if heartbeat.active_meetings else []
 
-    # 尝试更新节点心跳和活动会议信息
-    success = await update_node_heartbeat(heartbeat.node_id, active_meetings)
+    # 提取已同步会议信息
+    synced_meetings = heartbeat.synced_meetings if heartbeat.synced_meetings else []
+
+    # 尝试更新节点心跳、活动会议信息和已同步会议信息
+    success = await update_node_heartbeat(heartbeat.node_id, active_meetings, synced_meetings)
 
     # 如果节点不存在，尝试重新注册
     if not success:
@@ -79,10 +83,10 @@ async def api_node_heartbeat(heartbeat: NodeHeartbeat):
             raise HTTPException(status_code=400, detail=f"无法重新注册节点 {heartbeat.node_id}")
         logger.info(f"节点 {heartbeat.node_id} 已自动重新注册")
 
-        # 注册成功后，更新活动会议信息
-        if active_meetings:
-            await update_node_heartbeat(heartbeat.node_id, active_meetings)
-            logger.info(f"节点 {heartbeat.node_id} 活动会议信息已更新: {len(active_meetings)} 个会议")
+        # 注册成功后，更新活动会议信息和已同步会议信息
+        if active_meetings or synced_meetings:
+            await update_node_heartbeat(heartbeat.node_id, active_meetings, synced_meetings)
+            logger.info(f"节点 {heartbeat.node_id} 活动会议信息已更新: {len(active_meetings)} 个会议，已同步会议: {len(synced_meetings)} 个")
 
     return {"status": "success", "timestamp": time.time()}
 

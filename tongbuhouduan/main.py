@@ -349,12 +349,13 @@ async def send_heartbeat():
                 node_port = config.get("nodePort", 8001)
                 node_address = f"{host_ip}:{node_port}"
 
-                # 构建心跳信息，包含节点ID、地址、状态和活动会议信息
+                # 构建心跳信息，包含节点ID、地址、状态、活动会议信息和已同步会议信息
                 heartbeat_info = {
                     "node_id": NODE_ID,
                     "address": node_address,
                     "status": "online",
-                    "active_meetings": []  # 初始化为空列表
+                    "active_meetings": [],  # 初始化为空列表
+                    "synced_meetings": []   # 初始化为空列表
                 }
 
                 # 添加活动会议信息
@@ -365,6 +366,23 @@ async def send_heartbeat():
                         for meeting in active_meetings
                     ]
                     logger.debug(f"心跳包含 {len(active_meetings)} 个活动会议")
+
+                    # 添加已同步会议信息
+                    # 检查每个活动会议是否已同步
+                    synced_meetings = []
+                    for meeting in active_meetings:
+                        meeting_id = meeting["id"]
+                        meeting_folder = os.path.join(STORAGE_PATH, f"meeting_{meeting_id}")
+                        package_path = os.path.join(meeting_folder, "package.zip")
+
+                        # 如果会议包存在，则认为该会议已同步
+                        if os.path.exists(package_path) and os.path.isfile(package_path):
+                            synced_meetings.append(meeting_id)
+                            logger.debug(f"会议 {meeting_id} 已同步")
+
+                    # 添加已同步会议ID列表
+                    heartbeat_info["synced_meetings"] = synced_meetings
+                    logger.debug(f"心跳包含 {len(synced_meetings)} 个已同步会议")
 
                 # 尝试发送心跳，支持重试
                 success = False
@@ -516,6 +534,18 @@ async def sync_meeting_data(meeting_id):
                         # 更新同步状态
                         last_sync_time = time.time()
                         last_sync_status = "同步成功"
+
+                        # 更新已同步会议列表
+                        # 检查会议是否在活动会议列表中
+                        is_active = False
+                        for meeting in active_meetings:
+                            if meeting["id"] == meeting_id:
+                                is_active = True
+                                break
+
+                        # 如果会议是活动会议，确保它在下一次心跳中被报告为已同步
+                        if is_active:
+                            logger.info(f"会议 {meeting_id} 已同步，将在下一次心跳中报告")
 
                         logger.info(f"会议 {meeting_id} 同步完成，包大小: {len(content)} 字节")
                         success = True

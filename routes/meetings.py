@@ -16,6 +16,7 @@ import uuid
 import json
 from datetime import datetime
 import asyncio
+import time
 
 # 导入数据库模型、模式和CRUD操作
 import models, schemas, crud
@@ -25,6 +26,67 @@ from utils import format_file_size, ensure_jpg_for_pdf, ensure_jpg_in_zip, conve
 # 导入服务层
 from services.meeting_service import MeetingService
 from services.pdf_service import PDFService
+
+# 导入节点管理器
+from node_manager import reset_meeting_sync_status, is_meeting_fully_synced, remove_meeting_sync_status
+
+# 定义等待节点同步的最大时间（秒）
+MAX_SYNC_WAIT_TIME = 300  # 5分钟
+
+async def wait_for_nodes_sync_and_update_token(db: Session, meeting_id: str):
+    """
+    等待所有节点同步完成后更新会议状态识别码
+
+    此函数作为后台任务运行，等待所有节点同步完成指定会议的数据后，
+    更新会议状态识别码，以通知前端刷新会议数据。
+
+    如果在最大等待时间内节点未能完成同步，将强制更新会议状态识别码。
+
+    Args:
+        db: 数据库会话
+        meeting_id: 会议ID
+    """
+    print(f"[同步等待] 开始等待会议 {meeting_id} 的节点同步")
+
+    # 记录开始时间
+    start_time = time.time()
+
+    # 创建一个新的数据库会话，因为这是一个长时间运行的后台任务
+    db_session = SessionLocal()
+
+    try:
+        # 等待所有节点同步完成或超时
+        while True:
+            # 检查是否所有节点都已同步
+            if is_meeting_fully_synced(meeting_id):
+                print(f"[同步等待] 会议 {meeting_id} 的所有节点已完成同步")
+                # 更新会议状态识别码
+                crud.update_meeting_change_status_token(db_session)
+                print(f"[同步等待] 会议 {meeting_id} 的状态识别码已更新")
+                break
+
+            # 检查是否超时
+            elapsed_time = time.time() - start_time
+            if elapsed_time > MAX_SYNC_WAIT_TIME:
+                print(f"[同步等待] 会议 {meeting_id} 的节点同步等待超时，强制更新状态识别码")
+                # 强制更新会议状态识别码
+                crud.update_meeting_change_status_token(db_session)
+                print(f"[同步等待] 会议 {meeting_id} 的状态识别码已强制更新")
+                break
+
+            # 等待一段时间后再次检查
+            await asyncio.sleep(5)  # 每5秒检查一次
+    except Exception as e:
+        print(f"[同步等待] 等待会议 {meeting_id} 的节点同步时发生错误: {str(e)}")
+        # 发生错误时，强制更新会议状态识别码
+        try:
+            crud.update_meeting_change_status_token(db_session)
+            print(f"[同步等待] 会议 {meeting_id} 的状态识别码已在错误处理中更新")
+        except Exception as inner_e:
+            print(f"[同步等待] 更新会议 {meeting_id} 的状态识别码时发生错误: {str(inner_e)}")
+    finally:
+        # 关闭数据库会话
+        db_session.close()
 
 # 创建路由器
 router = APIRouter(
@@ -582,9 +644,14 @@ async def update_meeting_status_endpoint(meeting_id: str, status_update: schemas
         if not success:
             raise HTTPException(status_code=500, detail="生成会议文件包失败，无法开始会议")
 
-        print(f"[状态变更] 会议 {meeting_id} ZIP包生成成功，更新状态token")
-        # 更新会议变更状态识别码
-        crud.update_meeting_change_status_token(db)
+        print(f"[状态变更] 会议 {meeting_id} ZIP包生成成功，重置会议同步状态")
+
+        # 重置会议同步状态，将所有节点标记为未同步
+        reset_meeting_sync_status(meeting_id)
+        print(f"[状态变更] 会议 {meeting_id} 同步状态已重置，等待所有节点同步")
+
+        # 启动后台任务，等待所有节点同步完成后更新会议状态识别码
+        asyncio.create_task(wait_for_nodes_sync_and_update_token(db, meeting_id))
 
     # 如果状态从"进行中"变为其他状态，删除ZIP包
     elif current_status == "进行中" and new_status != "进行中":
@@ -592,6 +659,9 @@ async def update_meeting_status_endpoint(meeting_id: str, status_update: schemas
 
         # 删除会议文件包
         await MeetingService.delete_meeting_package(db, meeting_id)
+
+        # 移除会议同步状态跟踪
+        remove_meeting_sync_status(meeting_id)
 
         print(f"[状态变更] 会议 {meeting_id} ZIP包删除完成")
 
