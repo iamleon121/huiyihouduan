@@ -3,6 +3,7 @@
     --primary-color-dark: #0056b3;
     --secondary-color: #f4f7f9; /* 更柔和的背景灰 */
     --text-color: #343a40; /* 深灰色文本 */
+    --header-color: #d4482f; /* 深灰色文本 */
     --text-color-light: #6c757d; /* 浅灰色文本 */
     --border-color: #e3e6e9;
     --sidebar-bg: #2c3e50; /* 深蓝灰色侧边栏 */
@@ -161,7 +162,15 @@ html, body {
 .header-title {
     font-size: 1.4em; /* 调整字号 */
     font-weight: 600;
-    color: var(--text-color);
+    color: var(--header-color);
+    display: flex;
+    align-items: center;
+}
+
+.header-logo {
+    height: 40px;
+    margin-right: 10px;
+    vertical-align: middle;
 }
 
 .user-info {
