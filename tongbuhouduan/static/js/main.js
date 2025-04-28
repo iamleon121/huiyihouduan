@@ -96,6 +96,11 @@ function updateConfigForm() {
         : 30;
     document.getElementById('heartbeatInterval').value = heartbeatInterval;
 
+    // 设置公网访问配置
+    document.getElementById('usePublicAddress').checked = configData.usePublicAddress || false;
+    document.getElementById('publicIp').value = configData.publicIp || '';
+    document.getElementById('publicPort').value = configData.publicPort || '';
+
     // 设置清理配置
     const cleanup = configData.cleanup || {};
     document.getElementById('cleanupEnabled').checked = cleanup.enabled !== false; // 默认为true
@@ -131,6 +136,23 @@ function saveConfig() {
         return;
     }
 
+    // 获取公网访问配置
+    const usePublicAddress = document.getElementById('usePublicAddress').checked;
+    const publicIp = document.getElementById('publicIp').value.trim();
+    const publicPort = document.getElementById('publicPort').value.trim() ? parseInt(document.getElementById('publicPort').value) : null;
+
+    // 如果启用了公网地址但没有填写公网IP，显示警告
+    if (usePublicAddress && !publicIp) {
+        showNotification('请输入公网IP地址', 'warning');
+        return;
+    }
+
+    // 如果填写了公网端口但不是有效的端口号，显示警告
+    if (publicPort !== null && (isNaN(publicPort) || publicPort < 1 || publicPort > 65535)) {
+        showNotification('请输入有效的公网端口号(1-65535)', 'warning');
+        return;
+    }
+
     // 获取清理配置
     const cleanupEnabled = document.getElementById('cleanupEnabled').checked;
     const cleanOnStartup = document.getElementById('cleanOnStartup').checked;
@@ -141,6 +163,9 @@ function saveConfig() {
         mainServerPort,
         nodePort,
         syncInterval,
+        usePublicAddress,
+        publicIp: usePublicAddress ? publicIp : null,
+        publicPort: usePublicAddress ? publicPort : null,
         heartbeat: {
             interval: heartbeatInterval,
             timeout: heartbeatInterval * 3 // 超时时间设为心跳间隔的3倍

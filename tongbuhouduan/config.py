@@ -21,6 +21,9 @@ DEFAULT_CONFIG = {
     "syncInterval": 10,
     "nodeId": None,  # 节点ID，首次启动时自动生成
     "nodePort": 8001,  # 节点服务端口
+    "publicIp": None,  # 节点的公网IP，如果为None则自动检测
+    "publicPort": None,  # 节点的公网端口，如果为None则使用nodePort
+    "usePublicAddress": False,  # 是否使用公网地址注册节点
     "storage": {
         "path": "./storage",  # 存储路径
         "maxSize": 10737418240,  # 最大存储大小（10GB）

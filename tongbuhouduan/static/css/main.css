@@ -176,6 +176,16 @@ input[type="number"] {
     font-style: italic;
 }
 
+/* 分组标题 */
+h3 {
+    margin-top: 20px;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+    color: #2c3e50;
+    font-size: 16px;
+}
+
 /* 输入框带按钮 */
 .input-with-button {
     display: flex;

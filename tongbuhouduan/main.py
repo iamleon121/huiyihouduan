@@ -273,10 +273,22 @@ async def register_node():
     try:
         session = await get_http_session()
 
-        # 获取本机地址，使用配置中的端口
-        host_name = socket.gethostname()
-        host_ip = socket.gethostbyname(host_name)
-        node_port = config.get("nodePort", 8001)  # 从配置中获取端口号
+        # 确定节点地址
+        # 检查是否使用公网地址
+        use_public_address = config.get("usePublicAddress", False)
+
+        if use_public_address and config.get("publicIp"):
+            # 使用配置的公网IP和端口
+            host_ip = config.get("publicIp")
+            node_port = config.get("publicPort") or config.get("nodePort", 8001)
+            logger.info(f"使用配置的公网地址: {host_ip}:{node_port}")
+        else:
+            # 获取本机地址，使用配置中的端口
+            host_name = socket.gethostname()
+            host_ip = socket.gethostbyname(host_name)
+            node_port = config.get("nodePort", 8001)  # 从配置中获取端口号
+            logger.info(f"使用自动检测的本地地址: {host_ip}:{node_port}")
+
         node_address = f"{host_ip}:{node_port}"
 
         node_info = {
@@ -343,10 +355,22 @@ async def send_heartbeat():
             if service_running:
                 session = await get_http_session()
 
-                # 获取本机地址，用于心跳信息
-                host_name = socket.gethostname()
-                host_ip = socket.gethostbyname(host_name)
-                node_port = config.get("nodePort", 8001)
+                # 确定节点地址
+                # 检查是否使用公网地址
+                use_public_address = config.get("usePublicAddress", False)
+
+                if use_public_address and config.get("publicIp"):
+                    # 使用配置的公网IP和端口
+                    host_ip = config.get("publicIp")
+                    node_port = config.get("publicPort") or config.get("nodePort", 8001)
+                    logger.debug(f"心跳使用配置的公网地址: {host_ip}:{node_port}")
+                else:
+                    # 获取本机地址，使用配置中的端口
+                    host_name = socket.gethostname()
+                    host_ip = socket.gethostbyname(host_name)
+                    node_port = config.get("nodePort", 8001)  # 从配置中获取端口号
+                    logger.debug(f"心跳使用自动检测的本地地址: {host_ip}:{node_port}")
+
                 node_address = f"{host_ip}:{node_port}"
 
                 # 构建心跳信息，包含节点ID、地址、状态、活动会议信息和已同步会议信息

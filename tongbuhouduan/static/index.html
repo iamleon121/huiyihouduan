@@ -73,6 +73,25 @@
                     <label for="nodePort">节点服务端口</label>
                     <input type="number" id="nodePort" name="nodePort" placeholder="例如: 8001" min="1" max="65535" value="8001">
                 </div>
+
+                <h3>公网访问配置</h3>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="usePublicAddress" name="usePublicAddress">
+                        使用公网地址注册节点
+                    </label>
+                    <p class="help-text">启用此选项将使用下方配置的公网IP和端口向主控服务器注册，而不是自动检测的内网地址</p>
+                </div>
+                <div class="form-group">
+                    <label for="publicIp">公网IP地址</label>
+                    <input type="text" id="publicIp" name="publicIp" placeholder="例如: 123.45.67.89">
+                </div>
+                <div class="form-group">
+                    <label for="publicPort">公网端口</label>
+                    <input type="number" id="publicPort" name="publicPort" placeholder="例如: 8001" min="1" max="65535">
+                    <p class="help-text">如果留空，将使用节点服务端口</p>
+                </div>
+
                 <div class="form-group">
                     <label for="syncInterval">同步间隔 (秒)</label>
                     <input type="number" id="syncInterval" name="syncInterval" min="10" max="3600" value="10">
