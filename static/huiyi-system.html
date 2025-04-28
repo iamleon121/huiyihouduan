@@ -11,21 +11,24 @@
     <div class="app-container">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h2>阜新市政协</h2>
+                <h2>无纸化会议系统</h2>
             </div>
             <nav class="sidebar-nav">
                 <ul>
-                    <li><a href="huiyi-meeting.html"><span class="icon">📅</span><span>会议管理</span></a></li>
-                    <li><a href="huiyi-document.html"><span class="icon">📄</span><span>文件管理</span></a></li>
-                    <li><a href="huiyi-nodes.html"><span class="icon">🖧</span><span>节点管理</span></a></li>
-                    <li><a href="huiyi-system.html" class="active"><span class="icon">⚙️</span><span>系统管理</span></a></li>
+                    <li><a href="huiyi-meeting.html"><span>会议管理</span></a></li>
+                    <li><a href="huiyi-document.html"><span>文件管理</span></a></li>
+                    <li><a href="huiyi-nodes.html"><span>节点管理</span></a></li>
+                    <li><a href="huiyi-system.html" class="active"><span>系统管理</span></a></li>
                 </ul>
             </nav>
+            <div class="sidebar-footer">
+                <p>技术支持：阜新温柔科技</p>
+            </div>
         </aside>
 
         <div class="main-content-wrapper">
             <header class="top-header">
-                <div class="header-title">无纸化会议系统</div>
+                <div class="header-title">中国人民政治协商会议阜新市委员会</div>
                 <div class="user-info">
                     admin (管理员) <a href="#" id="logoutBtn" style="margin-left: 10px; color: var(--primary-color); text-decoration: none;">退出</a>
                 </div>
@@ -36,9 +39,9 @@
 
                 <div class="system-panel">
                     <div class="system-section">
-                        <h2><span class="icon">👥</span> 用户管理</h2>
+                        <h2>用户管理</h2>
                         <div class="system-controls">
-                            <button class="btn btn-primary" id="add-user-btn"><span class="icon">➕</span> 新增用户</button>
+                            <button class="btn btn-primary" id="add-user-btn">新增用户</button>
                         </div>
                         <div class="table-container">
                             <table class="data-table">
@@ -69,31 +72,27 @@
             <form id="userForm">
                 <input type="hidden" id="userId">
                 <div class="form-group">
-                    <div class="styled-input with-icon">
+                    <div class="styled-input">
                         <input type="text" id="username" placeholder=" " required>
                         <label for="username">用户名</label>
-                        <span class="input-icon">👤</span>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div class="styled-input with-icon">
+                    <div class="styled-input">
                         <input type="password" id="password" placeholder=" " required>
                         <label for="password">密码</label>
-                        <span class="input-icon">🔑</span>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div class="styled-input with-icon">
+                    <div class="styled-input">
                         <input type="text" id="realname" placeholder=" " required>
                         <label for="realname">真实姓名</label>
-                        <span class="input-icon">📇</span>
                     </div>
                 </div>
                 <div class="form-group">
-                    <div class="styled-input with-icon">
+                    <div class="styled-input">
                         <input type="email" id="email" placeholder=" " required>
                         <label for="email">邮箱</label>
-                        <span class="input-icon">📧</span>
                     </div>
                 </div>
                 <div class="form-group">
@@ -102,12 +101,12 @@
                             <option value="admin">管理员</option>
                             <option value="user">普通用户</option>
                         </select>
-                        <span class="select-icon">⏷</span>
+
                     </div>
                 </div>
                 <div class="form-actions">
                     <button type="button" id="cancelUserBtn" class="button button-secondary">取消</button>
-                    <button type="submit" id="saveUserBtn" class="button button-primary"><span class="icon">💾</span> 保存</button>
+                    <button type="submit" id="saveUserBtn" class="button button-primary">保存</button>
                 </div>
             </form>
         </div>

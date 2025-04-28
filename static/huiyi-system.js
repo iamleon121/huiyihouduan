@@ -133,10 +133,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             <td><span class="user-status ${statusClass}"></span> ${user.status || '正常'}</td>
                             <td>
                                 <button class="btn-action edit" data-id="${user.id}">
-                                    <span class="icon">✏️</span> 编辑
+                                    编辑
                                 </button>
                                 <button class="btn-action delete" data-id="${user.id}" ${isAdmin ? 'data-admin="true"' : ''}>
-                                    <span class="icon">🗑️</span> 删除
+                                    删除
                                 </button>
                             </td>
                         </tr>
@@ -343,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 显示提交中状态
         const submitBtn = form.querySelector('button[type="submit"]');
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="icon icon-spin">⏳</span> 保存中...';
+        submitBtn.innerHTML = '保存中...';
 
         try {
             // 准备请求数据
@@ -408,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             // 恢复按钮状态
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<span class="icon">💾</span> 保存';
+            submitBtn.innerHTML = '保存';
         }
     }
 
@@ -490,16 +490,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
 
-        // 设置图标
+        // 不使用图标
         let icon = '';
-        switch(type) {
-            case 'success': icon = '✅'; break;
-            case 'warning': icon = '⚠️'; break;
-            case 'error': icon = '❌'; break;
-            default: icon = 'ℹ️'; break;
-        }
 
-        toast.innerHTML = `<span class="icon">${icon}</span> ${message}`;
+        toast.innerHTML = `${message}`;
         toastContainer.appendChild(toast);
 
         // 自动消失

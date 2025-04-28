@@ -11,23 +11,26 @@
     <div class="app-container">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h2>阜新市政协</h2>
+                <h2>无纸化会议系统</h2>
             </div>
             <nav class="sidebar-nav">
                 <ul>
-                    <li><a href="huiyi-meeting.html" class="active"><span class="icon">📅</span><span>会议管理</span></a></li>
-                    <li><a href="huiyi-document.html"><span class="icon">📄</span><span>文件管理</span></a></li>
-                    <li><a href="huiyi-nodes.html"><span class="icon">🖧</span><span>节点管理</span></a></li>
-                    <li><a href="huiyi-system.html"><span class="icon">⚙️</span><span>系统管理</span></a></li>
+                    <li><a href="huiyi-meeting.html" class="active"><span>会议管理</span></a></li>
+                    <li><a href="huiyi-document.html"><span>文件管理</span></a></li>
+                    <li><a href="huiyi-nodes.html"><span>节点管理</span></a></li>
+                    <li><a href="huiyi-system.html"><span>系统管理</span></a></li>
                 </ul>
             </nav>
+            <div class="sidebar-footer">
+                <p>技术支持：阜新温柔科技</p>
+            </div>
         </aside>
 
         <div class="main-content-wrapper">
             <header class="top-header">
-                <div class="header-title">无纸化会议系统</div>
+                <div class="header-title">中国人民政治协商会议阜新市委员会</div>
                 <div class="user-info">
-                    <span class="icon">👤</span> 管理员
+                    管理员
                 </div>
             </header>
 
@@ -39,10 +42,10 @@
                         <div class="filters">
                             <input type="text" placeholder="会议名称">
                             <input type="text" placeholder="会议状态">
-                            <button class="btn btn-secondary"><span class="icon">🔍</span> 查询</button>
-                            <button class="btn btn-outline"><span class="icon">🔄</span> 重置</button>
+                            <button class="btn btn-secondary">查询</button>
+                            <button class="btn btn-outline">重置</button>
                         </div>
-                        <button class="btn btn-primary" id="add-meeting-btn"><span class="icon">➕</span> 新增会议</button>
+                        <button class="btn btn-primary" id="add-meeting-btn">新增会议</button>
                     </div>
                     <div class="table-container">
                         <table class="data-table">
@@ -69,38 +72,38 @@
                 <div id="meeting-edit-view" style="display: none;">
                     <div class="view-header">
                         <h1 id="edit-view-title">新增会议</h1>
-                        <button class="btn btn-outline" id="back-to-list-btn"><span class="icon">⬅️</span> 返回列表</button>
+                        <button class="btn btn-outline" id="back-to-list-btn">返回列表</button>
                     </div>
 
                     <form id="meetingForm" class="meeting-edit-form">
                         <input type="hidden" id="meetingId" name="id">
 
                         <div class="form-group">
-                            <label for="meetingTitle"><span class="icon">📋</span> 会议名称:</label>
+                            <label for="meetingTitle">会议名称:</label>
                             <input type="text" id="meetingTitle" name="title" required>
                         </div>
 
                         <div class="form-group">
-                            <label for="meetingIntro"><span class="icon">📝</span> 会议介绍:</label>
+                            <label for="meetingIntro">会议介绍:</label>
                             <textarea id="meetingIntro" name="intro"></textarea>
                         </div>
 
                         <div class="form-group">
-                            <label for="meetingTime"><span class="icon">🕒</span> 会议时间:</label>
+                            <label for="meetingTime">会议时间:</label>
                             <input type="datetime-local" id="meetingTime" name="time">
                         </div>
 
                         <div class="form-group">
-                            <h3><span class="icon">📑</span> 议程项</h3>
+                            <h3>议程项</h3>
                             <div id="agendaItemsContainer">
                                 <!-- 议程项将在这里动态添加 -->
                             </div>
-                            <button type="button" id="addAgendaItemBtn" class="btn"><span class="icon">➕</span> 添加议程项</button>
+                            <button type="button" id="addAgendaItemBtn" class="btn">添加议程项</button>
                         </div>
 
                         <div class="form-actions">
-                            <button type="submit" class="btn btn-primary"><span class="icon">💾</span> 保存会议</button>
-                            <button type="button" class="btn btn-secondary" id="cancelEditBtn"><span class="icon">❌</span> 取消</button>
+                            <button type="submit" class="btn btn-primary">保存会议</button>
+                            <button type="button" class="btn btn-secondary" id="cancelEditBtn">取消</button>
                         </div>
                     </form>
                 </div>
@@ -116,24 +119,24 @@
             <form id="meetingForm">
                 <input type="hidden" id="meetingId" name="id">
 
-                <label for="meetingTitle"><span class="icon">📋</span> 会议名称:</label>
+                <label for="meetingTitle">会议名称:</label>
                 <input type="text" id="meetingTitle" name="title" required>
 
-                <label for="meetingIntro"><span class="icon">📝</span> 会议介绍:</label>
+                <label for="meetingIntro">会议介绍:</label>
                 <textarea id="meetingIntro" name="intro"></textarea>
 
-                <label for="meetingTime"><span class="icon">🕒</span> 会议时间:</label>
+                <label for="meetingTime">会议时间:</label>
                 <input type="datetime-local" id="meetingTime" name="time">
 
-                <h3><span class="icon">📑</span> 议程项</h3>
+                <h3>议程项</h3>
                 <div id="agendaItemsContainer">
                     <!-- Agenda items will be added here dynamically -->
                 </div>
-                <button type="button" id="addAgendaItemBtn" class="btn"><span class="icon">➕</span> 添加议程项</button>
+                <button type="button" id="addAgendaItemBtn" class="btn">添加议程项</button>
                 <hr style="margin-top: 20px; margin-bottom: 20px;">
 
-                <button type="submit" class="btn btn-primary"><span class="icon">💾</span> 保存会议</button>
-                <button type="button" class="btn btn-secondary" id="cancelModalBtn"><span class="icon">❌</span> 取消</button>
+                <button type="submit" class="btn btn-primary">保存会议</button>
+                <button type="button" class="btn btn-secondary" id="cancelModalBtn">取消</button>
             </form>
         </div>
     </div>
@@ -143,12 +146,12 @@
     <div id="viewMeetingModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2><span class="icon">🔍</span> 会议详情</h2>
+            <h2>会议详情</h2>
             <div id="viewMeetingDetails">
                 <!-- Details will be populated here -->
                 <p>加载中...</p>
             </div>
-             <button type="button" class="btn btn-secondary" id="closeViewModalBtn" style="margin-top: 20px;"><span class="icon">❌</span> 关闭</button>
+             <button type="button" class="btn btn-secondary" id="closeViewModalBtn" style="margin-top: 20px;">关闭</button>
         </div>
     </div>
     <!-- End View Meeting Modal -->

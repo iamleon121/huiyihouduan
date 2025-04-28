@@ -82,6 +82,16 @@ html, body {
     padding-top: 15px; /* 增加顶部间距 */
 }
 
+.sidebar-footer {
+    padding: 15px;
+    text-align: center;
+    font-size: 0.85em;
+    color: var(--sidebar-text);
+    opacity: 0.7;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: auto;
+}
+
 .sidebar-nav ul {
     list-style: none;
 }

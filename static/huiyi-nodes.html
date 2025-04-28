@@ -229,23 +229,26 @@
     <div class="app-container">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h2>阜新市政协</h2>
+                <h2>无纸化会议系统</h2>
             </div>
             <nav class="sidebar-nav">
                 <ul>
-                    <li><a href="huiyi-meeting.html"><span class="icon">📅</span><span>会议管理</span></a></li>
-                    <li><a href="huiyi-document.html"><span class="icon">📄</span><span>文件管理</span></a></li>
-                    <li><a href="huiyi-nodes.html" class="active"><span class="icon">🖧</span><span>节点管理</span></a></li>
-                    <li><a href="huiyi-system.html"><span class="icon">⚙️</span><span>系统管理</span></a></li>
+                    <li><a href="huiyi-meeting.html"><span>会议管理</span></a></li>
+                    <li><a href="huiyi-document.html"><span>文件管理</span></a></li>
+                    <li><a href="huiyi-nodes.html" class="active"><span>节点管理</span></a></li>
+                    <li><a href="huiyi-system.html"><span>系统管理</span></a></li>
                 </ul>
             </nav>
+            <div class="sidebar-footer">
+                <p>技术支持：阜新温柔科技</p>
+            </div>
         </aside>
 
         <div class="main-content-wrapper">
             <header class="top-header">
-                <div class="header-title">无纸化会议系统</div>
+                <div class="header-title">中国人民政治协商会议阜新市委员会</div>
                 <div class="user-info">
-                    <span class="icon">👤</span> 管理员
+                    管理员
                 </div>
             </header>
 
@@ -501,7 +504,7 @@
 
                 const userInfoElem = document.querySelector('.user-info');
                 if (userInfoElem) {
-                    // 添加用户名和退出按钮
+                    // 添加用户名和退出按钮（不使用图标）
                     userInfoElem.innerHTML = `
                         ${userInfo.username} (${userInfo.role === 'admin' ? '管理员' : '普通用户'})
                         <a href="#" id="logoutBtn" style="margin-left: 10px; color: var(--primary-color); text-decoration: none;">退出</a>
