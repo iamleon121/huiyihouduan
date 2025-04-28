@@ -15,6 +15,13 @@ const LoadingService = {
     meetingDataUrl: 'http://192.168.110.10:8000/data.json', // 默认会议数据接口
     activeMeetingsUrl: 'http://192.168.110.10:8000/api/v1/meetings/active/meetings', // 默认进行中会议列表接口
     meetingPackageUrl: 'http://192.168.110.10:8000/api/v1/meetings/', // 会议基础路径
+    downloadNodesInfoUrl: '/api/v1/meetings/{meeting_id}/download-nodes-info', // 下载节点信息接口
+
+    // 下载节点相关变量
+    downloadNodes: [], // 可用的下载节点列表
+    currentNodeIndex: 0, // 当前使用的节点索引
+    maxRetryCount: 3, // 最大重试次数
+    retryCount: 0, // 当前重试次数
 
     // 事件监听器集合
     eventListeners: {},
@@ -95,6 +102,93 @@ const LoadingService = {
             console.error('读取本地存储数据失败：', error);
             this.triggerEvent('error', { message: '读取本地存储数据失败', details: error });
         }
+    },
+
+    // 获取会议下载节点信息
+    fetchDownloadNodesInfo: async function(meetingId) {
+        console.log('开始获取会议下载节点信息, ID:', meetingId);
+
+        try {
+            // 构建请求URL
+            const url = this.serverBaseUrl + this.downloadNodesInfoUrl.replace('{meeting_id}', meetingId);
+            console.log('请求下载节点信息URL:', url);
+
+            // 创建请求
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            // 检查响应状态
+            if (!response.ok) {
+                throw new Error(`获取下载节点信息失败，状态码: ${response.status}`);
+            }
+
+            // 解析响应数据
+            const data = await response.json();
+            console.log('获取到下载节点信息:', data);
+
+            // 重置下载节点相关变量
+            this.downloadNodes = data || [];
+            // 随机选择一个初始节点，而不是总是从第一个开始
+            if (this.downloadNodes.length > 1) {
+                this.currentNodeIndex = Math.floor(Math.random() * this.downloadNodes.length);
+                console.log(`随机选择初始下载节点索引: ${this.currentNodeIndex}`);
+            } else {
+                this.currentNodeIndex = 0;
+            }
+            this.retryCount = 0;
+
+            // 如果没有可用节点，添加主控服务器作为默认节点
+            if (this.downloadNodes.length === 0) {
+                console.log('没有可用的下载节点，使用主控服务器作为默认节点');
+                const defaultNode = {
+                    ip: new URL(this.serverBaseUrl).host,
+                    download_url: this.serverBaseUrl + '/api/v1/meetings/' + meetingId + '/download-package'
+                };
+                this.downloadNodes.push(defaultNode);
+            }
+
+            console.log(`共找到 ${this.downloadNodes.length} 个可用下载节点`);
+            return this.downloadNodes;
+        } catch (error) {
+            console.error('获取下载节点信息失败:', error);
+
+            // 出错时使用主控服务器作为默认节点
+            const defaultNode = {
+                ip: new URL(this.serverBaseUrl).host,
+                download_url: this.serverBaseUrl + '/api/v1/meetings/' + meetingId + '/download-package'
+            };
+            this.downloadNodes = [defaultNode];
+            this.currentNodeIndex = 0; // 只有一个节点，所以索引为0
+            this.retryCount = 0;
+
+            console.log('使用主控服务器作为默认下载节点:', defaultNode);
+            return this.downloadNodes;
+        }
+    },
+
+    // 获取当前下载节点
+    getCurrentDownloadNode: function() {
+        if (this.downloadNodes.length === 0) {
+            return null;
+        }
+        return this.downloadNodes[this.currentNodeIndex];
+    },
+
+    // 切换到下一个下载节点
+    switchToNextDownloadNode: function() {
+        if (this.downloadNodes.length <= 1) {
+            console.log('没有其他可用的下载节点');
+            return false;
+        }
+
+        this.currentNodeIndex = (this.currentNodeIndex + 1) % this.downloadNodes.length;
+        const currentNode = this.getCurrentDownloadNode();
+        console.log(`切换到下一个下载节点: ${currentNode.ip}`);
+        return true;
     },
 
     // 获取会议数据
@@ -413,106 +507,218 @@ const LoadingService = {
     },
 
     // 下载并解压会议ZIP压缩包
-    downloadAndExtractMeetingPackage: function(meetingId) {
-        return new Promise((resolve, reject) => {
+    downloadAndExtractMeetingPackage: async function(meetingId) {
+        return new Promise(async (resolve, reject) => {
             console.log('开始下载会议ZIP压缩包, ID:', meetingId);
 
             // 触发下载开始事件
             this.triggerEvent('downloadStart', { meetingId: meetingId });
 
-            // 构建下载URL
-            const downloadUrl = this.meetingPackageUrl + meetingId + '/download-package';
-            console.log('下载URL:', downloadUrl);
+            try {
+                // 获取下载节点信息
+                console.log('获取下载节点信息...');
+                await this.fetchDownloadNodesInfo(meetingId);
 
-            // 确保下载文件夹存在
-            this.ensureDirectoryExists('_doc/download/')
-                .then(() => {
-                    // 重置取消标志
-                    this.isCancelled = false;
-
-                    // 创建下载任务
-                    const dtask = plus.downloader.createDownload(downloadUrl, {
-                        filename: '_doc/download/meeting_' + meetingId + '.zip',
-                        timeout: 30, // 超时时间，单位为秒
-                        retry: 3 // 重试次数
-                    }, (d, status) => {
-                        if (status === 200) {
-                            console.log('下载成功:', d.filename);
-
-                            // 触发下载完成事件
-                            this.triggerEvent('downloadComplete', { meetingId: meetingId, filename: d.filename });
-
-                            // 触发解压开始事件
-                            this.triggerEvent('extractStart', { meetingId: meetingId, filename: d.filename });
-
-                            // 清理下载文件夹中的其他压缩包
-                            console.log('开始清理下载文件夹，保留文件:', d.filename);
-                            this.cleanupDownloadFolder(d.filename)
-                                .then(() => {
-                                    console.log('清理其他压缩包成功');
-
-                                    // 解压文件
-                                    return this.extractZipFile(d.filename, meetingId);
-                                })
-                                .then(() => {
-                                    console.log('解压成功');
-
-                                    // 触发解压完成事件
-                                    this.triggerEvent('extractComplete', { meetingId: meetingId });
-
-                                    resolve();
-                                })
-                                .catch(error => {
-                                    console.error('清理或解压失败:', error);
-
-                                    // 触发解压失败事件
-                                    this.triggerEvent('extractError', { meetingId: meetingId, error: error.message || String(error) });
-
-                                    // 即使解压失败也算成功，不中断整体流程
-                                    resolve();
-                                });
-                        } else {
-                            console.error('下载失败, 状态码:', status);
-
-                            // 触发下载失败事件
-                            this.triggerEvent('downloadError', { meetingId: meetingId, status: status });
-
-                            // 即使下载失败也算成功，不中断整体流程
-                            resolve();
-                        }
-                    });
-
-                    // 监听下载进度
-                    let lastPercent = -1; // 上次触发事件的进度百分比
-                    dtask.addEventListener('statechanged', (task, _status) => {
-                        if (task.state === 3) { // 下载进行中
-                            const totalSize = task.totalSize;
-                            const downloadedSize = task.downloadedSize;
-                            const percent = totalSize > 0 ? Math.round(downloadedSize / totalSize * 100) : 0;
-
-                            // 只在进度变化时触发事件，避免过多的日志输出
-                            if (percent !== lastPercent) {
-                                lastPercent = percent;
-
-                                // 触发下载进度事件
-                                this.triggerEvent('downloadProgress', {
-                                    meetingId: meetingId,
-                                    percent: percent,
-                                    downloadedSize: downloadedSize,
-                                    totalSize: totalSize
-                                });
-                            }
-                        }
-                    });
-
-                    // 保存下载任务引用
-                    this.downloadTask = dtask;
-
-                    // 开始下载任务
-                    dtask.start();
-                    console.log('下载任务已启动');
+                // 输出所有可用下载节点的详细信息
+                console.log('===== 可用下载节点信息 =====');
+                console.log(`共有 ${this.downloadNodes.length} 个可用下载节点:`);
+                this.downloadNodes.forEach((node, index) => {
+                    console.log(`节点 ${index + 1}:`);
+                    console.log(`  - IP: ${node.ip}`);
+                    console.log(`  - 下载URL: ${node.download_url}`);
+                    // 尝试解析URL
+                    try {
+                        const url = new URL(node.download_url);
+                        console.log(`  - 协议: ${url.protocol}`);
+                        console.log(`  - 主机名: ${url.hostname}`);
+                        console.log(`  - 端口: ${url.port || '(默认)'}`);
+                        console.log(`  - 路径: ${url.pathname}`);
+                    } catch (e) {
+                        console.error(`  - URL解析失败: ${e.message}`);
+                    }
                 });
+                console.log('=============================');
+
+                // 获取当前下载节点
+                const currentNode = this.getCurrentDownloadNode();
+                if (!currentNode) {
+                    throw new Error('没有可用的下载节点');
+                }
+
+                // 重置重试计数
+                this.retryCount = 0;
+
+                // 确保下载文件夹存在
+                await this.ensureDirectoryExists('_doc/download/');
+
+                // 开始下载过程
+                await this.startDownloadProcess(meetingId, resolve, reject);
+            } catch (error) {
+                console.error('下载准备过程出错:', error);
+                this.triggerEvent('downloadError', {
+                    meetingId: meetingId,
+                    error: error.message || String(error)
+                });
+
+                // 即使出错也算成功，不中断整体流程
+                resolve();
+            }
         });
+    },
+
+    // 开始下载过程
+    startDownloadProcess: function(meetingId, resolve, reject) {
+        // 获取当前下载节点
+        const currentNode = this.getCurrentDownloadNode();
+        if (!currentNode) {
+            console.error('没有可用的下载节点');
+            this.triggerEvent('downloadError', {
+                meetingId: meetingId,
+                error: '没有可用的下载节点'
+            });
+            resolve(); // 即使失败也算成功，不中断整体流程
+            return;
+        }
+
+        // 使用当前节点的下载URL
+        const downloadUrl = currentNode.download_url;
+        console.log(`使用节点 ${currentNode.ip} 下载，URL: ${downloadUrl}`);
+        console.log(`当前节点索引: ${this.currentNodeIndex}，总节点数: ${this.downloadNodes.length}`);
+
+        // 重置取消标志
+        this.isCancelled = false;
+
+        // 创建下载任务
+        const dtask = plus.downloader.createDownload(downloadUrl, {
+            filename: '_doc/download/meeting_' + meetingId + '.zip',
+            timeout: 30, // 超时时间，单位为秒
+            retry: 2 // 单个任务的重试次数
+        }, (d, status) => {
+            if (status === 200) {
+                console.log(`从节点 ${currentNode.ip} 下载成功:`, d.filename);
+                console.log(`下载成功的节点索引: ${this.currentNodeIndex}，总节点数: ${this.downloadNodes.length}`);
+
+                // 触发下载完成事件
+                this.triggerEvent('downloadComplete', {
+                    meetingId: meetingId,
+                    filename: d.filename,
+                    node: currentNode.ip
+                });
+
+                // 触发解压开始事件
+                this.triggerEvent('extractStart', { meetingId: meetingId, filename: d.filename });
+
+                // 清理下载文件夹中的其他压缩包
+                console.log('开始清理下载文件夹，保留文件:', d.filename);
+                this.cleanupDownloadFolder(d.filename)
+                    .then(() => {
+                        console.log('清理其他压缩包成功');
+
+                        // 解压文件
+                        return this.extractZipFile(d.filename, meetingId);
+                    })
+                    .then(() => {
+                        console.log('解压成功');
+
+                        // 触发解压完成事件
+                        this.triggerEvent('extractComplete', { meetingId: meetingId });
+
+                        resolve();
+                    })
+                    .catch(error => {
+                        console.error('清理或解压失败:', error);
+
+                        // 触发解压失败事件
+                        this.triggerEvent('extractError', {
+                            meetingId: meetingId,
+                            error: error.message || String(error)
+                        });
+
+                        // 即使解压失败也算成功，不中断整体流程
+                        resolve();
+                    });
+            } else {
+                console.error(`从节点 ${currentNode.ip} 下载失败, 状态码: ${status}`);
+
+                // 增加重试计数
+                this.retryCount++;
+
+                // 检查是否还有重试机会
+                if (this.retryCount < this.maxRetryCount && this.switchToNextDownloadNode()) {
+                    // 还有其他节点可以尝试
+                    const nextNode = this.getCurrentDownloadNode();
+                    console.log(`尝试使用下一个节点 ${nextNode.ip} 重新下载，重试次数: ${this.retryCount}/${this.maxRetryCount}`);
+
+                    // 触发重试事件
+                    this.triggerEvent('downloadRetry', {
+                        meetingId: meetingId,
+                        retryCount: this.retryCount,
+                        maxRetryCount: this.maxRetryCount,
+                        previousNode: currentNode.ip,
+                        nextNode: nextNode.ip
+                    });
+
+                    // 使用新节点重新开始下载
+                    this.startDownloadProcess(meetingId, resolve, reject);
+                } else {
+                    // 所有节点都尝试过或达到最大重试次数
+                    console.error(`所有节点下载尝试均失败，或达到最大重试次数 ${this.maxRetryCount}`);
+
+                    // 触发下载失败事件
+                    this.triggerEvent('downloadError', {
+                        meetingId: meetingId,
+                        status: status,
+                        message: `所有节点下载尝试均失败，共尝试了 ${this.retryCount + 1} 次`
+                    });
+
+                    // 即使下载失败也算成功，不中断整体流程
+                    resolve();
+                }
+            }
+        });
+
+        // 监听下载进度
+        let lastPercent = -1; // 上次触发事件的进度百分比
+        dtask.addEventListener('statechanged', (task, _status) => {
+            if (this.isCancelled) {
+                console.log('下载已取消，中止下载任务');
+                dtask.abort();
+                reject(new Error('下载已取消'));
+                return;
+            }
+
+            if (task.state === 3) { // 下载进行中
+                const totalSize = task.totalSize;
+                const downloadedSize = task.downloadedSize;
+                const percent = totalSize > 0 ? Math.round(downloadedSize / totalSize * 100) : 0;
+
+                // 只在进度变化时触发事件，避免过多的日志输出
+                if (percent !== lastPercent) {
+                    lastPercent = percent;
+
+                    // 每10%或100%时输出日志
+                    if (percent % 10 === 0 || percent === 100) {
+                        console.log(`从节点 ${currentNode.ip} 下载进度: ${percent}%`);
+                    }
+
+                    // 触发下载进度事件
+                    this.triggerEvent('downloadProgress', {
+                        meetingId: meetingId,
+                        percent: percent,
+                        downloadedSize: downloadedSize,
+                        totalSize: totalSize,
+                        node: currentNode.ip
+                    });
+                }
+            }
+        });
+
+        // 保存下载任务引用
+        this.downloadTask = dtask;
+
+        // 开始下载任务
+        dtask.start();
+        console.log(`从节点 ${currentNode.ip} 的下载任务已启动`);
     },
 
     // 解压ZIP文件

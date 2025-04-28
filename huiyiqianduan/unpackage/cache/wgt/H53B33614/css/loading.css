@@ -184,6 +184,38 @@
     width: 100%;
 }
 
+/* 下载信息样式 */
+.download-info {
+    font-size: 14px;
+    color: #FFFFFF;
+    margin-top: 15px;
+    text-align: center;
+    max-width: 80%;
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 10px 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.node-info {
+    margin-bottom: 5px;
+}
+
+.download-size {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+#current-node {
+    font-weight: bold;
+    color: #4CAF50;
+    text-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+}
+
+#downloaded-size, #total-size {
+    font-weight: bold;
+}
+
 /* 错误文本样式 */
 .error-text {
     font-size: 16px;
