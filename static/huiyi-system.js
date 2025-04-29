@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 系统管理页面初始化
     function initSystemPage() {
         fetchUsers();
+        loadSystemSettings();
 
         // 新增用户按钮事件绑定
         const addUserBtn = document.getElementById('add-user-btn');
@@ -31,6 +32,58 @@ document.addEventListener('DOMContentLoaded', () => {
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', handleLogout);
+        }
+
+        // PDF分辨率保存按钮事件绑定
+        const savePdfResolutionBtn = document.getElementById('savePdfResolution');
+        if (savePdfResolutionBtn) {
+            savePdfResolutionBtn.addEventListener('click', savePdfResolution);
+        }
+    }
+
+    // 加载系统设置
+    async function loadSystemSettings() {
+        try {
+            // 加载PDF分辨率设置
+            const response = await fetch('/api/v1/maintenance/settings/default_pdf_jpg_width');
+            if (response.ok) {
+                const data = await response.json();
+                // 设置下拉框的默认值
+                const resolutionSelect = document.getElementById('pdfResolution');
+                if (resolutionSelect && data.value) {
+                    resolutionSelect.value = data.value;
+                }
+            }
+        } catch (error) {
+            console.error('加载系统设置失败:', error);
+            showToast('加载系统设置失败', 'error');
+        }
+    }
+
+    // 保存PDF分辨率设置
+    async function savePdfResolution() {
+        const resolutionSelect = document.getElementById('pdfResolution');
+        if (!resolutionSelect) return;
+
+        const resolution = resolutionSelect.value;
+
+        try {
+            const response = await fetch('/api/v1/maintenance/settings/default_pdf_jpg_width', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ value: resolution })
+            });
+
+            if (response.ok) {
+                showToast('PDF分辨率设置已保存', 'success');
+            } else {
+                throw new Error('保存设置失败');
+            }
+        } catch (error) {
+            console.error('保存系统设置失败:', error);
+            showToast('保存系统设置失败', 'error');
         }
     }
 

@@ -61,6 +61,20 @@
                             </table>
                         </div>
                     </div>
+
+                    <div class="system-section">
+                        <h2>分辨率设置</h2>
+                        <div class="settings-group">
+                            <label for="pdfResolution">客户端文件分辨率</label>
+                            <select id="pdfResolution" class="form-control">
+                                <option value="960">960像素（低分辨率）</option>
+                                <option value="1440">1440像素（中分辨率）</option>
+                                <option value="1920">1920像素（高分辨率）</option>
+                            </select>
+                            <p class="setting-description">设置默认文件显示宽度。较高的分辨率提供更清晰的图像，但文件体积更大。</p>
+                            <button id="savePdfResolution" class="btn btn-primary">保存设置</button>
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>

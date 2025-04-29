@@ -259,6 +259,51 @@ async def force_cleanup_temp_files(background_tasks: BackgroundTasks):
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
 
+@router.get("/settings/{key}")
+def get_system_setting(key: str, db: Session = Depends(get_db)):
+    """
+    获取系统设置项
+
+    Args:
+        key: 设置项的键
+
+    Returns:
+        dict: 包含键和值的字典
+    """
+    # 对于PDF分辨率设置，设置默认值为1920
+    default_value = None
+    if key == "default_pdf_jpg_width":
+        default_value = "1920"
+
+    value = crud.get_system_setting(db, key, default_value)
+    return {"key": key, "value": value}
+
+@router.put("/settings/{key}")
+def update_system_setting(key: str, data: dict, db: Session = Depends(get_db)):
+    """
+    更新系统设置项
+
+    Args:
+        key: 设置项的键
+        data: 包含value字段的请求体
+
+    Returns:
+        dict: 包含更新后的键和值的字典
+    """
+    # 从请求体中获取value
+    value = data.get("value")
+    if value is None:
+        raise HTTPException(status_code=400, detail="请求体中必须包含'value'字段")
+
+    # 验证PDF分辨率设置的值
+    if key == "default_pdf_jpg_width":
+        valid_widths = ["960", "1440", "1920"]
+        if value not in valid_widths:
+            raise HTTPException(status_code=400, detail=f"无效的分辨率值，必须是以下之一: {', '.join(valid_widths)}")
+
+    updated_value = crud.update_system_setting(db, key, value)
+    return {"key": key, "value": updated_value}
+
 @router.post("/cleanup-empty-folders")
 def cleanup_empty_folders(db: Session = Depends(get_db)):
     """

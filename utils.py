@@ -28,7 +28,7 @@ def format_file_size(size_bytes):
 
 
 # 此函数已移动到services/pdf_service.py中
-async def ensure_jpg_for_pdf(pdf_path, jpg_dir):
+async def ensure_jpg_for_pdf(pdf_path, jpg_dir, width=1920):
     """
     确保PDF文件有对应的JPG文件，如果没有则生成。
 
@@ -38,17 +38,18 @@ async def ensure_jpg_for_pdf(pdf_path, jpg_dir):
     Args:
         pdf_path (str): PDF文件路径
         jpg_dir (str): JPG文件存储目录
+        width (int, optional): 输出图片的宽度，默认1920像素，可选值：960, 1440, 1920
 
     Returns:
         str: 生成的JPG文件路径，如果生成失败则返回None
     """
     # 导入PDFService并调用其方法
     from services.pdf_service import PDFService
-    return await PDFService.ensure_jpg_for_pdf(pdf_path, jpg_dir)
+    return await PDFService.ensure_jpg_for_pdf(pdf_path, jpg_dir, width)
 
 
 # 此函数已移动到services/pdf_service.py中
-async def ensure_jpg_in_zip(zipf, agenda_item_id, pdf_uuid, jpg_dir, original_pdf_name=None, pdf_path=None):
+async def ensure_jpg_in_zip(zipf, agenda_item_id, pdf_uuid, jpg_dir, original_pdf_name=None, pdf_path=None, width=1920):
     """
     确保ZIP包中包含JPG文件，如果没有则生成。
 
@@ -62,17 +63,18 @@ async def ensure_jpg_in_zip(zipf, agenda_item_id, pdf_uuid, jpg_dir, original_pd
         jpg_dir (str): JPG文件存储目录
         original_pdf_name (str, optional): 原PDF文件名
         pdf_path (str, optional): PDF文件路径
+        width (int, optional): 输出图片的宽度，默认1920像素，可选值：960, 1440, 1920
 
     Returns:
         bool: 是否成功添加JPG文件到ZIP包
     """
     # 导入PDFService并调用其方法
     from services.pdf_service import PDFService
-    return await PDFService.ensure_jpg_in_zip(zipf, agenda_item_id, pdf_uuid, jpg_dir, original_pdf_name, pdf_path)
+    return await PDFService.ensure_jpg_in_zip(zipf, agenda_item_id, pdf_uuid, jpg_dir, original_pdf_name, pdf_path, width)
 
 
 # 此函数已移动到services/pdf_service.py中
-async def convert_pdf_to_jpg_for_pad(pdf_path, output_dir, dpi=200):
+async def convert_pdf_to_jpg_for_pad(pdf_path, output_dir, width=1920):
     """
     将PDF文件转换为JPG长图，用于无线平板显示。
     将PDF的所有页面垂直拼接成一个长图，而不是每页一个JPG文件。
@@ -83,18 +85,18 @@ async def convert_pdf_to_jpg_for_pad(pdf_path, output_dir, dpi=200):
     Args:
         pdf_path (str): PDF文件的完整路径
         output_dir (str): 输出JPG文件的目录
-        dpi (int, optional): 转换的DPI值，默认200
+        width (int, optional): 输出图片的宽度，默认1920像素，可选值：960, 1440, 1920
 
     Returns:
         str: 转换后的JPG长图文件路径，失败时返回None
     """
     # 导入PDFService并调用其方法
     from services.pdf_service import PDFService
-    return await PDFService.convert_pdf_to_jpg_for_pad(pdf_path, output_dir, dpi)
+    return await PDFService.convert_pdf_to_jpg_for_pad(pdf_path, output_dir, width)
 
 
 # 此函数已移动到services/pdf_service.py中
-def convert_pdf_to_jpg_for_pad_sync(pdf_path, output_dir, dpi=200):
+def convert_pdf_to_jpg_for_pad_sync(pdf_path, output_dir, width=1920):
     """
     同步版本的PDF转JPG函数，内部创建新的事件循环来执行异步操作。
 
@@ -104,11 +106,11 @@ def convert_pdf_to_jpg_for_pad_sync(pdf_path, output_dir, dpi=200):
     Args:
         pdf_path (str): PDF文件的完整路径
         output_dir (str): 输出JPG文件的目录
-        dpi (int, optional): 转换的DPI值，默认200
+        width (int, optional): 输出图片的宽度，默认1920像素，可选值：960, 1440, 1920
 
     Returns:
         str: 转换后的JPG长图文件路径，失败时返回None
     """
     # 导入PDFService并调用其方法
     from services.pdf_service import PDFService
-    return PDFService.convert_pdf_to_jpg_for_pad_sync(pdf_path, output_dir, dpi)
+    return PDFService.convert_pdf_to_jpg_for_pad_sync(pdf_path, output_dir, width)

@@ -297,3 +297,48 @@ def update_meeting_change_status_token(db: Session):
         db.refresh(new_token)  # 确保刷新数据库对象
         print(f"[识别码] 新创建的值: {new_token.value}")
         return new_token.value
+
+def get_system_setting(db: Session, key: str, default_value: str = None):
+    """
+    获取系统设置项，如果不存在则返回默认值或创建
+
+    Args:
+        db: 数据库会话
+        key: 设置项的键
+        default_value: 默认值，如果设置项不存在且提供了默认值，则创建新设置
+
+    Returns:
+        str: 设置项的值
+    """
+    setting = db.query(models.SystemSetting).filter(models.SystemSetting.key == key).first()
+    if not setting:
+        if default_value is not None:
+            # 如果提供了默认值，创建新设置
+            new_setting = models.SystemSetting(key=key, value=default_value)
+            db.add(new_setting)
+            db.commit()
+            return default_value
+        return None
+    return setting.value
+
+def update_system_setting(db: Session, key: str, value: str):
+    """
+    更新系统设置项，如果不存在则创建
+
+    Args:
+        db: 数据库会话
+        key: 设置项的键
+        value: 设置项的新值
+
+    Returns:
+        str: 更新后的设置项值
+    """
+    setting = db.query(models.SystemSetting).filter(models.SystemSetting.key == key).first()
+    if setting:
+        setting.value = value
+    else:
+        setting = models.SystemSetting(key=key, value=value)
+        db.add(setting)
+    db.commit()
+    db.refresh(setting)
+    return setting.value

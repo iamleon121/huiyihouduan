@@ -323,7 +323,7 @@ class PDFService:
             raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
 
     @staticmethod
-    async def convert_pdf_to_jpg_for_pad(pdf_path: str, output_dir: str, dpi: int = 200) -> Optional[str]:
+    async def convert_pdf_to_jpg_for_pad(pdf_path: str, output_dir: str, width: int = None) -> Optional[str]:
         """
         将PDF文件转换为JPG长图，用于无线平板显示。
         将PDF的所有页面垂直拼接成一个长图，而不是每页一个JPG文件。
@@ -332,7 +332,7 @@ class PDFService:
         Args:
             pdf_path (str): PDF文件的完整路径
             output_dir (str): 输出JPG文件的目录
-            dpi (int, optional): 转换的DPI值，默认200
+            width (int, optional): 输出图片的宽度，如果为None则使用系统默认设置，可选值：960, 1440, 1920
 
         Returns:
             Optional[str]: 转换后的JPG长图文件路径，失败时返回None
@@ -340,8 +340,25 @@ class PDFService:
         # 导入异步工具
         from services.async_utils import AsyncUtils
 
-        # 移除调试信息
-        # print(f"[PDF转JPG] 开始转换为长图: {pdf_path}")
+        # 如果未指定宽度，从系统设置获取默认值
+        if width is None:
+            # 创建数据库会话
+            from database import SessionLocal
+            import crud
+
+            db = SessionLocal()
+            try:
+                # 获取默认分辨率设置，如果不存在则使用1920作为默认值
+                default_width_str = crud.get_system_setting(db, "default_pdf_jpg_width", "1920")
+                width = int(default_width_str)
+            finally:
+                db.close()
+
+        # 验证宽度参数，确保只能是960, 1440或1920
+        valid_widths = [960, 1440, 1920]
+        if width not in valid_widths:
+            print(f"警告: 无效的宽度值 {width}，将使用默认值1920")
+            width = 1920
 
         try:
             # 使用线程池确保输出目录存在
@@ -369,17 +386,17 @@ class PDFService:
             # 存储所有页面的PIL图像对象
             pil_images = []
             total_height = 0
-            width = 1920  # 统一宽度为1920像素
+            # 使用传入的宽度参数，而不是固定值1920
 
             # 并行处理所有页面
             async def process_page(page_num):
                 def _process_page(page_num):
                     page = pdf_document.load_page(page_num)
 
-                    # 计算缩放比例以获得1920像素宽度
+                    # 计算缩放比例以获得指定像素宽度
                     rect = page.rect
                     page_width = rect.width
-                    scale_factor = 1920 / page_width
+                    scale_factor = width / page_width
 
                     # 创建一个矩阵来应用缩放
                     matrix = fitz.Matrix(scale_factor, scale_factor)
@@ -427,26 +444,22 @@ class PDFService:
 
             merged_path = await create_and_save_merged_image()
 
-            # 移除调试信息
-            # print(f"[PDF转JPG] 转换完成: {pdf_path} -> 合并为长图 {merged_path}")
             return merged_path
 
         except Exception as e:
-            # 移除调试信息
-            # print(f"[PDF转JPG] 转换失败: {pdf_path}, 错误: {str(e)}")
             import traceback
             print(traceback.format_exc())
             return None
 
     @staticmethod
-    def convert_pdf_to_jpg_for_pad_sync(pdf_path: str, output_dir: str, dpi: int = 200) -> Optional[str]:
+    def convert_pdf_to_jpg_for_pad_sync(pdf_path: str, output_dir: str, width: int = None) -> Optional[str]:
         """
         同步版本的PDF转JPG函数，使用AsyncUtils来执行异步操作。
 
         Args:
             pdf_path (str): PDF文件的完整路径
             output_dir (str): 输出JPG文件的目录
-            dpi (int, optional): 转换的DPI值，默认200
+            width (int, optional): 输出图片的宽度，如果为None则使用系统默认设置，可选值：960, 1440, 1920
 
         Returns:
             Optional[str]: 转换后的JPG长图文件路径，失败时返回None
@@ -454,10 +467,8 @@ class PDFService:
         try:
             # 使用AsyncUtils来运行异步函数
             from services.async_utils import AsyncUtils
-            return AsyncUtils.run_sync(PDFService.convert_pdf_to_jpg_for_pad, pdf_path, output_dir, dpi)
+            return AsyncUtils.run_sync(PDFService.convert_pdf_to_jpg_for_pad, pdf_path, output_dir, width)
         except Exception as e:
-            # 移除调试信息
-            # print(f"[PDF转JPG同步调用] 出错: {str(e)}")
             import traceback
             print(traceback.format_exc())
             return None
@@ -524,7 +535,7 @@ class PDFService:
             return None
 
     @staticmethod
-    async def ensure_jpg_for_pdf(pdf_path: str, jpg_dir: str) -> Optional[str]:
+    async def ensure_jpg_for_pdf(pdf_path: str, jpg_dir: str, width: int = None) -> Optional[str]:
         """
         确保PDF文件有对应的JPG文件，如果没有则生成。
         使用异步IO和线程池处理文件操作，避免阻塞事件循环。
@@ -532,12 +543,33 @@ class PDFService:
         Args:
             pdf_path (str): PDF文件路径
             jpg_dir (str): JPG文件存储目录
+            width (int, optional): 输出图片的宽度，如果为None则使用系统默认设置，可选值：960, 1440, 1920
 
         Returns:
             Optional[str]: 生成的JPG文件路径，如果生成失败则返回None
         """
         # 导入异步工具
         from services.async_utils import AsyncUtils
+
+        # 如果未指定宽度，从系统设置获取默认值
+        if width is None:
+            # 创建数据库会话
+            from database import SessionLocal
+            import crud
+
+            db = SessionLocal()
+            try:
+                # 获取默认分辨率设置，如果不存在则使用1920作为默认值
+                default_width_str = crud.get_system_setting(db, "default_pdf_jpg_width", "1920")
+                width = int(default_width_str)
+            finally:
+                db.close()
+
+        # 验证宽度参数，确保只能是960, 1440或1920
+        valid_widths = [960, 1440, 1920]
+        if width not in valid_widths:
+            print(f"警告: 无效的宽度值 {width}，将使用默认值1920")
+            width = 1920
 
         # 使用线程池检查文件是否存在和扩展名
         check_result = await AsyncUtils.run_in_threadpool(
@@ -564,11 +596,11 @@ class PDFService:
             return existing_jpg
 
         # 如果没有JPG文件，生成新的
-        return await PDFService.convert_pdf_to_jpg_for_pad(pdf_path, jpg_dir)
+        return await PDFService.convert_pdf_to_jpg_for_pad(pdf_path, jpg_dir, width)
 
     @staticmethod
     async def ensure_jpg_in_zip(zipf, agenda_item_id: int, pdf_uuid: str, jpg_dir: str,
-                         original_pdf_name: Optional[str] = None, pdf_path: Optional[str] = None) -> bool:
+                         original_pdf_name: Optional[str] = None, pdf_path: Optional[str] = None, width: int = None) -> bool:
         """
         确保ZIP包中包含JPG文件，如果没有则生成。
         使用异步IO和线程池处理文件操作，避免阻塞事件循环。
@@ -580,6 +612,7 @@ class PDFService:
             jpg_dir (str): JPG文件存储目录
             original_pdf_name (str, optional): 原PDF文件名
             pdf_path (str, optional): PDF文件路径
+            width (int, optional): 输出图片的宽度，如果为None则使用系统默认设置，可选值：960, 1440, 1920
 
         Returns:
             bool: 是否成功添加JPG文件到ZIP包
@@ -587,13 +620,33 @@ class PDFService:
         # 导入异步工具
         from services.async_utils import AsyncUtils
 
+        # 如果未指定宽度，从系统设置获取默认值
+        if width is None:
+            # 创建数据库会话
+            from database import SessionLocal
+            import crud
+
+            db = SessionLocal()
+            try:
+                # 获取默认分辨率设置，如果不存在则使用1920作为默认值
+                default_width_str = crud.get_system_setting(db, "default_pdf_jpg_width", "1920")
+                width = int(default_width_str)
+            finally:
+                db.close()
+
+        # 验证宽度参数，确保只能是960, 1440或1920
+        valid_widths = [960, 1440, 1920]
+        if width not in valid_widths:
+            print(f"警告: 无效的宽度值 {width}，将使用默认值1920")
+            width = 1920
+
         # 如果提供PDF路径，先确保有JPG文件
         jpg_path = None
         if pdf_path:
             # 使用线程池检查文件是否存在
             pdf_exists = await AsyncUtils.run_in_threadpool(lambda: os.path.exists(pdf_path))
             if pdf_exists:
-                jpg_path = await PDFService.ensure_jpg_for_pdf(pdf_path, jpg_dir)
+                jpg_path = await PDFService.ensure_jpg_for_pdf(pdf_path, jpg_dir, width)
 
         # 如果没有找到JPG文件，检查目录中是否有JPG文件
         if not jpg_path:

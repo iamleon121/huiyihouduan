@@ -1152,6 +1152,10 @@ html, body {
 .settings-group {
     margin-bottom: 25px;
     max-width: 600px;
+    background-color: var(--light-grey);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
 }
 
 .settings-group label {
@@ -1161,6 +1165,14 @@ html, body {
     margin-bottom: 10px;
     font-weight: 500;
     color: var(--text-color);
+}
+
+.setting-description {
+    font-size: 0.9em;
+    color: var(--text-color-light);
+    margin: 10px 0 15px 0;
+    line-height: 1.5;
+    padding-left: 2px;
 }
 
 .settings-group label i {
