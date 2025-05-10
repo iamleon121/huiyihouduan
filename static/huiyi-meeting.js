@@ -1,3 +1,7 @@
+// 全局变量
+let preparingTimer = null;
+let preparingSeconds = 0;
+
 document.addEventListener('DOMContentLoaded', () => {
     // 检查用户登录状态
     checkLoginStatus();
@@ -156,6 +160,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (window.confirm(`确定要开始会议 "${meetingName}" 吗？此操作将同步文件并更新状态。`)) {
                     console.log(`开始会议: ${meetingName} (ID: ${meetingId})`);
+
+                    // 显示准备中模态窗口
+                    showPreparingModal(meetingId, meetingName);
+
                     fetch(`/api/v1/meetings/${meetingId}/status`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
@@ -167,17 +175,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     })
                     .then(updatedMeeting => {
                         console.log('Meeting status updated:', updatedMeeting);
-                        const statusCell = row.querySelector('td:nth-child(4)'); // 4th cell is status
-                        if (statusCell) statusCell.innerHTML = renderStatus(updatedMeeting.status);
-                        const actionCell = row.querySelector('td:last-child');
-                        if (actionCell) {
-                             actionCell.innerHTML = renderActionButtons(updatedMeeting);
-                             // Re-attach listeners ONLY to the newly rendered buttons in this specific row
-                             attachActionListeners(actionCell);
-                        }
+
+                        // 开始轮询会议状态
+                        pollMeetingStatus(meetingId, row);
                     })
                     .catch(error => {
                         console.error('Error starting meeting:', error);
+                        // 关闭准备中模态窗口
+                        hidePreparingModal();
                         alert(`开始会议失败: ${error.message}`);
                     });
                 } else {
@@ -236,6 +241,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (window.confirm(`确定要重新开始会议 "${meetingName}" 吗？此操作将更新会议状态为进行中。`)) {
                     console.log(`重新开始会议: ${meetingName} (ID: ${meetingId})`);
+
+                    // 显示准备中模态窗口
+                    showPreparingModal(meetingId, meetingName);
+
                     fetch(`/api/v1/meetings/${meetingId}/status`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
@@ -247,17 +256,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     })
                     .then(updatedMeeting => {
                         console.log('Meeting status updated:', updatedMeeting);
-                        const statusCell = row.querySelector('td:nth-child(4)'); // 4th cell is status
-                        if (statusCell) statusCell.innerHTML = renderStatus(updatedMeeting.status);
-                        const actionCell = row.querySelector('td:last-child');
-                        if (actionCell) {
-                             actionCell.innerHTML = renderActionButtons(updatedMeeting);
-                             // Re-attach listeners ONLY to the newly rendered buttons in this specific row
-                             attachActionListeners(actionCell);
-                        }
+
+                        // 开始轮询会议状态
+                        pollMeetingStatus(meetingId, row);
                     })
                     .catch(error => {
                         console.error('Error restarting meeting:', error);
+                        // 关闭准备中模态窗口
+                        hidePreparingModal();
                         showToast(`重新开始会议失败: ${error.message}`, 'error');
                     });
                 } else {
@@ -1653,5 +1659,120 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 重新加载所有会议
         fetchMeetings();
+    }
+
+    // 显示浮动提示
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+
+        toastContainer.appendChild(toast);
+
+        // 显示提示
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 10);
+
+        // 3秒后自动隐藏
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                toast.remove();
+            }, 300); // 等待淡出动画完成
+        }, 3000);
+    }
+
+    // 显示准备中模态窗口
+    function showPreparingModal(meetingId, meetingName) {
+        const modal = document.getElementById('preparingMeetingModal');
+        const timeElement = document.getElementById('preparingTime');
+        const closeButton = document.getElementById('closePreparingModal');
+
+        // 重置计时器
+        if (preparingTimer) {
+            clearInterval(preparingTimer);
+        }
+        preparingSeconds = 0;
+        timeElement.textContent = '0';
+
+        // 显示模态窗口
+        modal.style.display = 'block';
+
+        // 添加关闭按钮事件监听器
+        closeButton.onclick = function() {
+            hidePreparingModal();
+            showToast(`会议 "${meetingName}" 正在后台准备中，请稍后刷新查看状态`, 'info');
+        };
+
+        // 启动计时器
+        preparingTimer = setInterval(() => {
+            preparingSeconds++;
+            timeElement.textContent = preparingSeconds;
+        }, 1000);
+    }
+
+    // 隐藏准备中模态窗口
+    function hidePreparingModal() {
+        const modal = document.getElementById('preparingMeetingModal');
+
+        // 停止计时器
+        if (preparingTimer) {
+            clearInterval(preparingTimer);
+            preparingTimer = null;
+        }
+
+        // 隐藏模态窗口
+        modal.style.display = 'none';
+    }
+
+    // 轮询会议状态
+    function pollMeetingStatus(meetingId, row) {
+        // 每2秒检查一次会议状态
+        const pollInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/api/v1/meetings/${meetingId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const meetingData = await response.json();
+                console.log('Polling meeting status:', meetingData);
+
+                // 如果会议状态为"进行中"，表示准备完成
+                if (meetingData.status === '进行中') {
+                    // 停止轮询
+                    clearInterval(pollInterval);
+
+                    // 隐藏准备中模态窗口
+                    hidePreparingModal();
+
+                    // 更新UI
+                    const statusCell = row.querySelector('td:nth-child(4)'); // 4th cell is status
+                    if (statusCell) statusCell.innerHTML = renderStatus(meetingData.status);
+                    const actionCell = row.querySelector('td:last-child');
+                    if (actionCell) {
+                        actionCell.innerHTML = renderActionButtons(meetingData);
+                        // Re-attach listeners ONLY to the newly rendered buttons in this specific row
+                        attachActionListeners(actionCell);
+                    }
+
+                    // 显示成功提示
+                    showToast(`会议 "${meetingData.title}" 已成功开始`, 'success');
+                }
+
+                // 如果轮询超过5分钟（300秒），停止轮询并显示提示
+                if (preparingSeconds > 300) {
+                    clearInterval(pollInterval);
+                    hidePreparingModal();
+                    showToast(`会议准备时间过长，请刷新页面查看最新状态`, 'warning');
+                }
+
+            } catch (error) {
+                console.error('Error polling meeting status:', error);
+                // 出错时不停止轮询，继续尝试
+            }
+        }, 2000);
     }
 });

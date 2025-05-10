@@ -160,6 +160,22 @@
     <!-- 浮动提示容器 -->
     <div id="toast-container" class="toast-container"></div>
 
+    <!-- 会议准备中模态窗口 -->
+    <div id="preparingMeetingModal" class="modal">
+        <div class="modal-content preparing-modal">
+            <span class="close" id="closePreparingModal">&times;</span>
+            <h2>会议准备中</h2>
+            <div class="preparing-content">
+                <div class="spinner"></div>
+                <p>系统正在准备会议文件数据，请稍候...</p>
+                <p class="preparing-status">正在准备数据同步</p>
+                <p class="preparing-time">已等待: <span id="preparingTime">0</span> 秒</p>
+                <p class="preparing-hint">您可以点击右上角的 X 关闭此窗口，会议将在后台继续准备</p>
+            </div>
+        </div>
+    </div>
+    <!-- End 会议准备中模态窗口 -->
+
     <script src="./huiyi-meeting.js"></script>
 </body>
 </html>
