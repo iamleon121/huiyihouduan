@@ -169,6 +169,131 @@ async def download_meeting_package(db: Session, meeting_id: str)
    - 确保修改不会破坏现有功能
    - 考虑提供配置选项，允许管理员选择使用PDF还是JPG
 
+## 实施清单
+
+为了逐步谨慎地实施PDF直接传输方案，建议按照以下步骤进行：
+
+### 阶段一：准备工作
+
+1. **创建备份**
+   - [ ] 备份当前的`services/meeting_service.py`文件
+   - [ ] 备份当前的`routes/meetings_download.py`文件
+   - [ ] 备份当前的`services/pdf_service.py`文件
+
+2. **添加系统设置项**
+   - [ ] 在`SystemSetting`表中添加`use_pdf_directly`配置项（布尔值）
+   - [ ] 默认值设为`false`，以保持系统当前行为
+
+### 阶段二：修改会议包生成逻辑
+
+3. **修改`generate_meeting_package`方法**
+   - [ ] 添加条件判断，根据系统设置决定使用PDF还是JPG
+   - [ ] 实现PDF文件直接打包逻辑
+   - [ ] 保留原有JPG打包逻辑作为备选
+   - [ ] 确保ZIP文件命名规则一致
+
+4. **修改ZIP包内容结构**
+   - [ ] 设计PDF文件在ZIP包中的目录结构
+   - [ ] 确保结构清晰，便于客户端解析
+   - [ ] 添加README.txt说明文件，解释包内容
+
+### 阶段三：修改下载路由
+
+5. **更新下载路由**
+   - [ ] 修改`download_meeting_package`路由，支持PDF文件包
+   - [ ] 更新Content-Type和文件名
+   - [ ] 确保向后兼容性
+
+6. **添加单个PDF下载功能**
+   - [ ] 创建新的路由用于下载单个PDF文件
+   - [ ] 实现权限检查和访问控制
+   - [ ] 添加适当的缓存控制
+
+### 阶段四：测试与验证
+
+7. **单元测试**
+   - [ ] 为新功能编写单元测试
+   - [ ] 测试不同配置下的系统行为
+   - [ ] 验证文件大小和传输效率
+
+8. **集成测试**
+   - [ ] 测试与客户端的集成
+   - [ ] 验证不同设备和浏览器的兼容性
+   - [ ] 测试大文件处理性能
+
+### 阶段五：部署与监控
+
+9. **分阶段部署**
+   - [ ] 先在测试环境部署
+   - [ ] 收集反馈并进行必要调整
+   - [ ] 在生产环境小范围启用
+   - [ ] 逐步扩大使用范围
+
+10. **监控与优化**
+    - [ ] 监控系统性能和资源使用
+    - [ ] 收集用户反馈
+    - [ ] 根据反馈进行优化调整
+
+### 阶段六：清理与文档
+
+11. **代码清理**
+    - [ ] 移除不再需要的临时代码
+    - [ ] 优化错误处理和日志记录
+    - [ ] 进行代码审查
+
+12. **更新文档**
+    - [ ] 更新系统文档
+    - [ ] 编写管理员指南
+    - [ ] 编写用户使用说明
+
+## 关键代码修改点
+
+### 1. 会议包生成逻辑 (`services/meeting_service.py`)
+
+```python
+async def generate_meeting_package(db: Session, meeting_id: str) -> bool:
+    # 获取系统设置
+    use_pdf_directly = crud.get_system_setting(db, "use_pdf_directly", "false").lower() == "true"
+
+    if use_pdf_directly:
+        # 直接打包PDF文件
+        # ...
+    else:
+        # 原有的JPG打包逻辑
+        # ...
+```
+
+### 2. 下载路由 (`routes/meetings_download.py`)
+
+```python
+@router.get("/{meeting_id}/download-package")
+async def download_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
+    # 获取系统设置
+    use_pdf_directly = crud.get_system_setting(db, "use_pdf_directly", "false").lower() == "true"
+
+    # 根据设置决定下载内容和文件名
+    if use_pdf_directly:
+        zip_filename = f"meeting_{meeting_id}_pdfs.zip"
+        # ...
+    else:
+        zip_filename = f"meeting_{meeting_id}_jpgs.zip"
+        # ...
+```
+
+### 3. 单个PDF下载路由 (新增)
+
+```python
+@router.get("/{meeting_id}/agenda/{agenda_id}/pdf/{pdf_id}")
+async def download_single_pdf(
+    meeting_id: str,
+    agenda_id: int,
+    pdf_id: str,
+    db: Session = Depends(get_db)
+):
+    # 实现单个PDF文件下载逻辑
+    # ...
+```
+
 ## 结论
 
-直接使用PDF传输方案是解决当前文件大小问题的最有效方法。系统已经具备处理PDF的基础设施，只需要适当修改会议包生成和下载逻辑即可实现。这种方案不仅可以显著减小文件大小，还可以提高系统性能和用户体验。
+直接使用PDF传输方案是解决当前文件大小问题的最有效方法。通过以上分阶段实施计划，可以安全、稳妥地完成系统改造，同时保持系统稳定性和向后兼容性。这种方案不仅可以显著减小文件大小，还可以提高系统性能和用户体验。

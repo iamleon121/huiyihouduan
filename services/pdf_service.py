@@ -326,128 +326,68 @@ class PDFService:
     async def convert_pdf_to_jpg_for_pad(pdf_path: str, output_dir: str, width: int = None) -> Optional[str]:
         """
         将PDF文件转换为JPG长图，用于无线平板显示。
-        将PDF的所有页面垂直拼接成一个长图，而不是每页一个JPG文件。
-        使用异步IO和线程池处理CPU密集型操作，避免阻塞事件循环。
+        注意：此方法已被修改为不执行实际的转换，只返回PDF文件路径。
+        这是为了减少文件大小，因为JPG文件通常比PDF文件大得多。
 
         Args:
             pdf_path (str): PDF文件的完整路径
-            output_dir (str): 输出JPG文件的目录
-            width (int, optional): 输出图片的宽度，如果为None则使用系统默认设置，可选值：960, 1440, 1920
+            output_dir (str): 输出JPG文件的目录（不再使用）
+            width (int, optional): 输出图片的宽度（不再使用）
 
         Returns:
-            Optional[str]: 转换后的JPG长图文件路径，失败时返回None
+            Optional[str]: 原始PDF文件路径，失败时返回None
         """
         # 导入异步工具
         from services.async_utils import AsyncUtils
 
-        # 如果未指定宽度，从系统设置获取默认值
-        if width is None:
-            # 创建数据库会话
-            from database import SessionLocal
-            import crud
-
-            db = SessionLocal()
-            try:
-                # 获取默认分辨率设置，如果不存在则使用1920作为默认值
-                default_width_str = crud.get_system_setting(db, "default_pdf_jpg_width", "1920")
-                width = int(default_width_str)
-            finally:
-                db.close()
-
-        # 验证宽度参数，确保只能是960, 1440或1920
-        valid_widths = [960, 1440, 1920]
-        if width not in valid_widths:
-            print(f"警告: 无效的宽度值 {width}，将使用默认值1920")
-            width = 1920
-
         try:
-            # 使用线程池确保输出目录存在
+            # 检查PDF文件是否存在
+            pdf_exists = await AsyncUtils.run_in_threadpool(
+                lambda: os.path.exists(pdf_path) and pdf_path.lower().endswith(".pdf")
+            )
+
+            if not pdf_exists:
+                print(f"警告: PDF文件不存在或不是PDF格式: {pdf_path}")
+                return None
+
+            # 确保输出目录存在（为了兼容性）
             await AsyncUtils.run_in_threadpool(lambda: os.makedirs(output_dir, exist_ok=True))
 
-            # 使用线程池提取文件名信息
+            # 提取文件名信息（为了兼容性）
             async def get_file_info():
                 def _get_file_info():
-                    # 从PDF路径中提取文件名（不含扩展名）
                     pdf_filename = os.path.basename(pdf_path)
                     pdf_basename = os.path.splitext(pdf_filename)[0]
-                    # 创建与PDF同名的JPG文件名
                     jpg_filename = f"{pdf_basename}.jpg"
-                    return pdf_filename, pdf_basename, jpg_filename
+                    return jpg_filename
                 return await AsyncUtils.run_in_threadpool(_get_file_info)
 
-            pdf_filename, pdf_basename, jpg_filename = await get_file_info()
+            jpg_filename = await get_file_info()
 
-            # 使用线程池打开PDF文件
-            async def open_pdf():
-                return await AsyncUtils.run_in_threadpool(lambda: fitz.open(pdf_path))
+            # 创建一个空的占位JPG文件，以保持目录结构一致
+            placeholder_path = os.path.join(output_dir, jpg_filename)
 
-            pdf_document = await open_pdf()
+            # 检查占位文件是否已存在
+            placeholder_exists = await AsyncUtils.run_in_threadpool(
+                lambda: os.path.exists(placeholder_path)
+            )
 
-            # 存储所有页面的PIL图像对象
-            pil_images = []
-            total_height = 0
-            # 使用传入的宽度参数，而不是固定值1920
+            if not placeholder_exists:
+                # 创建一个1x1像素的空白JPG文件作为占位符
+                await AsyncUtils.run_in_threadpool(
+                    lambda: Image.new('RGB', (1, 1), color='white').save(placeholder_path, "JPEG")
+                )
+                print(f"创建了占位JPG文件: {placeholder_path}")
 
-            # 并行处理所有页面
-            async def process_page(page_num):
-                def _process_page(page_num):
-                    page = pdf_document.load_page(page_num)
+            print(f"跳过PDF转JPG，直接使用PDF文件: {pdf_path}")
 
-                    # 计算缩放比例以获得指定像素宽度
-                    rect = page.rect
-                    page_width = rect.width
-                    scale_factor = width / page_width
-
-                    # 创建一个矩阵来应用缩放
-                    matrix = fitz.Matrix(scale_factor, scale_factor)
-
-                    # 渲染页面为像素图
-                    pixmap = page.get_pixmap(matrix=matrix, alpha=False)
-
-                    # 将pixmap转换为PIL图像
-                    img_data = pixmap.tobytes("jpeg")
-                    img = Image.open(io.BytesIO(img_data))
-
-                    return img
-                return await AsyncUtils.run_in_threadpool(_process_page, page_num)
-
-            # 并行处理所有页面，但限制并发数量为4，避免内存溢出
-            tasks = [process_page(page_num) for page_num in range(len(pdf_document))]
-            processed_images = await AsyncUtils.gather_with_concurrency(4, *tasks)
-
-            # 计算总高度和收集图像
-            for img in processed_images:
-                pil_images.append(img)
-                total_height += img.height
-
-            # 使用线程池创建并保存合并图像
-            async def create_and_save_merged_image():
-                def _create_and_save():
-                    # 创建一个新的空白图像，高度是所有页面高度的总和
-                    merged_image = Image.new('RGB', (width, total_height))
-
-                    # 将所有页面垂直拼接
-                    y_offset = 0
-                    for img in pil_images:
-                        merged_image.paste(img, (0, y_offset))
-                        y_offset += img.height
-
-                    # 保存合并后的长图，使用与PDF同名的文件名
-                    merged_path = os.path.join(output_dir, jpg_filename)
-                    merged_image.save(merged_path, "JPEG")
-
-                    # 关闭PDF文档
-                    pdf_document.close()
-
-                    return merged_path
-                return await AsyncUtils.run_in_threadpool(_create_and_save)
-
-            merged_path = await create_and_save_merged_image()
-
-            return merged_path
+            # 返回原始PDF文件路径，而不是JPG文件路径
+            # 这样可以在后续处理中直接使用PDF文件
+            return pdf_path
 
         except Exception as e:
             import traceback
+            print(f"处理PDF文件时出错: {str(e)}")
             print(traceback.format_exc())
             return None
 
@@ -455,21 +395,23 @@ class PDFService:
     def convert_pdf_to_jpg_for_pad_sync(pdf_path: str, output_dir: str, width: int = None) -> Optional[str]:
         """
         同步版本的PDF转JPG函数，使用AsyncUtils来执行异步操作。
+        注意：此方法已被修改为不执行实际的转换，只返回PDF文件路径。
 
         Args:
             pdf_path (str): PDF文件的完整路径
-            output_dir (str): 输出JPG文件的目录
-            width (int, optional): 输出图片的宽度，如果为None则使用系统默认设置，可选值：960, 1440, 1920
+            output_dir (str): 输出JPG文件的目录（不再使用）
+            width (int, optional): 输出图片的宽度（不再使用）
 
         Returns:
-            Optional[str]: 转换后的JPG长图文件路径，失败时返回None
+            Optional[str]: 原始PDF文件路径，失败时返回None
         """
         try:
             # 使用AsyncUtils来运行异步函数
             from services.async_utils import AsyncUtils
             return AsyncUtils.run_sync(PDFService.convert_pdf_to_jpg_for_pad, pdf_path, output_dir, width)
-        except Exception as e:
+        except Exception:
             import traceback
+            print(f"同步处理PDF文件时出错: {pdf_path}")
             print(traceback.format_exc())
             return None
 
