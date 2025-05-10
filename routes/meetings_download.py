@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/v1/meetings", tags=["meetings_download"])
 @router.get("/{meeting_id}/download-package")
 async def download_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
     """
-    下载会议的JPG文件包
+    下载会议的PDF文件包
 
     Args:
         meeting_id: 会议ID
@@ -117,7 +117,7 @@ async def download_local_package(meeting_id: str, db: Session):
 
     # 准备文件名 - 使用ASCII字符确保兼容性
     # 仅使用会议ID作为文件名，避免中文字符编码问题
-    zip_filename = f"meeting_{meeting_id}_jpgs.zip"
+    zip_filename = f"meeting_{meeting_id}_pdfs.zip"
 
     # 准备响应
     headers = {

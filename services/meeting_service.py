@@ -788,7 +788,7 @@ class MeetingService:
 
     @staticmethod
     async def generate_meeting_package(db: Session, meeting_id: str) -> bool:
-        """为会议预生成JPG文件包，将所有JPG文件打包成ZIP文件并保存到磁盘
+        """为会议预生成PDF文件包，将所有PDF文件打包成ZIP文件并保存到磁盘
         在会议开始时调用此方法，生成完成后才将会议状态更新为“进行中”
 
         Args:
@@ -798,7 +798,7 @@ class MeetingService:
         Returns:
             bool: 生成成功返回true，失败返回false
         """
-        print(f"\n开始为会议 {meeting_id} 预生成JPG文件包")
+        print(f"\n开始为会议 {meeting_id} 预生成PDF文件包")
 
         # 检查会议是否存在
         db_meeting = crud.get_meeting(db, meeting_id=meeting_id)
@@ -820,8 +820,8 @@ class MeetingService:
         if not os.path.exists(packages_dir):
             os.makedirs(packages_dir)
 
-        # 生成ZIP文件路径
-        zip_filename = f"{db_meeting.title.replace(' ', '_')}_{meeting_id}_jpgs.zip"
+        # 生成ZIP文件路径 - 使用pdfs而不是jpgs
+        zip_filename = f"{db_meeting.title.replace(' ', '_')}_{meeting_id}_pdfs.zip"
         zip_path = os.path.join(packages_dir, zip_filename)
         print(f"ZIP文件路径: {zip_path}")
 
@@ -831,7 +831,7 @@ class MeetingService:
             # 导入异步工具
             from services.async_utils import AsyncUtils
 
-            # 首先检查所有PDF文件，确保它们都有对应的JPG文件
+            # 收集所有PDF文件
             pdf_files = []
             for root, dirs, files in os.walk(meeting_dir):
                 for file in files:
@@ -840,62 +840,54 @@ class MeetingService:
 
             print(f"找到 {len(pdf_files)} 个PDF文件")
 
-            # 如果有PDF文件，确保它们都有对应的JPG文件
-            if pdf_files:
-                for pdf_path in pdf_files:
-                    # 从UUID_filename.pdf格式中提取UUID部分
-                    pdf_dir = os.path.dirname(pdf_path)
-                    pdf_filename = os.path.basename(pdf_path)
-                    pdf_uuid = pdf_filename.split("_")[0] if "_" in pdf_filename else ""
-
-                    # 构建JPG目录路径
-                    jpg_dir = os.path.join(pdf_dir, "jpgs", pdf_uuid)
-                    os.makedirs(jpg_dir, exist_ok=True)
-
-                    # 检查是否已经有JPG文件
-                    jpg_exists = False
-                    if os.path.exists(jpg_dir):
-                        for jpg_file in os.listdir(jpg_dir):
-                            if jpg_file.lower().endswith(".jpg"):
-                                jpg_exists = True
-                                print(f"JPG文件已存在: {jpg_dir}/{jpg_file}")
-                                break
-
-                    # 如果没有JPG文件，生成新的
-                    if not jpg_exists:
-                        print(f"生成PDF对应的JPG文件: {pdf_path} -> {jpg_dir}")
-                        await PDFService.convert_pdf_to_jpg_for_pad(pdf_path, jpg_dir)
-
-            # 现在收集所有JPG文件
-            jpg_files = []
-            for root, dirs, files in os.walk(meeting_dir):
-                for file in files:
-                    if file.lower().endswith(".jpg"):
-                        jpg_files.append((root, file))
-
-            print(f"找到 {len(jpg_files)} 个JPG文件")
-
-            # 如果没有JPG文件，创建一个包含说明文件的ZIP
-            if not jpg_files:
-                print("没有找到JPG文件，添加说明文件到空ZIP包")
+            # 如果没有PDF文件，创建一个包含说明文件的ZIP
+            if not pdf_files:
+                print("没有找到PDF文件，添加说明文件到空ZIP包")
                 with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                    info_content = f"会议 '{db_meeting.title}' (ID: {meeting_id}) 没有可用的JPG文件。\n请确保会议中包含PDF文件，并且已经成功转换为JPG格式。"
+                    info_content = f"会议 '{db_meeting.title}' (ID: {meeting_id}) 没有可用的PDF文件。\n请确保会议中包含PDF文件。"
                     zip_file.writestr("README.txt", info_content)
             else:
-                # 有JPG文件，创建包含这些文件的ZIP
+                # 有PDF文件，创建包含这些文件的ZIP
                 with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                    for root, file in jpg_files:
-                        file_path = os.path.join(root, file)
-                        # 创建相对路径
-                        rel_path = os.path.relpath(file_path, meeting_dir)
-                        # 添加文件到ZIP
-                        print(f"添加文件到ZIP: {file_path} -> {rel_path}")
+                    # 添加README.txt说明文件
+                    readme_content = f"会议: {db_meeting.title} (ID: {meeting_id})\n"
+                    readme_content += f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                    readme_content += f"包含PDF文件数量: {len(pdf_files)}\n\n"
+                    readme_content += "文件列表:\n"
+
+                    # 添加文件列表到README
+                    for pdf_path in pdf_files:
+                        rel_path = os.path.relpath(pdf_path, meeting_dir)
+                        readme_content += f"- {rel_path}\n"
+
+                    zip_file.writestr("README.txt", readme_content)
+                    file_count += 1
+
+                    # 添加所有PDF文件
+                    for pdf_path in pdf_files:
                         try:
-                            zip_file.write(file_path, rel_path)
+                            # 获取文件名和UUID
+                            pdf_filename = os.path.basename(pdf_path)
+                            # 从文件名中提取UUID部分（通常是文件名的第一部分，以下划线分隔）
+                            pdf_uuid = pdf_filename.split("_")[0] if "_" in pdf_filename else pdf_filename
+
+                            # 确保文件名有.pdf扩展名
+                            if not pdf_uuid.lower().endswith(".pdf"):
+                                pdf_uuid = f"{pdf_uuid}.pdf"
+
+                            # 获取文件所在的目录相对路径
+                            rel_dir = os.path.dirname(os.path.relpath(pdf_path, meeting_dir))
+
+                            # 创建新的相对路径，使用UUID作为文件名
+                            new_rel_path = os.path.join(rel_dir, pdf_uuid)
+
+                            # 添加文件到ZIP
+                            print(f"添加文件到ZIP: {pdf_path} -> {new_rel_path} (仅使用UUID)")
+                            zip_file.write(pdf_path, new_rel_path)
                             file_count += 1
-                            print(f"成功添加文件到ZIP: {file_path}")
+                            print(f"成功添加文件到ZIP: {pdf_path}")
                         except Exception as e:
-                            print(f"添加文件到ZIP失败: {file_path}, 错误: {str(e)}")
+                            print(f"添加文件到ZIP失败: {pdf_path}, 错误: {str(e)}")
 
             # 检查ZIP文件大小
             zip_size = os.path.getsize(zip_path)

@@ -788,8 +788,8 @@ async def get_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
 @router.get("/{meeting_id}/download-package")
 async def download_meeting_package(meeting_id: str, db: Session = Depends(get_db)):
     """
-    下载会议的JPG文件包，打包为ZIP格式
-    仅包含会议的JPG图片文件，不包含PDF文件
+    下载会议的PDF文件包，打包为ZIP格式
+    包含会议的所有PDF文件
     适用于平板客户端查看
 
     Args:
@@ -803,7 +803,7 @@ async def download_meeting_package(meeting_id: str, db: Session = Depends(get_db
 
     # 准备文件名 - 使用ASCII字符确保兼容性
     # 仅使用会议ID作为文件名，避免中文字符编码问题
-    zip_filename = f"meeting_{meeting_id}_jpgs.zip"
+    zip_filename = f"meeting_{meeting_id}_pdfs.zip"
 
     # 准备响应
     headers = {
@@ -902,7 +902,7 @@ async def download_active_meeting_package(meeting_id: str, db: Session = Depends
 
     # 准备文件名 - 使用ASCII字符确保兼容性
     # 仅使用会议ID作为文件名，避免中文字符编码问题
-    zip_filename = f"meeting_{meeting_id}_jpgs.zip"
+    zip_filename = f"meeting_{meeting_id}_pdfs.zip"
 
     # 准备响应
     headers = {
