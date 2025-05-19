@@ -36,6 +36,8 @@ develop-eggs/
 
 # 日志文件
 *.log
+logs/
+log/
 
 # 分布式文件服务节点临时文件
 /tongbuhouduan/storage/download/*
@@ -43,14 +45,27 @@ develop-eggs/
 !/tongbuhouduan/storage/download/.gitkeep
 !/tongbuhouduan/storage/meeting_files/.gitkeep
 
+# 临时文件目录
+/uploads/temp/*
+!/uploads/temp/.gitkeep
+
 # 本地配置文件
 .env
 .env.local
+node_config.json
+config.json
+*.pem
+*.key
+*.crt
+*.cert
 
 # 数据库文件
+*.db
 *.db-journal
 *.sqlite
 *.sqlite3
+*.db-shm
+*.db-wal
 
 # IDE配置
 .idea/
@@ -58,6 +73,7 @@ develop-eggs/
 .trae/
 *.swp
 *.swo
+*.code-workspace
 
 # 系统文件
 .DS_Store
@@ -76,6 +92,14 @@ Thumbs.db
 /uploads/**/*.jpeg
 /uploads/**/*.png
 /uploads/**/*.zip
+/uploads/**/*.mp4
+/uploads/**/*.mp3
+/uploads/**/*.docx
+/uploads/**/*.xlsx
+/uploads/**/*.pptx
+
+# 会议包文件
+**/meeting_package_*.zip
 
 # 确保文件夹结构被跟踪
 !/uploads/
